@@ -72,7 +72,7 @@ public class DynamicJobController {
         return result ? "Job 삭제됨: " + jobName : "삭제 실패 (Job 없음)";
     }
     
-    // Job 조회
+    // Job 조회1
     @GetMapping("/listJobs")
     public List<JobInfoDto> listAllJobs() throws SchedulerException {
         return jobService.getAllScheduledJobs();
