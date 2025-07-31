@@ -1,0 +1,30 @@
+# === Gradle ===
+.gradle/
+build/
+out/
+
+# === IDE ===
+.idea/
+*.iml
+*.ipr
+*.iws
+*.log
+
+# === OS ===
+.DS_Store
+Thumbs.db
+
+# === Eclipse ===
+.settings/
+.project
+.classpath
+bin/
+
+# === 환경 설정 제외 (보안) ===
+application.yml
+application-*.yml
+application.properties
+application-*.properties
+
+# === 기타 ===
+node_modules/
