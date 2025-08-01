@@ -1,7 +1,6 @@
 package com.example.demo.controller;
 
 import java.util.List;
-import java.util.Map;
 
 import org.quartz.SchedulerException;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -17,17 +16,16 @@ import com.example.demo.dto.ScheduleRequest;
 import com.example.demo.dto.ScheduleType;
 import com.example.demo.service.DynamicJobService;
 
+import lombok.RequiredArgsConstructor;
+
 
 @RestController
 @RequestMapping("/jobs")
+@RequiredArgsConstructor
 public class DynamicJobController {
 	
 	private final DynamicJobService jobService;
-
-    public DynamicJobController(DynamicJobService jobService) {
-        this.jobService = jobService;
-    }
-
+	
     // Job 추가 및 실행 요청
 //    @PostMapping("/addJob")
 //    public String addJob(@RequestParam(name = "jobClassName") String jobClassName,
@@ -72,7 +70,7 @@ public class DynamicJobController {
         return result ? "Job 삭제됨: " + jobName : "삭제 실패 (Job 없음)";
     }
     
-    // Job 조회1
+    // Job 조회
     @GetMapping("/listJobs")
     public List<JobInfoDto> listAllJobs() throws SchedulerException {
         return jobService.getAllScheduledJobs();

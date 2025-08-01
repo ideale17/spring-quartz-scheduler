@@ -71,13 +71,14 @@ public class DynamicJobService {
 		// 1. Job 클래스 조회(미등록 시 예외)
         Class<? extends Job> jobClass = jobClassRegistry.getJobClass(jobClassName);
 		
+        // 2. JobDetail 생성
         JobDetail jobDetail = JobBuilder.newJob(jobClass)
                 .withIdentity(jobName, jobGroup)
                 .usingJobData(dataMap)
                 .build();
         
         
-        // 2. Trigger 생성
+        // 3. Trigger 생성
         Trigger trigger;
         
         if (scheduleType == ScheduleType.CRON) {
@@ -126,7 +127,7 @@ public class DynamicJobService {
 		// 2. JobDetail 생성 (Durably로 설정: Trigger 없이도 등록 가능)
 		JobDetail jobDetail = JobBuilder.newJob(jobClass)
 				.withIdentity(jobName, jobGroup)
-				.storeDurably(true)  // 🔥 Trigger 없이 저장하려면 필수
+				.storeDurably(true)  // Trigger 없이 저장하려면 필수
 				.build();
 
 		// 3. 중복 여부 확인

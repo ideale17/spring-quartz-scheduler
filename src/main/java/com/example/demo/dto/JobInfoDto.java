@@ -1,5 +1,7 @@
 package com.example.demo.dto;
 
+import java.util.Map;
+
 import lombok.Data;
 
 @Data
@@ -11,7 +13,8 @@ public class JobInfoDto {
     private String jobClassName;
     private String description;
     private String isDurable;       // Oracle에서 CHAR 또는 VARCHAR2 타입이면 String으로 받는 게 안전
-    //private String jobData;         // BLOB 또는 CLOB일 경우 String (필요시 변환)
+    //private Map<String, Object> jobData;         // BLOB 또는 CLOB일 경우 String (필요시 변환)
+    private byte[] jobData;
     private String state;
     
     // Trigger 정보

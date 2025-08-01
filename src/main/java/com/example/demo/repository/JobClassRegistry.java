@@ -21,7 +21,7 @@ public class JobClassRegistry {
         // 안전하게 등록할 Job만 수동 등록 (화이트리스트 역할)
         jobClassMap.put("hello", HelloJob.class);
         jobClassMap.put("StockPriceCollect", StockPriceCollectJob.class);
-        jobClassMap.put("WeatherCollect", WeatherCollectJob.class);
+        jobClassMap.put("com.example.demo.job.WeatherCollectJob", WeatherCollectJob.class);
         
         // 필요 시 더 추가
     }
