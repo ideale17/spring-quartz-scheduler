@@ -1,4 +1,4 @@
-package com.example.demo.dto;
+package com.kji.scheduler.dto;
 
 public enum ScheduleType {
 	CRON,

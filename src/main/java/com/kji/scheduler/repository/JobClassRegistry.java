@@ -1,4 +1,4 @@
-package com.example.demo.repository;
+package com.kji.scheduler.repository;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -7,9 +7,9 @@ import java.util.Set;
 import org.quartz.Job;
 import org.springframework.stereotype.Component;
 
-import com.example.demo.job.HelloJob;
-import com.example.demo.job.StockPriceCollectJob;
-import com.example.demo.job.WeatherCollectJob;
+import com.kji.scheduler.job.HelloJob;
+import com.kji.scheduler.job.StockPriceCollectJob;
+import com.kji.scheduler.job.WeatherCollectJob;
 
 @Component
 public class JobClassRegistry {
@@ -19,9 +19,9 @@ public class JobClassRegistry {
 
     public JobClassRegistry() {
         // 안전하게 등록할 Job만 수동 등록 (화이트리스트 역할)
-        jobClassMap.put("hello", HelloJob.class);
-        jobClassMap.put("StockPriceCollect", StockPriceCollectJob.class);
-        jobClassMap.put("com.example.demo.job.WeatherCollectJob", WeatherCollectJob.class);
+        jobClassMap.put("com.kji.scheduler.job.HelloJob", HelloJob.class);
+        jobClassMap.put("com.kji.scheduler.job.StockPriceCollectJob", StockPriceCollectJob.class);
+        jobClassMap.put("com.kji.scheduler.job.WeatherCollectJob", WeatherCollectJob.class);
         
         // 필요 시 더 추가
     }

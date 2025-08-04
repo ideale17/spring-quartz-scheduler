@@ -1,4 +1,4 @@
-package com.example.demo.job;
+package com.kji.scheduler.job;
 
 import org.springframework.stereotype.Component;
 

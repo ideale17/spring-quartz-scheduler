@@ -1,4 +1,4 @@
-package com.example.demo.service;
+package com.kji.scheduler.service;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -20,11 +20,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
-import com.example.demo.dto.JobInfoDto;
-import com.example.demo.dto.ScheduleRequest;
-import com.example.demo.dto.ScheduleType;
-import com.example.demo.mapper.DynamicJobMapper;
-import com.example.demo.repository.JobClassRegistry;
+import com.kji.scheduler.dto.JobInfoDto;
+import com.kji.scheduler.dto.ScheduleRequest;
+import com.kji.scheduler.dto.ScheduleType;
+import com.kji.scheduler.mapper.DynamicJobMapper;
+import com.kji.scheduler.repository.JobClassRegistry;
 
 @Service
 public class DynamicJobService {

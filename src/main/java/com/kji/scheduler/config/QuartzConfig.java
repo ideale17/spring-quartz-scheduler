@@ -1,4 +1,4 @@
-package com.example.demo.config;
+package com.kji.scheduler.config;
 
 import org.quartz.Scheduler;
 import org.quartz.SchedulerException;

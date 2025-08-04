@@ -1,4 +1,4 @@
-package com.example.demo.controller;
+package com.kji.scheduler.controller;
 
 import java.util.List;
 
@@ -9,8 +9,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.example.demo.entity.AppUser;
-import com.example.demo.repository.AppUserRepository;
+import com.kji.scheduler.entity.AppUser;
+import com.kji.scheduler.repository.AppUserRepository;
 
 @RestController
 @RequestMapping("/appUsers")

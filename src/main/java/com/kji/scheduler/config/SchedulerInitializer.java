@@ -1,4 +1,4 @@
-package com.example.demo.config;
+package com.kji.scheduler.config;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -23,9 +23,9 @@ import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
-import com.example.demo.dto.JobInfoDto;
-import com.example.demo.repository.JobClassRegistry;
-import com.example.demo.service.DynamicJobService;
+import com.kji.scheduler.dto.JobInfoDto;
+import com.kji.scheduler.repository.JobClassRegistry;
+import com.kji.scheduler.service.DynamicJobService;
 
 @Component
 public class SchedulerInitializer {

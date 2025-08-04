@@ -1,4 +1,4 @@
-package com.example.demo.controller;
+package com.kji.scheduler.controller;
 
 import java.util.List;
 
@@ -11,10 +11,10 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.example.demo.dto.JobInfoDto;
-import com.example.demo.dto.ScheduleRequest;
-import com.example.demo.dto.ScheduleType;
-import com.example.demo.service.DynamicJobService;
+import com.kji.scheduler.dto.JobInfoDto;
+import com.kji.scheduler.dto.ScheduleRequest;
+import com.kji.scheduler.dto.ScheduleType;
+import com.kji.scheduler.service.DynamicJobService;
 
 import lombok.RequiredArgsConstructor;
 

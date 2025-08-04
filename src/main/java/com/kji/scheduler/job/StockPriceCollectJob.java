@@ -1,4 +1,4 @@
-package com.example.demo.job;
+package com.kji.scheduler.job;
 
 import org.quartz.DisallowConcurrentExecution;
 import org.quartz.JobExecutionContext;
