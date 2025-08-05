@@ -3,9 +3,9 @@
   PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
   "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 
-<mapper namespace="com.example.demo.mapper.DynamicJobMapper">
+<mapper namespace="com.kji.scheduler.mapper.DynamicJobMapper">
 
-  <select id="findAllJobList" resultType="com.example.demo.dto.JobInfoDto">
+  <select id="findAllJobList" resultType="com.kji.scheduler.dto.JobInfoDto">
   SELECT 
     JD.JOB_NAME           AS JOBNAME,
     JD.JOB_GROUP          AS JOBGROUP,
