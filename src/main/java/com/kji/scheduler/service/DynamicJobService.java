@@ -222,4 +222,26 @@ public class DynamicJobService {
     	return dynamicJobMapper.findAllJobList();
     }
     
+    // Job 중지
+    public void pauseJob(String jobName, String jobGroup) throws SchedulerException {
+        JobKey jobKey = JobKey.jobKey(jobName, jobGroup);
+        if (scheduler.checkExists(jobKey)) {
+            scheduler.pauseJob(jobKey);
+        }else {
+        	throw new SchedulerException("Job이 존재하지 않습니다.");
+        }
+    }
+    
+    // Job 재시작
+    public void resumeJob(String jobName, String jobGroup) throws SchedulerException {
+        JobKey jobKey = JobKey.jobKey(jobName, jobGroup);
+
+        if (scheduler.checkExists(jobKey)) {
+            scheduler.resumeJob(jobKey);
+        } else {
+            throw new SchedulerException("재시작할 Job이 존재하지 않습니다: " + jobName + "/" + jobGroup);
+        }
+    }
+
+    
 }
