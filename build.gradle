@@ -13,6 +13,10 @@ java {
 	}
 }
 
+bootJar {
+    archiveFileName = 'scheduler-service.jar'
+}
+
 repositories {
 	mavenCentral()
 }
