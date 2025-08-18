@@ -1,7 +1,5 @@
 package com.kji.scheduler.dto;
 
-import java.util.Map;
-
 import lombok.Data;
 
 @Data
