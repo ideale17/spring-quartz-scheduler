@@ -4,10 +4,7 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 import org.quartz.CronScheduleBuilder;
 import org.quartz.Job;
@@ -32,7 +29,6 @@ public class SchedulerInitializer {
 	
 	private final Scheduler scheduler;
     private final JobClassRegistry jobClassRegistry;
-    
     private final DynamicJobService dynamicJobService; // DB에서 Job 정보 조회
     
     public SchedulerInitializer(@Qualifier("scheduler")Scheduler scheduler, @Qualifier("jobClassRegistry")JobClassRegistry jobClassRegistry, DynamicJobService dynamicJobService) {
