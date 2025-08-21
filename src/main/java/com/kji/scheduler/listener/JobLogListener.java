@@ -29,11 +29,12 @@ public class JobLogListener implements JobListener {
     	
     	System.out.println("===================jobToBeExecuted=======================");
     	
+    	// (선택) 로그 상관분석 위해 MDC에 넣어두면 편함
+        MDC.put("fireId", ctx.getFireInstanceId());
+        
         // 시작 로그
     	jobLogService.insertStart(JobLogDto.fromContextStart(ctx));
-
-        // (선택) 로그 상관분석 위해 MDC에 넣어두면 편함
-        MDC.put("fireId", ctx.getFireInstanceId());
+    	
     }
 
     @Override
