@@ -20,6 +20,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
+import com.kji.scheduler.dto.JobHistoryDto;
 import com.kji.scheduler.dto.JobInfoDto;
 import com.kji.scheduler.dto.ScheduleRequest;
 import com.kji.scheduler.dto.ScheduleType;
@@ -242,6 +243,10 @@ public class DynamicJobService {
             throw new SchedulerException("재시작할 Job이 존재하지 않습니다: " + jobName + "/" + jobGroup);
         }
     }
-
+    
+    // Job 이력 목록 조회
+    public List<JobHistoryDto> getJobHistory() {
+    	return dynamicJobMapper.findJobHistory();
+    }
     
 }

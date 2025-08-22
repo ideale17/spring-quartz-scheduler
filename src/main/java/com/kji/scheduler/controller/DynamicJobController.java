@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.kji.scheduler.dto.JobHistoryDto;
 import com.kji.scheduler.dto.JobInfoDto;
 import com.kji.scheduler.dto.ScheduleRequest;
 import com.kji.scheduler.dto.ScheduleType;
@@ -128,6 +129,12 @@ public class DynamicJobController {
         	
         }
     	
+    }
+    
+    
+    @GetMapping("/historyJobs")
+    public List<JobHistoryDto> historyJobs() throws SchedulerException {
+        return dynamicJobService.getJobHistory();
     }
     
 }

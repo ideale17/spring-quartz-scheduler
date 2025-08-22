@@ -5,45 +5,61 @@
 
 <mapper namespace="com.kji.scheduler.mapper.DynamicJobMapper">
 
-  <select id="findAllJobList" resultType="com.kji.scheduler.dto.JobInfoDto">
-  SELECT 
-    JD.JOB_NAME           AS JOBNAME,
-    JD.JOB_GROUP          AS JOBGROUP,
-    JD.JOB_CLASS_NAME     AS JOBCLASSNAME,
-    JD.DESCRIPTION        AS DESCRIPTION,
-    JD.IS_DURABLE         AS ISDURABLE,
-    JD.JOB_DATA           AS JOBDATA,
-    TR.TRIGGER_NAME       AS TRIGGERNAME,
-    TR.TRIGGER_GROUP      AS TRIGGERGROUP,
-    TR.TRIGGER_STATE      AS TRIGGERSTATE,
-    TR.TRIGGER_TYPE       AS TRIGGERTYPE,
-    TR.START_TIME         AS STARTTIME,
-    TR.END_TIME           AS ENDTIME,
-    TR.NEXT_FIRE_TIME     AS NEXTFIRETIME,
-    TR.PREV_FIRE_TIME     AS PREVFIRETIME,
-    TR.MISFIRE_INSTR      AS MISFIREINSTR,
-    TR.PRIORITY           AS PRIORITY,
-    CT.CRON_EXPRESSION    AS CRONEXPRESSION,
-    CT.TIME_ZONE_ID       AS TIMEZONEID,
-    ST.REPEAT_COUNT       AS REPEATCOUNT,
-    ST.REPEAT_INTERVAL    AS REPEATINTERVAL,
-    ST.TIMES_TRIGGERED    AS TIMESTRIGGERED
-FROM 
-    QRTZ_JOB_DETAILS JD
-LEFT JOIN 
-    QRTZ_TRIGGERS TR
-    ON JD.JOB_NAME = TR.JOB_NAME
-   AND JD.JOB_GROUP = TR.JOB_GROUP
-LEFT JOIN 
-    QRTZ_CRON_TRIGGERS CT
-    ON TR.TRIGGER_NAME = CT.TRIGGER_NAME
-   AND TR.TRIGGER_GROUP = CT.TRIGGER_GROUP
-LEFT JOIN 
-    QRTZ_SIMPLE_TRIGGERS ST
-    ON TR.TRIGGER_NAME = ST.TRIGGER_NAME
-   AND TR.TRIGGER_GROUP = ST.TRIGGER_GROUP
-ORDER BY 
-    JD.JOB_GROUP, JD.JOB_NAME
-</select>
-
+	<!-- 등록된 모든 Job + Trigger 정보 조회 -->
+	<select id="findAllJobList" resultType="com.kji.scheduler.dto.JobInfoDto">
+        SELECT 
+            JD.JOB_NAME           AS JOB_NAME,
+            JD.JOB_GROUP          AS JOB_GROUP,
+            JD.JOB_CLASS_NAME     AS JOB_CLASS_NAME,
+            JD.DESCRIPTION        AS DESCRIPTION,
+            JD.IS_DURABLE         AS IS_DURABLE,
+            JD.JOB_DATA           AS JOB_DATA,
+            TR.TRIGGER_NAME       AS TRIGGER_NAME,
+            TR.TRIGGER_GROUP      AS TRIGGER_GROUP,
+            TR.TRIGGER_STATE      AS TRIGGER_STATE,
+            TR.TRIGGER_TYPE       AS TRIGGER_TYPE,
+            TR.START_TIME         AS START_TIME,
+            TR.END_TIME           AS END_TIME,
+            TR.NEXT_FIRE_TIME     AS NEXT_FIRE_TIME,
+            TR.PREV_FIRE_TIME     AS PREV_FIRE_TIME,
+            TR.MISFIRE_INSTR      AS MISFIRE_INSTR,
+            TR.PRIORITY           AS PRIORITY,
+            CT.CRON_EXPRESSION    AS CRON_EXPRESSION,
+            CT.TIME_ZONE_ID       AS TIME_ZONE_ID,
+            ST.REPEAT_COUNT       AS REPEAT_COUNT,
+            ST.REPEAT_INTERVAL    AS REPEAT_INTERVAL,
+            ST.TIMES_TRIGGERED    AS TIMES_TRIGGERED
+        FROM QRTZ_JOB_DETAILS JD
+        LEFT JOIN QRTZ_TRIGGERS TR
+          ON JD.JOB_NAME = TR.JOB_NAME
+         AND JD.JOB_GROUP = TR.JOB_GROUP
+        LEFT JOIN QRTZ_CRON_TRIGGERS CT
+          ON TR.TRIGGER_NAME = CT.TRIGGER_NAME
+         AND TR.TRIGGER_GROUP = CT.TRIGGER_GROUP
+        LEFT JOIN QRTZ_SIMPLE_TRIGGERS ST
+          ON TR.TRIGGER_NAME = ST.TRIGGER_NAME
+         AND TR.TRIGGER_GROUP = ST.TRIGGER_GROUP
+       ORDER BY JD.JOB_GROUP, JD.JOB_NAME
+	</select>
+	
+	<!-- Job 실행 이력 조회 -->
+	<select id="findJobHistory" resultType="com.kji.scheduler.dto.JobHistoryDto">
+        SELECT 
+            LOG_ID,
+            FIRE_INSTANCE_ID,
+            JOB_NAME,
+            JOB_GROUP,
+            TRIGGER_NAME,
+            TRIGGER_GROUP,
+            SCHEDULED_FIRE_TIME,
+            ACTUAL_FIRE_TIME,
+            FINISHED_AT,
+            RUN_MILLIS,
+            STATUS,
+            EXCEPTION_MESSAGE,
+            CREATED_AT
+        FROM SCHED_EXEC_LOG
+        ORDER BY CREATED_AT DESC
+	</select>
+	
 </mapper>
