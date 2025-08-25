@@ -2,6 +2,7 @@ package com.kji.scheduler.config;
 
 import java.util.List;
 
+import org.springframework.boot.ApplicationRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -74,14 +75,14 @@ public class SecurityConfig {
 	}
 	
 	// 데모용 InMemory; 이후 DB 연동으로 교체
-	@Bean
-	public UserDetailsService userDetailsService(PasswordEncoder encoder) {
-		UserDetails user = User.withUsername("admin")
-				.password(encoder.encode("***REMOVED***"))
-				.roles("ADMIN")
-				.build();
-		return new InMemoryUserDetailsManager(user);
-	}
+//	@Bean
+//	public UserDetailsService userDetailsService(PasswordEncoder encoder) {
+//		UserDetails user = User.withUsername("admin")
+//				.password(encoder.encode("***REMOVED***"))
+//				.roles("ADMIN")
+//				.build();
+//		return new InMemoryUserDetailsManager(user);
+//	}
 
 	@Bean
 	public PasswordEncoder passwordEncoder() { 
@@ -92,5 +93,12 @@ public class SecurityConfig {
 	public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
 		return config.getAuthenticationManager();
 	}
+	
+//	@Bean
+//	ApplicationRunner initPwd(PasswordEncoder encoder) {
+//	    return args -> {
+//	        System.out.println("ADMIN PW = " + encoder.encode("***REMOVED***"));
+//	    };
+//	}
 	
 }
