@@ -10,7 +10,7 @@ import org.springframework.scheduling.quartz.SchedulerFactoryBean;
 public class QuartzConfig {
 	
 	@Bean
-    public Scheduler scheduler(SchedulerFactoryBean factory) throws SchedulerException {
+    Scheduler scheduler(SchedulerFactoryBean factory) throws SchedulerException {
         Scheduler scheduler = factory.getScheduler();
         scheduler.start(); // 명시적으로 시작
         return scheduler;

@@ -10,7 +10,7 @@ import com.kji.scheduler.listener.JobLogListener;
 public class QuartzListenerConfig {
 	
 	@Bean
-    public SchedulerFactoryBeanCustomizer quartzCustomizer(JobLogListener jobLogListener) {
+    SchedulerFactoryBeanCustomizer quartzCustomizer(JobLogListener jobLogListener) {
         return factory -> factory.setGlobalJobListeners(jobLogListener);
     }
 	
