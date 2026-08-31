@@ -15,9 +15,8 @@ import org.quartz.SchedulerException;
 import org.quartz.SimpleScheduleBuilder;
 import org.quartz.Trigger;
 import org.quartz.TriggerBuilder;
+import org.quartz.TriggerKey;
 import org.quartz.impl.matchers.GroupMatcher;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
 import com.kji.scheduler.dto.JobHistoryDto;
@@ -32,14 +31,13 @@ public class DynamicJobService {
 	
 	private final Scheduler scheduler;
 	private final JobClassRegistry jobClassRegistry;
+	private final DynamicJobMapper dynamicJobMapper;
 	
-	public DynamicJobService(@Qualifier("scheduler")Scheduler scheduler, @Qualifier("jobClassRegistry")JobClassRegistry jobClassRegistry) {
+	public DynamicJobService(Scheduler scheduler, JobClassRegistry jobClassRegistry, DynamicJobMapper dynamicJobMapper) {
         this.scheduler = scheduler;
         this.jobClassRegistry = jobClassRegistry;
+        this.dynamicJobMapper = dynamicJobMapper;
     }
-	
-	@Autowired
-	private DynamicJobMapper dynamicJobMapper;
 	
 	/**
 	 * Quartz 스케줄러에 새 Job 및 Trigger를 등록한다.
@@ -57,7 +55,6 @@ public class DynamicJobService {
 	 * @throws SchedulerException  Job 중복,등록 실패 등 Quartz 예외
 	 * @throws IllegalArgumentException 잘못된 Cron 또는 스케줄 타입
 	 */
-	//public void addJob(String jobClassName, String jobName, String jobGroup, ScheduleType scheduleType, String scheduleExpr) throws SchedulerException {
 	public void addJob(ScheduleRequest request) throws SchedulerException {
 		
 		JobDataMap dataMap = new JobDataMap(request.getParams());
@@ -98,7 +95,7 @@ public class DynamicJobService {
         }else if(scheduleType == ScheduleType.SIMPLE) {
         	
         	//초 -> 밀리초 변경
-        	long intervalMillis = Integer.parseInt(scheduleExpr) * 1000L;
+        	long intervalMillis = Long.parseLong(scheduleExpr) * 1000L;
         	
         	trigger = TriggerBuilder.newTrigger()
                     .withIdentity(jobName + "Trigger", jobGroup)
@@ -180,7 +177,75 @@ public class DynamicJobService {
 		
 			scheduler.scheduleJob(trigger);
 	}
-
+	
+	// Job 스케줄 수정
+	public boolean updateSchedule(String jobName, String jobGroup, ScheduleType scheduleType,String scheduleExpr) throws SchedulerException {
+		
+	    JobKey jobKey = JobKey.jobKey(jobName, jobGroup);
+	    TriggerKey triggerKey = TriggerKey.triggerKey(jobName + "Trigger", jobGroup);
+	    
+	    // 1. Job 존재 여부 확인
+	    if (!scheduler.checkExists(jobKey)) {
+	        throw new SchedulerException("수정할 Job이 존재하지 않습니다: " + jobName + "/" + jobGroup);
+	    }
+	    
+	    // 2. Trigger 존재 여부 확인
+	    Trigger oldTrigger = scheduler.getTrigger(triggerKey);
+	    
+	    if (oldTrigger == null) {
+	        throw new SchedulerException("수정할 Trigger가 존재하지 않습니다: " + triggerKey);
+	    }
+	    
+	    // 3. 새 Trigger 생성
+	    Trigger newTrigger;
+	    
+	    if (scheduleType == ScheduleType.CRON) {
+	    	
+	        if (!CronExpression.isValidExpression(scheduleExpr)) {
+	            throw new IllegalArgumentException("유효하지 않은 Cron 표현식입니다: " + scheduleExpr);
+	        }
+	        
+	        newTrigger = TriggerBuilder.newTrigger()
+	                .withIdentity(triggerKey)
+	                .forJob(jobKey)
+	                .withSchedule(
+	                        CronScheduleBuilder.cronSchedule(scheduleExpr)
+	                )
+	                .build();
+	        
+	    } else if (scheduleType == ScheduleType.SIMPLE) {
+	    	
+	        long intervalSeconds;
+	        
+	        try {
+	            intervalSeconds = Long.parseLong(scheduleExpr);
+	        } catch (NumberFormatException e) {
+	            throw new IllegalArgumentException("SIMPLE 스케줄 값은 숫자여야 합니다: " + scheduleExpr);
+	        }
+	        
+	        if (intervalSeconds <= 0) {
+	            throw new IllegalArgumentException("SIMPLE 스케줄 값은 0보다 커야 합니다.");
+	        }
+	        
+	        newTrigger = TriggerBuilder.newTrigger()
+	                .withIdentity(triggerKey)
+	                .forJob(jobKey)
+	                .withSchedule(
+	                        SimpleScheduleBuilder.simpleSchedule()
+	                                .withIntervalInMilliseconds(intervalSeconds * 1000L)
+	                                .repeatForever()
+	                )
+	                .build();
+	        
+	    } else {
+	        throw new IllegalArgumentException(
+	                "지원하지 않는 스케줄 타입입니다: " + scheduleType
+	        );
+	    }
+	    
+	    // 4. 기존 Trigger를 새 Trigger로 교체
+	    return scheduler.rescheduleJob(triggerKey, newTrigger) != null;
+	}
 	
 	// Job 삭제
     public boolean deleteJob(String jobName, String jobGroup) throws SchedulerException {
@@ -223,6 +288,17 @@ public class DynamicJobService {
     	return dynamicJobMapper.findAllJobList();
     }
     
+    // 등록 가능한 Job 클래스 목록 조회
+    public List<String> getAvailableJobTypes() {
+    	
+        // 1. JobClassRegistry에 등록된 Job 클래스 목록을 조회한다.
+        return jobClassRegistry.getAvailableJobTypes()
+                .stream()
+                .sorted()
+                .toList();
+        
+    }
+    
     // Job 중지
     public void pauseJob(String jobName, String jobGroup) throws SchedulerException {
         JobKey jobKey = JobKey.jobKey(jobName, jobGroup);
@@ -248,5 +324,5 @@ public class DynamicJobService {
     public List<JobHistoryDto> getJobHistory() {
     	return dynamicJobMapper.findJobHistory();
     }
-    
+        
 }

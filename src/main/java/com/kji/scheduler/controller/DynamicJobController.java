@@ -8,6 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -28,18 +29,7 @@ import lombok.RequiredArgsConstructor;
 public class DynamicJobController {
 	
 	private final DynamicJobService dynamicJobService;
-	
-    // Job 추가 및 실행 요청
-//    @PostMapping("/addJob")
-//    public String addJob(@RequestParam(name = "jobClassName") String jobClassName,
-//    	                 @RequestParam(name = "jobName") String jobName,
-//                         @RequestParam(name = "jobGroup", defaultValue = "default") String jobGroup,
-//                         @RequestParam(name = "scheduleType") ScheduleType scheduleType,
-//                         @RequestParam(name = "scheduleExpr") String scheduleExpr) throws SchedulerException {
-//        jobService.addJob(jobClassName, jobName, jobGroup, scheduleType, scheduleExpr);
-//        return "Job 추가됨: " + jobName;
-//    }
-    
+	    
     @PostMapping("/addJob")
     public ResponseEntity<String> addJob(@RequestBody ScheduleRequest request) {
     	
@@ -79,6 +69,34 @@ public class DynamicJobController {
         return "트리거 추가됨: " + jobName;
     }
     
+    // Job 스케줄 수정
+    @PutMapping("/updateSchedule")
+    public ResponseEntity<String> updateSchedule(
+            @RequestParam(name = "jobName") String jobName,
+            @RequestParam(name = "jobGroup", defaultValue = "default") String jobGroup,
+            @RequestParam(name = "scheduleType") ScheduleType scheduleType,
+            @RequestParam(name = "scheduleExpr") String scheduleExpr) {
+    	
+        try {
+            boolean result = dynamicJobService.updateSchedule(jobName, jobGroup, scheduleType, scheduleExpr);
+            
+            if (result) {
+                return ResponseEntity.ok("Job 스케줄 수정됨: " + jobName);
+            }
+            
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Job 스케줄 수정 실패: " + jobName);
+            
+        } catch (SchedulerException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Job 스케줄 수정 실패 (Scheduler 예외): " + e.getMessage());
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body("잘못된 요청: " + e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("서버 내부 오류: " + e.getMessage());
+        }
+        
+    }
+    
+    
     // Job 삭제 요청
     @DeleteMapping("/deleteJob")
     public String deleteJob(@RequestParam(name = "jobName") String jobName,
@@ -91,6 +109,12 @@ public class DynamicJobController {
     @GetMapping("/listJobs")
     public List<JobInfoDto> listAllJobs() throws SchedulerException {
         return dynamicJobService.getAllScheduledJobs();
+    }
+    
+    // 등록 가능한 Job 클래스 목록 조회
+    @GetMapping("/jobClasses")
+    public List<String> getAvailableJobTypes() {
+        return dynamicJobService.getAvailableJobTypes();
     }
     
     // Job 중지
