@@ -1,20 +1,18 @@
 package com.kji.scheduler.config;
 
-import org.quartz.Scheduler;
-import org.quartz.SchedulerException;
-import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.scheduling.quartz.SchedulerFactoryBean;
 
 @Configuration
 public class QuartzConfig {
 	
-	@Bean
-    Scheduler scheduler(SchedulerFactoryBean factory) throws SchedulerException {
-        Scheduler scheduler = factory.getScheduler();
-        scheduler.start(); // 명시적으로 시작
-        return scheduler;
-    }
+	// 예전 테스트용 Job/Trigger 코드만 주석 상태
+	
+//	@Bean
+//    Scheduler scheduler(SchedulerFactoryBean factory) throws SchedulerException {
+//        Scheduler scheduler = factory.getScheduler();
+//        scheduler.start(); // 명시적으로 시작
+//        return scheduler;
+//    }
 	
 //	@Bean
 //    public JobDetail helloJobDetail() {
