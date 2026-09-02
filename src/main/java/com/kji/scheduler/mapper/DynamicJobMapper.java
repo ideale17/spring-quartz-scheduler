@@ -3,6 +3,7 @@ package com.kji.scheduler.mapper;
 import java.util.List;
 
 import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
 
 import com.kji.scheduler.dto.JobHistoryDto;
 import com.kji.scheduler.dto.JobInfoDto;
@@ -16,4 +17,9 @@ public interface DynamicJobMapper {
 	// 스케줄러 이력 조회
 	List<JobHistoryDto> findJobHistory();
 	
+	// 스케줄러 단건 조회
+	JobInfoDto findJob(
+	        @Param("jobName") String jobName,
+	        @Param("jobGroup") String jobGroup
+	);
 }

@@ -5,8 +5,8 @@ import java.util.Map;
 import lombok.Data;
 
 @Data
-public class CreateJobRequest {
-	private String jobClassName;
+public class UpdateJobRequest {
+	
     private String jobName;
     private String jobGroup = "default";
     private ScheduleType scheduleType;

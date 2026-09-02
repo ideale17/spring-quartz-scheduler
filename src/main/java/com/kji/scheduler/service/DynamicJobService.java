@@ -19,10 +19,11 @@ import org.quartz.TriggerKey;
 import org.quartz.impl.matchers.GroupMatcher;
 import org.springframework.stereotype.Service;
 
+import com.kji.scheduler.dto.CreateJobRequest;
 import com.kji.scheduler.dto.JobHistoryDto;
 import com.kji.scheduler.dto.JobInfoDto;
-import com.kji.scheduler.dto.ScheduleRequest;
 import com.kji.scheduler.dto.ScheduleType;
+import com.kji.scheduler.dto.UpdateJobRequest;
 import com.kji.scheduler.mapper.DynamicJobMapper;
 import com.kji.scheduler.repository.JobClassRegistry;
 
@@ -55,7 +56,7 @@ public class DynamicJobService {
 	 * @throws SchedulerException  Job 중복,등록 실패 등 Quartz 예외
 	 * @throws IllegalArgumentException 잘못된 Cron 또는 스케줄 타입
 	 */
-	public void addJob(ScheduleRequest request) throws SchedulerException {
+	public void addJob(CreateJobRequest request) throws SchedulerException {
 		
 		JobDataMap dataMap = new JobDataMap(request.getParams());
 		
@@ -179,8 +180,13 @@ public class DynamicJobService {
 	}
 	
 	// Job 스케줄 수정
-	public boolean updateSchedule(String jobName, String jobGroup, ScheduleType scheduleType,String scheduleExpr) throws SchedulerException {
+	public boolean updateSchedule(UpdateJobRequest request) throws SchedulerException {
 		
+		String jobName = request.getJobName();
+	    String jobGroup = request.getJobGroup();
+	    ScheduleType scheduleType = request.getScheduleType();
+	    String scheduleExpr = request.getScheduleExpr();
+	    
 	    JobKey jobKey = JobKey.jobKey(jobName, jobGroup);
 	    TriggerKey triggerKey = TriggerKey.triggerKey(jobName + "Trigger", jobGroup);
 	    
@@ -208,9 +214,7 @@ public class DynamicJobService {
 	        newTrigger = TriggerBuilder.newTrigger()
 	                .withIdentity(triggerKey)
 	                .forJob(jobKey)
-	                .withSchedule(
-	                        CronScheduleBuilder.cronSchedule(scheduleExpr)
-	                )
+	                .withSchedule(CronScheduleBuilder.cronSchedule(scheduleExpr))
 	                .build();
 	        
 	    } else if (scheduleType == ScheduleType.SIMPLE) {
@@ -297,6 +301,22 @@ public class DynamicJobService {
                 .sorted()
                 .toList();
         
+    }
+    
+    // Job 단건 조회
+    public JobInfoDto getScheduledJob(String jobName, String jobGroup) {
+
+        // 1. Job 이름과 그룹으로 등록된 Job을 조회한다.
+        JobInfoDto jobInfo = dynamicJobMapper.findJob(jobName, jobGroup);
+
+        // 2. 조회 결과가 없으면 예외를 발생시킨다.
+        if (jobInfo == null) {
+            throw new IllegalArgumentException(
+                    "조회할 Job이 존재하지 않습니다: " + jobName + "/" + jobGroup
+            );
+        }
+
+        return jobInfo;
     }
     
     // Job 중지
