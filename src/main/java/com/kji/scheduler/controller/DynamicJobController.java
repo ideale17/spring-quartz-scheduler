@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.kji.scheduler.dto.CreateJobRequest;
 import com.kji.scheduler.dto.JobHistoryDto;
+import com.kji.scheduler.dto.JobHistorySearchDto;
 import com.kji.scheduler.dto.JobInfoDto;
 import com.kji.scheduler.dto.ScheduleType;
 import com.kji.scheduler.dto.UpdateJobRequest;
@@ -178,8 +179,8 @@ public class DynamicJobController {
     
     
     @GetMapping("/historyJobs")
-    public List<JobHistoryDto> historyJobs() throws SchedulerException {
-        return dynamicJobService.getJobHistory();
+    public List<JobHistoryDto> historyJobs(JobHistorySearchDto searchDto) throws SchedulerException {
+        return dynamicJobService.getJobHistory(searchDto);
     }
     
 }

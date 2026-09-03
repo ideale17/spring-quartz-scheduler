@@ -1,5 +1,6 @@
 package com.kji.scheduler.service;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -21,6 +22,7 @@ import org.springframework.stereotype.Service;
 
 import com.kji.scheduler.dto.CreateJobRequest;
 import com.kji.scheduler.dto.JobHistoryDto;
+import com.kji.scheduler.dto.JobHistorySearchDto;
 import com.kji.scheduler.dto.JobInfoDto;
 import com.kji.scheduler.dto.ScheduleType;
 import com.kji.scheduler.dto.UpdateJobRequest;
@@ -341,8 +343,8 @@ public class DynamicJobService {
     }
     
     // Job 이력 목록 조회
-    public List<JobHistoryDto> getJobHistory() {
-    	return dynamicJobMapper.findJobHistory();
+    public List<JobHistoryDto> getJobHistory(JobHistorySearchDto searchDto) {
+        return dynamicJobMapper.findJobHistory(searchDto);
     }
         
 }
