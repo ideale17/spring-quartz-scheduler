@@ -113,7 +113,7 @@
         <if test="endDate != null">
             AND ACTUAL_FIRE_TIME <![CDATA[ < ]]> #{endDate} + 1
         </if>
-        ORDER BY CREATED_AT DESC
+        ORDER BY CREATED_AT DESC, LOG_ID DESC
         OFFSET #{offset} ROWS
         FETCH NEXT #{size} ROWS ONLY
 	</select>
