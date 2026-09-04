@@ -23,4 +23,7 @@ public interface DynamicJobMapper {
 	        @Param("jobName") String jobName,
 	        @Param("jobGroup") String jobGroup
 	);
+	
+	long countJobHistory(JobHistorySearchDto searchDto);
+	
 }
