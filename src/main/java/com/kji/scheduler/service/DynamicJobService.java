@@ -290,8 +290,18 @@ public class DynamicJobService {
     }
     
     // Job 목록 조회
-    public List<JobInfoDto> getAllScheduledJobs() {
-    	return dynamicJobMapper.findAllJobList();
+    public List<JobInfoDto> getAllScheduledJobs() throws SchedulerException {
+    	
+    	// 1. DB에 저장된 Job 및 Trigger 정보를 조회한다.
+        List<JobInfoDto> jobList = dynamicJobMapper.findAllJobList();
+        
+        // 2. Quartz Scheduler API 기준 Trigger 상태를 추가한다.
+        for (JobInfoDto jobInfo : jobList) {
+            setSchedulerTriggerState(jobInfo);
+        }
+        
+        return jobList;
+        
     }
     
     // 등록 가능한 Job 클래스 목록 조회
@@ -319,6 +329,21 @@ public class DynamicJobService {
         }
 
         return jobInfo;
+    }
+    
+    // Quartz Scheduler API 기준 Trigger 상태 설정
+    private void setSchedulerTriggerState(JobInfoDto jobInfo) throws SchedulerException {
+    	
+		// 1. Trigger가 없는 Job은 NONE 상태로 처리한다.
+		if (jobInfo.getTriggerName() == null || jobInfo.getTriggerGroup() == null) {
+			jobInfo.setSchedulerTriggerState(Trigger.TriggerState.NONE.name());
+			return;
+		}
+		
+		// 2. TriggerKey로 Quartz Scheduler의 논리적인 Trigger 상태를 조회한다.
+		TriggerKey triggerKey = TriggerKey.triggerKey(jobInfo.getTriggerName(), jobInfo.getTriggerGroup());
+		
+		jobInfo.setSchedulerTriggerState(scheduler.getTriggerState(triggerKey).name());
     }
     
     // Job 중지

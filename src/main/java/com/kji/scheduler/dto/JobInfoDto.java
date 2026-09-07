@@ -18,7 +18,8 @@ public class JobInfoDto {
     // Trigger 정보
     private String triggerName;
     private String triggerGroup;
-    private String triggerState;
+    private String triggerState;			// WAITING, ACQUIRED 같은 DB 내부 상태
+    private String schedulerTriggerState;	// scheduler.getTriggerState() NORMAL, PAUSED, BLOCKED 같은 Quartz API 상태
     private String triggerType;
     private String startTime;
     private String endTime;
