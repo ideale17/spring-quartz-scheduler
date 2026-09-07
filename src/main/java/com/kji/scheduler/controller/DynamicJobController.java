@@ -82,20 +82,16 @@ public class DynamicJobController {
                 return ResponseEntity.ok("Job 스케줄 수정됨: " + request.getJobName());
             }
 
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body("Job 스케줄 수정 실패: " + request.getJobName());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Job 스케줄 수정 실패: " + request.getJobName());
 
         } catch (SchedulerException e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body("Job 스케줄 수정 실패 (Scheduler 예외): " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Job 스케줄 수정 실패 (Scheduler 예외): " + e.getMessage());
 
         } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest()
-                    .body("잘못된 요청: " + e.getMessage());
+            return ResponseEntity.badRequest().body("잘못된 요청: " + e.getMessage());
 
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("서버 내부 오류: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("서버 내부 오류: " + e.getMessage());
         }
     }
     
@@ -128,8 +124,7 @@ public class DynamicJobController {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
 
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("서버 내부 오류: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("서버 내부 오류: " + e.getMessage());
         }
     }
     
@@ -137,6 +132,23 @@ public class DynamicJobController {
     @GetMapping("/jobClasses")
     public List<String> getAvailableJobTypes() {
         return dynamicJobService.getAvailableJobTypes();
+    }
+    
+    // Job 즉시 실행
+    @PostMapping("/runJob")
+    public ResponseEntity<String> runJob(@RequestParam(name = "jobName") String jobName,
+                                        @RequestParam(name = "jobGroup", defaultValue = "default") String jobGroup) {
+    	
+        try {
+            dynamicJobService.runJob(jobName, jobGroup);
+            return ResponseEntity.ok("Job 즉시 실행 요청됨: " + jobName);
+            
+        } catch (SchedulerException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Job 즉시 실행 실패 (Scheduler 예외): " + e.getMessage());
+            
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("서버 내부 오류: " + e.getMessage());
+        }
     }
     
     // Job 중지

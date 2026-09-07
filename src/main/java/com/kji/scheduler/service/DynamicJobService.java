@@ -346,6 +346,23 @@ public class DynamicJobService {
 		jobInfo.setSchedulerTriggerState(scheduler.getTriggerState(triggerKey).name());
     }
     
+    // Job 즉시 실행
+    public void runJob(String jobName, String jobGroup) throws SchedulerException {
+    	
+        // 1. Job 이름과 그룹으로 JobKey를 생성한다.
+        JobKey jobKey = JobKey.jobKey(jobName, jobGroup);
+        
+        // 2. 등록된 Job이 존재하는지 확인한다.
+        if (!scheduler.checkExists(jobKey)) {
+            throw new SchedulerException(
+                    "즉시 실행할 Job이 존재하지 않습니다: " + jobName + "/" + jobGroup
+            );
+        }
+        
+        // 3. 기존 스케줄과 별개로 Job을 즉시 한 번 실행한다.
+        scheduler.triggerJob(jobKey);
+    }
+    
     // Job 중지
     public void pauseJob(String jobName, String jobGroup) throws SchedulerException {
         JobKey jobKey = JobKey.jobKey(jobName, jobGroup);
