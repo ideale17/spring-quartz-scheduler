@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.kji.scheduler.mapper.DashboardMapper">
+
+	<!-- 오늘 실행 현황 조회 -->
+	<select id="findTodayExecutionSummary" resultType="com.kji.scheduler.dto.DashboardExecutionSummaryDto">
+        SELECT COUNT(*) AS TOTAL_COUNT,
+               NVL(SUM(CASE WHEN STATUS = 'SUCCESS' THEN 1 ELSE 0 END), 0) AS SUCCESS_COUNT,
+               NVL(SUM(CASE WHEN STATUS = 'FAILED' THEN 1 ELSE 0 END), 0) AS FAILED_COUNT
+          FROM SCHED_EXEC_LOG
+         WHERE ACTUAL_FIRE_TIME >= TRUNC(SYSDATE)
+           AND ACTUAL_FIRE_TIME <![CDATA[ < ]]> TRUNC(SYSDATE) + 1
+	</select>
+	
+	<!-- 최근 실패 Job 조회 -->
+	<select id="findRecentFailedJobs" resultType="com.kji.scheduler.dto.RecentFailedJobDto">
+        SELECT JOB_NAME,
+               JOB_GROUP,
+               ACTUAL_FIRE_TIME,
+               EXCEPTION_MESSAGE
+          FROM SCHED_EXEC_LOG
+         WHERE STATUS = 'FAILED'
+         ORDER BY ACTUAL_FIRE_TIME DESC,
+                  LOG_ID DESC
+         FETCH FIRST 5 ROWS ONLY
+	</select>
+	
+</mapper>
