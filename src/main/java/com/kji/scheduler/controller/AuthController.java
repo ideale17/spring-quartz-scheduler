@@ -10,6 +10,7 @@ import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.security.web.context.SecurityContextRepository;
+import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -68,6 +69,11 @@ public class AuthController {
 	@GetMapping("/me")
 	public ResponseEntity<?> me(Authentication auth) {
 		return ResponseEntity.ok(new MeRes(auth != null ? auth.getName() : null));
+	}
+	
+	@GetMapping("/csrf")
+	public ResponseEntity<CsrfToken> csrf(CsrfToken csrfToken) {
+		return ResponseEntity.ok(csrfToken);
 	}
 	
 }

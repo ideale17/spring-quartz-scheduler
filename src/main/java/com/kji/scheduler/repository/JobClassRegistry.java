@@ -7,6 +7,7 @@ import java.util.Set;
 import org.quartz.Job;
 import org.springframework.stereotype.Component;
 
+import com.kji.scheduler.job.ExternalApiCallJob;
 import com.kji.scheduler.job.HelloJob;
 import com.kji.scheduler.job.StockPriceCollectJob;
 import com.kji.scheduler.job.WeatherCollectJob;
@@ -22,6 +23,7 @@ public class JobClassRegistry {
         jobClassMap.put("com.kji.scheduler.job.HelloJob", HelloJob.class);
         jobClassMap.put("com.kji.scheduler.job.StockPriceCollectJob", StockPriceCollectJob.class);
         jobClassMap.put("com.kji.scheduler.job.WeatherCollectJob", WeatherCollectJob.class);
+        jobClassMap.put("com.kji.scheduler.job.ExternalApiCallJob", ExternalApiCallJob.class);
         
         // 필요 시 더 추가
     }
