@@ -1,6 +1,7 @@
 package com.kji.scheduler.service;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 
 import org.quartz.CronExpression;
@@ -244,12 +245,28 @@ public class DynamicJobService {
 	                .build();
 	        
 	    } else {
-	        throw new IllegalArgumentException(
-	                "지원하지 않는 스케줄 타입입니다: " + scheduleType
-	        );
+	        throw new IllegalArgumentException("지원하지 않는 스케줄 타입입니다: " + scheduleType);
 	    }
 	    
-	    // 4. 기존 Trigger를 새 Trigger로 교체
+	    // 4. Job 파라미터가 전달된 경우 JobDataMap을 수정
+	    if (request.getParams() != null) {
+	    	
+	        JobDetail jobDetail = scheduler.getJobDetail(jobKey);
+	        
+	        if (jobDetail == null) {
+	            throw new SchedulerException("수정할 Job 정보를 조회할 수 없습니다: " + jobName + "/" + jobGroup);
+	        }
+	        
+	        JobDataMap dataMap = new JobDataMap(request.getParams());
+	        
+	        JobDetail updatedJobDetail = jobDetail.getJobBuilder()
+	        		.setJobData(dataMap)
+	        		.build();
+	        
+	        scheduler.addJob(updatedJobDetail, true, true);
+	    }
+	    
+	    // 5. 기존 Trigger를 새 Trigger로 교체
 	    return scheduler.rescheduleJob(triggerKey, newTrigger) != null;
 	}
 	
@@ -316,18 +333,25 @@ public class DynamicJobService {
     }
     
     // Job 단건 조회
-    public JobInfoDto getScheduledJob(String jobName, String jobGroup) {
+    public JobInfoDto getScheduledJob(String jobName, String jobGroup) throws SchedulerException {
 
-        // 1. Job 이름과 그룹으로 등록된 Job을 조회한다.
+        // 1. DB에서 Job 기본 정보를 조회한다.
         JobInfoDto jobInfo = dynamicJobMapper.findJob(jobName, jobGroup);
 
         // 2. 조회 결과가 없으면 예외를 발생시킨다.
         if (jobInfo == null) {
-            throw new IllegalArgumentException(
-                    "조회할 Job이 존재하지 않습니다: " + jobName + "/" + jobGroup
-            );
+            throw new IllegalArgumentException("조회할 Job이 존재하지 않습니다: " + jobName + "/" + jobGroup);
         }
-
+        
+        // 2. Quartz에서 현재 JobDetail을 조회한다.
+        JobKey jobKey = JobKey.jobKey(jobName, jobGroup);
+        JobDetail jobDetail = scheduler.getJobDetail(jobKey);
+        
+        // 3. JobDetail이 존재하면 JobDataMap을 화면용 params로 변환한다.
+        if (jobDetail != null) {
+            jobInfo.setParams(new HashMap<>(jobDetail.getJobDataMap()));
+        }
+        
         return jobInfo;
     }
     
