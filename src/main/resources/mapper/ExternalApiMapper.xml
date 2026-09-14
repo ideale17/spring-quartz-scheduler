@@ -50,5 +50,52 @@
          ORDER BY SORT_ORDER,
                   PARAM_ID
 	</select>
-
+	
+	<insert id="insertExternalApi" parameterType="com.kji.scheduler.dto.ExternalApiDto" useGeneratedKeys="true" keyProperty="externalApiId" keyColumn="EXTERNAL_API_ID">
+	    INSERT INTO SCHED_EXTERNAL_API (
+	    	API_NAME,
+	    	API_URL,
+	    	HTTP_METHOD,
+	    	ENABLED,
+	    	DESCRIPTION,
+	    	CREATED_AT,
+	    	UPDATED_AT
+	    )
+	    VALUES (
+	    	#{apiName},
+	    	#{apiUrl},
+	    	#{httpMethod},
+	    	#{enabled},
+	    	#{description},
+	    	SYSTIMESTAMP,
+	    	SYSTIMESTAMP
+	    )
+	</insert>
+	
+	<!-- External API 파라미터 저장 -->
+	<insert id="insertExternalApiParam" parameterType="com.kji.scheduler.dto.ExternalApiParamDto">
+	    INSERT INTO SCHED_EXTERNAL_API_PARAM (
+	    	EXTERNAL_API_ID,
+	    	PARAM_LOCATION,
+	    	PARAM_NAME,
+	    	VALUE_TYPE,
+	    	PARAM_VALUE,
+	    	VALUE_FORMAT,
+	    	REQUIRED_YN,
+	    	SORT_ORDER,
+	    	DESCRIPTION
+	    )
+	    VALUES (
+	    	#{externalApiId},
+	    	#{paramLocation},
+	    	#{paramName},
+	    	#{valueType},
+	    	#{paramValue, jdbcType=VARCHAR},
+	    	#{valueFormat, jdbcType=VARCHAR},
+	    	#{requiredYn},
+	    	#{sortOrder},
+	    	#{description, jdbcType=VARCHAR}
+	    )
+    </insert>
+	
 </mapper>

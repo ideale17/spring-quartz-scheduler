@@ -19,5 +19,11 @@ public interface ExternalApiMapper {
 
 	// External API 파라미터 목록 조회
 	List<ExternalApiParamDto> findExternalApiParamList(@Param("externalApiId") Long externalApiId);
-
+	
+	// External API 저장
+	int insertExternalApi(ExternalApiDto externalApi);
+	
+	// External API 파라미터 저장
+	int insertExternalApiParam(ExternalApiParamDto param);
+	
 }

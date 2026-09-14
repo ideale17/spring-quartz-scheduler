@@ -4,10 +4,12 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.kji.scheduler.dto.ExternalApiRequestDto;
 import com.kji.scheduler.service.ExternalApiExecutionService;
 import com.kji.scheduler.service.ExternalApiService;
 
@@ -67,6 +69,26 @@ public class ExternalApiController {
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("External API 파라미터 조회 실패: " + e.getMessage());
 		}
 		
+	}
+	
+	// External API 등록
+	@PostMapping("/add")
+	public ResponseEntity<?> createExternalApi(@RequestBody ExternalApiRequestDto request) {
+		
+		try {
+			
+			// 1. External API 기본 정보와 파라미터를 등록한다.
+			Long externalApiId = externalApiService.createExternalApiWithParams(request);
+			
+			// 2. 생성된 External API 식별자를 반환한다.
+			return ResponseEntity.ok(externalApiId);
+			
+		} catch (IllegalArgumentException e) {
+			return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+			
+		} catch (Exception e) {
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("External API 등록 실패: " + e.getMessage());
+		}
 	}
 	
 	// External API 즉시 실행
