@@ -2,6 +2,7 @@ package com.kji.scheduler.controller;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -111,6 +112,28 @@ public class ExternalApiController {
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("External API 수정 실패: " + e.getMessage());
 		}
 		
+	}
+	
+	// External API 삭제
+	@DeleteMapping("/delete")
+	public ResponseEntity<?> deleteExternalApi(@RequestParam(name = "externalApiId") Long externalApiId) {
+		
+		try {
+			// 1. External API와 파라미터를 삭제한다.
+			externalApiService.deleteExternalApi(externalApiId);
+			
+			// 2. 삭제 성공 결과를 반환한다.
+			return ResponseEntity.ok("External API 삭제 성공");
+			
+		} catch (IllegalArgumentException e) {
+			return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
+			
+		} catch (IllegalStateException e) {
+			return ResponseEntity.status(HttpStatus.CONFLICT).body(e.getMessage());
+			
+		} catch (Exception e) {
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("External API 삭제 실패: " + e.getMessage());
+		}
 	}
 	
 	// External API 즉시 실행

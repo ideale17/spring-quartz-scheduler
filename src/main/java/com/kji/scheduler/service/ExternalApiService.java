@@ -2,21 +2,25 @@ package com.kji.scheduler.service;
 
 import java.util.List;
 
+import org.quartz.SchedulerException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.kji.scheduler.dto.ExternalApiDto;
 import com.kji.scheduler.dto.ExternalApiParamDto;
 import com.kji.scheduler.dto.ExternalApiRequestDto;
+import com.kji.scheduler.dto.JobInfoDto;
 import com.kji.scheduler.mapper.ExternalApiMapper;
 
 @Service
 public class ExternalApiService {
 	
 	private final ExternalApiMapper externalApiMapper;
+	private final DynamicJobService dynamicJobService;
 	
-	public ExternalApiService(ExternalApiMapper externalApiMapper) {
+	public ExternalApiService(ExternalApiMapper externalApiMapper, DynamicJobService dynamicJobService) {
 		this.externalApiMapper = externalApiMapper;
+		this.dynamicJobService = dynamicJobService;
 	}
 	
 	// External API 목록 조회
@@ -228,6 +232,34 @@ public class ExternalApiService {
 				}
 				
 			}
+		}
+		
+	}
+	
+	// External API 삭제
+	@Transactional
+	public void deleteExternalApi(Long externalApiId) throws SchedulerException {
+		
+		// 1. 삭제 대상 External API 존재 여부를 확인한다.
+		getExternalApi(externalApiId);
+		
+		// 2. 해당 External API를 사용하는 Quartz Job을 조회한다.
+		List<JobInfoDto> usingJobs = dynamicJobService.getJobsUsingExternalApi(externalApiId);
+		
+		// 3. 사용 중인 Job이 존재하면 삭제를 차단한다.
+		if (!usingJobs.isEmpty()) {
+			JobInfoDto usingJob = usingJobs.get(0);
+			throw new IllegalStateException("External API를 사용하는 Job이 존재하여 삭제할 수 없습니다. jobName: " + usingJob.getJobName() + ", jobGroup: " + usingJob.getJobGroup());
+		}
+		
+		// 4. External API 파라미터를 먼저 삭제한다.
+		externalApiMapper.deleteExternalApiParams(externalApiId);
+		
+		// 5. External API 기본 정보를 삭제한다.
+		int deleteCount = externalApiMapper.deleteExternalApi(externalApiId);
+		
+		if (deleteCount != 1) {
+			throw new IllegalStateException("External API 삭제에 실패했습니다.");
 		}
 		
 	}

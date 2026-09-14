@@ -115,5 +115,11 @@
 		DELETE FROM SCHED_EXTERNAL_API_PARAM
 		 WHERE EXTERNAL_API_ID = #{externalApiId}
 	</delete>
+	
+	<!-- External API 삭제 -->
+	<delete id="deleteExternalApi">
+		DELETE FROM SCHED_EXTERNAL_API
+		 WHERE EXTERNAL_API_ID = #{externalApiId}
+	</delete>
 
 </mapper>

@@ -27,6 +27,7 @@ import com.kji.scheduler.dto.JobHistorySearchDto;
 import com.kji.scheduler.dto.JobInfoDto;
 import com.kji.scheduler.dto.ScheduleType;
 import com.kji.scheduler.dto.UpdateJobRequest;
+import com.kji.scheduler.job.ExternalApiCallJob;
 import com.kji.scheduler.mapper.DynamicJobMapper;
 import com.kji.scheduler.repository.JobClassRegistry;
 
@@ -426,5 +427,53 @@ public class DynamicJobService {
         );
         
     }
-        
+    
+    // External API를 사용하는 Job 목록 조회
+    public List<JobInfoDto> getJobsUsingExternalApi(Long externalApiId) throws SchedulerException {
+    	
+    	// 1. External API 식별자를 검증한다.
+    	if (externalApiId == null) {
+    		throw new IllegalArgumentException("External API 식별자는 필수입니다.");
+    	}
+    	
+    	List<JobInfoDto> jobList = new ArrayList<>();
+    	
+    	// 2. Quartz에 등록된 전체 Job을 조회한다.
+    	for (JobKey jobKey : scheduler.getJobKeys(GroupMatcher.anyJobGroup())) {
+    		
+    		JobDetail jobDetail = scheduler.getJobDetail(jobKey);
+    		
+    		if (jobDetail == null) {
+    			continue;
+    		}
+    		
+    		// 3. ExternalApiCallJob이 아닌 Job은 제외한다.
+    		if (!ExternalApiCallJob.class.equals(jobDetail.getJobClass())) {
+    			continue;
+    		}
+    		
+    		// 4. Job에 등록된 externalApiId를 조회한다.
+    		Object jobExternalApiId = jobDetail.getJobDataMap().get("externalApiId");
+    		
+    		if (jobExternalApiId == null) {
+    			continue;
+    		}
+    		
+    		// 5. 삭제 대상 External API를 사용하는 Job인지 확인한다.
+    		if (!externalApiId.toString().equals(jobExternalApiId.toString())) {
+    			continue;
+    		}
+    		
+    		// 6. 참조 중인 Job 정보를 결과에 추가한다.
+    		JobInfoDto jobInfo = new JobInfoDto();
+    		jobInfo.setJobName(jobKey.getName());
+    		jobInfo.setJobGroup(jobKey.getGroup());
+    		jobInfo.setJobClassName(jobDetail.getJobClass().getSimpleName());
+    		
+    		jobList.add(jobInfo);
+    	}
+    	
+    	return jobList;
+    }
+    
 }

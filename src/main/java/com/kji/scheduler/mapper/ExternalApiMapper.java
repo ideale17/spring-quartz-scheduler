@@ -31,5 +31,8 @@ public interface ExternalApiMapper {
 	
 	// External API 파라미터 전체 삭제
 	int deleteExternalApiParams(@Param("externalApiId") Long externalApiId);
-		
+	
+	// External API 삭제
+	int deleteExternalApi(@Param("externalApiId") Long externalApiId);
+	
 }
