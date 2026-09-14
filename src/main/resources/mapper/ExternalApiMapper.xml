@@ -98,4 +98,22 @@
 	    )
     </insert>
 	
+	<!-- External API 기본 정보 수정 -->
+	<update id="updateExternalApi" parameterType="com.kji.scheduler.dto.ExternalApiDto">	
+		UPDATE SCHED_EXTERNAL_API
+		   SET API_NAME = #{apiName},
+		       API_URL = #{apiUrl},
+		       HTTP_METHOD = #{httpMethod},
+		       ENABLED = #{enabled},
+		       DESCRIPTION = #{description, jdbcType=VARCHAR},
+		       UPDATED_AT = SYSTIMESTAMP
+		 WHERE EXTERNAL_API_ID = #{externalApiId}
+	</update>
+	
+	<!-- External API 파라미터 전체 삭제 -->
+	<delete id="deleteExternalApiParams">
+		DELETE FROM SCHED_EXTERNAL_API_PARAM
+		 WHERE EXTERNAL_API_ID = #{externalApiId}
+	</delete>
+
 </mapper>

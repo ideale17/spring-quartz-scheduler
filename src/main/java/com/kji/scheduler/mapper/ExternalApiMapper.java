@@ -26,4 +26,10 @@ public interface ExternalApiMapper {
 	// External API 파라미터 저장
 	int insertExternalApiParam(ExternalApiParamDto param);
 	
+	// External API 기본 정보 수정
+	int updateExternalApi(ExternalApiDto externalApi);
+	
+	// External API 파라미터 전체 삭제
+	int deleteExternalApiParams(@Param("externalApiId") Long externalApiId);
+		
 }
