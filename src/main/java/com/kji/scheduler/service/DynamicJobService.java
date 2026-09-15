@@ -206,7 +206,10 @@ public class DynamicJobService {
 	        throw new SchedulerException("수정할 Trigger가 존재하지 않습니다: " + triggerKey);
 	    }
 	    
-	    // 3. 새 Trigger 생성
+	    // 3. 기존 Trigger 상태 저장
+	    Trigger.TriggerState oldTriggerState = scheduler.getTriggerState(triggerKey);
+	    
+	    // 4. 새 Trigger 생성
 	    Trigger newTrigger;
 	    
 	    if (scheduleType == ScheduleType.CRON) {
@@ -249,7 +252,7 @@ public class DynamicJobService {
 	        throw new IllegalArgumentException("지원하지 않는 스케줄 타입입니다: " + scheduleType);
 	    }
 	    
-	    // 4. Job 파라미터가 전달된 경우 JobDataMap을 수정
+	    // 5. Job 파라미터가 전달된 경우 JobDataMap을 수정
 	    if (request.getParams() != null) {
 	    	
 	        JobDetail jobDetail = scheduler.getJobDetail(jobKey);
@@ -267,8 +270,15 @@ public class DynamicJobService {
 	        scheduler.addJob(updatedJobDetail, true, true);
 	    }
 	    
-	    // 5. 기존 Trigger를 새 Trigger로 교체
-	    return scheduler.rescheduleJob(triggerKey, newTrigger) != null;
+	    // 6. 기존 Trigger를 새 Trigger로 교체한다.
+	    boolean updated = scheduler.rescheduleJob(triggerKey, newTrigger) != null;
+	    
+	    // 7. 수정 전 중지 상태였다면 다시 중지 상태로 복원한다.
+	    if (updated && oldTriggerState == Trigger.TriggerState.PAUSED) {
+	    	scheduler.pauseJob(jobKey);
+	    }
+	    
+	    return updated;
 	}
 	
 	// Job 삭제
