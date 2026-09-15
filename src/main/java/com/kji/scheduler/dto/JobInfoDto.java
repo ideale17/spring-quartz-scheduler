@@ -29,6 +29,7 @@ public class JobInfoDto {
     private String nextFireTime;
     private String prevFireTime;
     private Integer misfireInstr;
+    private MisfirePolicy misfirePolicy;
     private Integer priority;
     
     // CronTrigger 전용

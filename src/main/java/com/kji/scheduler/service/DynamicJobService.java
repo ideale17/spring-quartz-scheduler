@@ -25,6 +25,7 @@ import com.kji.scheduler.dto.JobHistoryDto;
 import com.kji.scheduler.dto.JobHistoryPageDto;
 import com.kji.scheduler.dto.JobHistorySearchDto;
 import com.kji.scheduler.dto.JobInfoDto;
+import com.kji.scheduler.dto.MisfirePolicy;
 import com.kji.scheduler.dto.ScheduleType;
 import com.kji.scheduler.dto.UpdateJobRequest;
 import com.kji.scheduler.job.ExternalApiCallJob;
@@ -70,6 +71,7 @@ public class DynamicJobService {
 		ScheduleType scheduleType = request.getScheduleType();
 		String scheduleExpr = request.getScheduleExpr();
 		
+		MisfirePolicy misfirePolicy = request.getMisfirePolicy();
 		
 		// 1. Job 클래스 조회(미등록 시 예외)
         Class<? extends Job> jobClass = jobClassRegistry.getJobClass(jobClassName);
@@ -86,27 +88,78 @@ public class DynamicJobService {
         
         if (scheduleType == ScheduleType.CRON) {
         	
-        	// Cron 표현식 유효성 검사
+        	// 3-1. Cron 표현식 유효성 검사
             if (!CronExpression.isValidExpression(scheduleExpr)) {
                 throw new IllegalArgumentException("유효하지 않은 Cron 표현식입니다: " + scheduleExpr);
             }
-
+            
+            // 3-2. Cron 스케줄 기본 설정
+            CronScheduleBuilder scheduleBuilder = CronScheduleBuilder.cronSchedule(scheduleExpr);
+            
+            // 3-3. Misfire 정책 적용
+        	// SMART_POLICY는 Quartz 기본 정책을 사용하므로 별도 설정하지 않는다.
+            if (misfirePolicy == MisfirePolicy.DO_NOTHING) {
+            	// 놓친 실행은 건너뛰고 다음 정상 실행 시간부터 다시 실행한다.
+            	scheduleBuilder = scheduleBuilder.withMisfireHandlingInstructionDoNothing();
+            } else if (misfirePolicy == MisfirePolicy.FIRE_AND_PROCEED) {
+            	// 놓친 실행이 있으면 즉시 한 번 실행한 후 다음 정상 실행 일정으로 복귀한다.
+            	scheduleBuilder = scheduleBuilder.withMisfireHandlingInstructionFireAndProceed();
+            } else if (misfirePolicy != MisfirePolicy.SMART_POLICY) {
+            	throw new IllegalArgumentException("CRON에서 지원하지 않는 Misfire 정책입니다: " + misfirePolicy);
+            }
+            
+            // 3-4. Cron Trigger 생성
             trigger = TriggerBuilder.newTrigger()
                 .withIdentity(jobName + "Trigger", jobGroup)
-                .withSchedule(CronScheduleBuilder.cronSchedule(scheduleExpr))
+                .withSchedule(scheduleBuilder)
                 .forJob(jobDetail)
                 .build();
             
         }else if(scheduleType == ScheduleType.SIMPLE) {
         	
-        	//초 -> 밀리초 변경
-        	long intervalMillis = Long.parseLong(scheduleExpr) * 1000L;
+        	// 3-1. SIMPLE 스케줄 값 유효성 검사
+        	long intervalSeconds;
         	
+        	try {
+        		intervalSeconds = Long.parseLong(scheduleExpr);
+        	} catch (NumberFormatException e) {
+        		throw new IllegalArgumentException("SIMPLE 스케줄 값은 숫자여야 합니다: " + scheduleExpr);
+        	}
+        	
+        	if (intervalSeconds <= 0) {
+        		throw new IllegalArgumentException("SIMPLE 스케줄 값은 0보다 커야 합니다.");
+        	}
+        	
+        	// 3-2. Simple 스케줄 기본 설정
+        	SimpleScheduleBuilder scheduleBuilder = SimpleScheduleBuilder.simpleSchedule()
+        			.withIntervalInMilliseconds(intervalSeconds * 1000L)
+        			.repeatForever();
+        	
+        	// 3-3. Misfire 정책 적용
+        	// SMART_POLICY는 Quartz 기본 정책을 사용하므로 별도 설정하지 않는다.
+        	if (misfirePolicy == MisfirePolicy.FIRE_NOW) {
+        		// 놓친 실행이 있으면 가능한 시점에 즉시 한 번 실행한다.
+        		scheduleBuilder = scheduleBuilder.withMisfireHandlingInstructionFireNow();
+        	} else if (misfirePolicy == MisfirePolicy.NOW_WITH_EXISTING_COUNT) {
+        		// 즉시 실행하고 기존 전체 반복 횟수 기준을 유지한다.
+        		scheduleBuilder = scheduleBuilder.withMisfireHandlingInstructionNowWithExistingCount();
+        	} else if (misfirePolicy == MisfirePolicy.NOW_WITH_REMAINING_COUNT) {
+        		// 즉시 실행하고 남아 있는 반복 횟수를 기준으로 이후 실행을 이어간다.
+        		scheduleBuilder = scheduleBuilder.withMisfireHandlingInstructionNowWithRemainingCount();
+        	} else if (misfirePolicy == MisfirePolicy.NEXT_WITH_EXISTING_COUNT) {
+        		// 놓친 실행은 건너뛰고 다음 실행 시점부터 기존 전체 반복 횟수 기준으로 이어간다.
+        		scheduleBuilder = scheduleBuilder.withMisfireHandlingInstructionNextWithExistingCount();
+        	} else if (misfirePolicy == MisfirePolicy.NEXT_WITH_REMAINING_COUNT) {
+        		// 놓친 실행은 건너뛰고 다음 실행 시점부터 남아 있는 반복 횟수 기준으로 이어간다.
+        		scheduleBuilder = scheduleBuilder.withMisfireHandlingInstructionNextWithRemainingCount();
+        	} else if (misfirePolicy != MisfirePolicy.SMART_POLICY) {
+        		throw new IllegalArgumentException("SIMPLE에서 지원하지 않는 Misfire 정책입니다: " + misfirePolicy);
+        	}
+        	
+        	// 3-4. Simple Trigger 생성
         	trigger = TriggerBuilder.newTrigger()
                     .withIdentity(jobName + "Trigger", jobGroup)
-                    .withSchedule(SimpleScheduleBuilder.simpleSchedule()
-                    .withIntervalInMilliseconds(intervalMillis)
-                    .repeatForever())
+                    .withSchedule(scheduleBuilder)
                     .forJob(jobDetail)
                     .build();
         	
@@ -191,6 +244,8 @@ public class DynamicJobService {
 	    ScheduleType scheduleType = request.getScheduleType();
 	    String scheduleExpr = request.getScheduleExpr();
 	    
+	    MisfirePolicy misfirePolicy = request.getMisfirePolicy();
+	    
 	    JobKey jobKey = JobKey.jobKey(jobName, jobGroup);
 	    TriggerKey triggerKey = TriggerKey.triggerKey(jobName + "Trigger", jobGroup);
 	    
@@ -214,14 +269,32 @@ public class DynamicJobService {
 	    
 	    if (scheduleType == ScheduleType.CRON) {
 	    	
+	    	// 4-1. Cron 표현식 유효성 검사
 	        if (!CronExpression.isValidExpression(scheduleExpr)) {
 	            throw new IllegalArgumentException("유효하지 않은 Cron 표현식입니다: " + scheduleExpr);
 	        }
 	        
+	        // 4-2. Cron 스케줄 기본 설정
+	    	CronScheduleBuilder scheduleBuilder = CronScheduleBuilder.cronSchedule(scheduleExpr);
+	    	
+	    	// 4-3. Misfire 정책 적용
+	    	// SMART_POLICY는 Quartz 기본 정책을 사용하므로 별도 설정하지 않는다.
+	    	if (misfirePolicy == MisfirePolicy.DO_NOTHING) {
+	    		// 놓친 실행은 건너뛰고 다음 정상 실행 시간부터 다시 실행한다.
+	    		scheduleBuilder = scheduleBuilder.withMisfireHandlingInstructionDoNothing();
+	    		
+	    	} else if (misfirePolicy == MisfirePolicy.FIRE_AND_PROCEED) {
+	    		// 놓친 실행이 있으면 즉시 한 번 실행한 후 다음 정상 실행 일정으로 복귀한다.
+	    		scheduleBuilder = scheduleBuilder.withMisfireHandlingInstructionFireAndProceed();
+	    		
+	    	} else if (misfirePolicy != MisfirePolicy.SMART_POLICY) {
+	    		throw new IllegalArgumentException("CRON에서 지원하지 않는 Misfire 정책입니다: " + misfirePolicy);
+	    	}
+	    	
 	        newTrigger = TriggerBuilder.newTrigger()
 	                .withIdentity(triggerKey)
 	                .forJob(jobKey)
-	                .withSchedule(CronScheduleBuilder.cronSchedule(scheduleExpr))
+	                .withSchedule(scheduleBuilder)
 	                .build();
 	        
 	    } else if (scheduleType == ScheduleType.SIMPLE) {
@@ -238,14 +311,36 @@ public class DynamicJobService {
 	            throw new IllegalArgumentException("SIMPLE 스케줄 값은 0보다 커야 합니다.");
 	        }
 	        
+	        // 3-2. Simple 스케줄 기본 설정
+        	SimpleScheduleBuilder scheduleBuilder = SimpleScheduleBuilder.simpleSchedule()
+        			.withIntervalInMilliseconds(intervalSeconds * 1000L)
+        			.repeatForever();
+        	
+	        // 3-3. Misfire 정책 적용
+        	// SMART_POLICY는 Quartz 기본 정책을 사용하므로 별도 설정하지 않는다.
+        	if (misfirePolicy == MisfirePolicy.FIRE_NOW) {
+        		// 놓친 실행이 있으면 가능한 시점에 즉시 한 번 실행한다.
+        		scheduleBuilder = scheduleBuilder.withMisfireHandlingInstructionFireNow();
+        	} else if (misfirePolicy == MisfirePolicy.NOW_WITH_EXISTING_COUNT) {
+        		// 즉시 실행하고 기존 전체 반복 횟수 기준을 유지한다.
+        		scheduleBuilder = scheduleBuilder.withMisfireHandlingInstructionNowWithExistingCount();
+        	} else if (misfirePolicy == MisfirePolicy.NOW_WITH_REMAINING_COUNT) {
+        		// 즉시 실행하고 남아 있는 반복 횟수를 기준으로 이후 실행을 이어간다.
+        		scheduleBuilder = scheduleBuilder.withMisfireHandlingInstructionNowWithRemainingCount();
+        	} else if (misfirePolicy == MisfirePolicy.NEXT_WITH_EXISTING_COUNT) {
+        		// 놓친 실행은 건너뛰고 다음 실행 시점부터 기존 전체 반복 횟수 기준으로 이어간다.
+        		scheduleBuilder = scheduleBuilder.withMisfireHandlingInstructionNextWithExistingCount();
+        	} else if (misfirePolicy == MisfirePolicy.NEXT_WITH_REMAINING_COUNT) {
+        		// 놓친 실행은 건너뛰고 다음 실행 시점부터 남아 있는 반복 횟수 기준으로 이어간다.
+        		scheduleBuilder = scheduleBuilder.withMisfireHandlingInstructionNextWithRemainingCount();
+        	} else if (misfirePolicy != MisfirePolicy.SMART_POLICY) {
+        		throw new IllegalArgumentException("SIMPLE에서 지원하지 않는 Misfire 정책입니다: " + misfirePolicy);
+        	}
+        	
 	        newTrigger = TriggerBuilder.newTrigger()
 	                .withIdentity(triggerKey)
 	                .forJob(jobKey)
-	                .withSchedule(
-	                        SimpleScheduleBuilder.simpleSchedule()
-	                                .withIntervalInMilliseconds(intervalSeconds * 1000L)
-	                                .repeatForever()
-	                )
+	                .withSchedule(scheduleBuilder)
 	                .build();
 	        
 	    } else {
@@ -362,6 +457,9 @@ public class DynamicJobService {
         if (jobDetail != null) {
             jobInfo.setParams(new HashMap<>(jobDetail.getJobDataMap()));
         }
+        
+        // 4. Quartz 내부 Misfire 값을 화면에서 사용할 정책값으로 변환한다.
+        setMisfirePolicy(jobInfo);
         
         return jobInfo;
     }
@@ -484,6 +582,50 @@ public class DynamicJobService {
     	}
     	
     	return jobList;
+    }
+    
+    // Quartz 내부 Misfire 값을 관리 화면용 정책으로 변환
+    private void setMisfirePolicy(JobInfoDto jobInfo) {
+    	
+    	// 1. Trigger가 없는 Job은 Misfire 정책을 설정하지 않는다.
+    	if (jobInfo.getTriggerType() == null || jobInfo.getMisfireInstr() == null) {
+    		return;
+    	}
+    	
+    	// 2. SMART_POLICY는 Trigger 종류와 관계없이 공통 값이다.
+    	if (jobInfo.getMisfireInstr() == 0) {
+    		jobInfo.setMisfirePolicy(MisfirePolicy.SMART_POLICY);
+    		return;
+    	}
+    	
+    	// 3. Cron Trigger의 Misfire 정책을 변환한다.
+    	if ("CRON".equals(jobInfo.getTriggerType())) {
+    		
+    		if (jobInfo.getMisfireInstr() == 1) {
+    			jobInfo.setMisfirePolicy(MisfirePolicy.FIRE_AND_PROCEED);
+    		} else if (jobInfo.getMisfireInstr() == 2) {
+    			jobInfo.setMisfirePolicy(MisfirePolicy.DO_NOTHING);
+    		}
+    		
+    		return;
+    	}
+    	
+    	// 4. Simple Trigger의 Misfire 정책을 변환한다.
+    	if ("SIMPLE".equals(jobInfo.getTriggerType())) {
+    		
+    		if (jobInfo.getMisfireInstr() == 1) {
+    			jobInfo.setMisfirePolicy(MisfirePolicy.FIRE_NOW);
+    		} else if (jobInfo.getMisfireInstr() == 2) {
+    			jobInfo.setMisfirePolicy(MisfirePolicy.NOW_WITH_EXISTING_COUNT);
+    		} else if (jobInfo.getMisfireInstr() == 3) {
+    			jobInfo.setMisfirePolicy(MisfirePolicy.NOW_WITH_REMAINING_COUNT);
+    		} else if (jobInfo.getMisfireInstr() == 4) {
+    			jobInfo.setMisfirePolicy(MisfirePolicy.NEXT_WITH_REMAINING_COUNT);
+    		} else if (jobInfo.getMisfireInstr() == 5) {
+    			jobInfo.setMisfirePolicy(MisfirePolicy.NEXT_WITH_EXISTING_COUNT);
+    		}
+    	}
+    	
     }
     
 }

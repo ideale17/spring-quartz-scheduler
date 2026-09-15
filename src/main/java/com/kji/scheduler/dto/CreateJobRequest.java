@@ -11,6 +11,7 @@ public class CreateJobRequest {
     private String jobGroup = "default";
     private ScheduleType scheduleType;
     private String scheduleExpr;
-
+    private MisfirePolicy misfirePolicy = MisfirePolicy.SMART_POLICY;
+    
     private Map<String, Object> params;  // 동적 JobDataMap
 }
