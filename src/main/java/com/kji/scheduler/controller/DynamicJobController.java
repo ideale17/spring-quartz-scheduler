@@ -18,6 +18,8 @@ import com.kji.scheduler.dto.CreateJobRequest;
 import com.kji.scheduler.dto.JobHistoryPageDto;
 import com.kji.scheduler.dto.JobHistorySearchDto;
 import com.kji.scheduler.dto.JobInfoDto;
+import com.kji.scheduler.dto.RunJobsRequest;
+import com.kji.scheduler.dto.RunJobsResponse;
 import com.kji.scheduler.dto.ScheduleType;
 import com.kji.scheduler.dto.UpdateJobRequest;
 import com.kji.scheduler.service.DynamicJobService;
@@ -149,6 +151,22 @@ public class DynamicJobController {
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("서버 내부 오류: " + e.getMessage());
         }
+    }
+    
+    // Job 일괄 즉시 실행
+    @PostMapping("/runJobs")
+    public ResponseEntity<?> runJobs(@RequestBody RunJobsRequest request) {
+    	
+    	try {
+    		RunJobsResponse response = dynamicJobService.runJobs(request);
+    		return ResponseEntity.ok(response);
+    		
+    	} catch (IllegalArgumentException e) {
+    		return ResponseEntity.badRequest().body("잘못된 요청: " + e.getMessage());
+    		
+    	} catch (Exception e) {
+    		return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("서버 내부 오류: " + e.getMessage());
+    	}
     }
     
     // Job 중지

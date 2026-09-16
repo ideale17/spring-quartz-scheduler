@@ -26,6 +26,10 @@ import com.kji.scheduler.dto.JobHistoryPageDto;
 import com.kji.scheduler.dto.JobHistorySearchDto;
 import com.kji.scheduler.dto.JobInfoDto;
 import com.kji.scheduler.dto.MisfirePolicy;
+import com.kji.scheduler.dto.RunJobResultDto;
+import com.kji.scheduler.dto.RunJobTargetDto;
+import com.kji.scheduler.dto.RunJobsRequest;
+import com.kji.scheduler.dto.RunJobsResponse;
 import com.kji.scheduler.dto.ScheduleType;
 import com.kji.scheduler.dto.UpdateJobRequest;
 import com.kji.scheduler.job.ExternalApiCallJob;
@@ -487,13 +491,67 @@ public class DynamicJobService {
         
         // 2. 등록된 Job이 존재하는지 확인한다.
         if (!scheduler.checkExists(jobKey)) {
-            throw new SchedulerException(
-                    "즉시 실행할 Job이 존재하지 않습니다: " + jobName + "/" + jobGroup
-            );
+            throw new SchedulerException("즉시 실행할 Job이 존재하지 않습니다: " + jobName + "/" + jobGroup);
         }
         
         // 3. 기존 스케줄과 별개로 Job을 즉시 한 번 실행한다.
         scheduler.triggerJob(jobKey);
+    }
+    
+    // Job 일괄 즉시 실행
+    public RunJobsResponse runJobs(RunJobsRequest request) {
+    	
+    	// 1. 실행할 Job 목록이 존재하는지 확인한다.
+    	if (request == null || request.getJobs() == null || request.getJobs().isEmpty()) {
+    		throw new IllegalArgumentException("즉시 실행할 Job을 하나 이상 선택해야 합니다.");
+    	}
+    	
+    	// 2. 각 Job의 실행 요청 결과를 저장할 목록을 생성한다.
+    	List<RunJobResultDto> results = new ArrayList<>();
+    	int successCount = 0;
+    	int failCount = 0;
+    	
+    	// 3. 선택한 Job을 하나씩 즉시 실행한다.
+    	for (RunJobTargetDto target : request.getJobs()) {
+    		
+    		RunJobResultDto result = new RunJobResultDto();
+    		
+    		if (target == null) {
+    			result.setSuccess(false);
+    			result.setMessage("Job 정보가 없습니다.");
+    			
+    			results.add(result);
+    			failCount++;
+    			continue;
+    		}
+    		
+    		result.setJobName(target.getJobName());
+    		result.setJobGroup(target.getJobGroup());
+    		
+    		try {
+    			runJob(target.getJobName(), target.getJobGroup());
+    			
+    			result.setSuccess(true);
+    			result.setMessage("실행 요청 성공");
+    			successCount++;
+    			
+    		} catch (Exception e) {
+    			result.setSuccess(false);
+    			result.setMessage(e.getMessage());
+    			failCount++;
+    		}
+    		
+    		results.add(result);
+    	}
+    	
+    	// 4. 전체 실행 요청 결과를 생성한다.
+    	RunJobsResponse response = new RunJobsResponse();
+    	response.setTotalCount(request.getJobs().size());
+    	response.setSuccessCount(successCount);
+    	response.setFailCount(failCount);
+    	response.setResults(results);
+    	
+    	return response;
     }
     
     // Job 중지
