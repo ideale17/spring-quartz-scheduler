@@ -5,8 +5,8 @@ import java.util.List;
 import lombok.Data;
 
 @Data
-public class RunJobsRequest {
+public class JobBatchRequest {
 	
-	private List<RunJobTargetDto> jobs;
+	private List<JobTargetDto> jobs;
 	
 }

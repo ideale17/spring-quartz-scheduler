@@ -14,9 +14,9 @@ import org.junit.jupiter.api.Test;
 import org.quartz.JobKey;
 import org.quartz.Scheduler;
 
-import com.kji.scheduler.dto.RunJobTargetDto;
-import com.kji.scheduler.dto.RunJobsRequest;
-import com.kji.scheduler.dto.RunJobsResponse;
+import com.kji.scheduler.dto.JobTargetDto;
+import com.kji.scheduler.dto.JobBatchRequest;
+import com.kji.scheduler.dto.JobBatchResponse;
 import com.kji.scheduler.mapper.DynamicJobMapper;
 import com.kji.scheduler.repository.JobClassRegistry;
 
@@ -46,10 +46,10 @@ class DynamicJobServiceTest {
 	void runJobs_모든Job이존재하면_모두실행요청한다() throws Exception {
 		
 		// 1. 테스트용 Job 정보를 생성한다.
-		RunJobTargetDto job1 = createTarget("job1", "group1");
-		RunJobTargetDto job2 = createTarget("job2", "group2");
+		JobTargetDto job1 = createTarget("job1", "group1");
+		JobTargetDto job2 = createTarget("job2", "group2");
 		
-		RunJobsRequest request = new RunJobsRequest();
+		JobBatchRequest request = new JobBatchRequest();
 		request.setJobs(List.of(job1, job2));
 		
 		// 2. 두 Job 모두 Quartz에 존재하도록 설정한다.
@@ -60,7 +60,7 @@ class DynamicJobServiceTest {
 				.thenReturn(true);
 		
 		// 3. 일괄 즉시 실행을 요청한다.
-		RunJobsResponse response = dynamicJobService.runJobs(request);
+		JobBatchResponse response = dynamicJobService.runJobs(request);
 		
 		// 4. 전체 실행 결과를 검증한다.
 		assertEquals(2, response.getTotalCount());
@@ -76,10 +76,10 @@ class DynamicJobServiceTest {
 	void runJobs_일부Job이존재하지않아도_나머지는계속실행한다() throws Exception {
 		
 		// 1. 테스트용 Job 정보를 생성한다.
-		RunJobTargetDto job1 = createTarget("job1", "group1");
-		RunJobTargetDto job2 = createTarget("job2", "group2");
+		JobTargetDto job1 = createTarget("job1", "group1");
+		JobTargetDto job2 = createTarget("job2", "group2");
 		
-		RunJobsRequest request = new RunJobsRequest();
+		JobBatchRequest request = new JobBatchRequest();
 		request.setJobs(List.of(job1, job2));
 		
 		// 2. 첫 번째 Job만 Quartz에 존재하도록 설정한다.
@@ -90,7 +90,7 @@ class DynamicJobServiceTest {
 				.thenReturn(false);
 		
 		// 3. 일괄 즉시 실행을 요청한다.
-		RunJobsResponse response = dynamicJobService.runJobs(request);
+		JobBatchResponse response = dynamicJobService.runJobs(request);
 		
 		// 4. 부분 성공 결과를 검증한다.
 		assertEquals(2, response.getTotalCount());
@@ -106,7 +106,7 @@ class DynamicJobServiceTest {
 	void runJobs_실행할Job이없으면_예외가발생한다() {
 		
 		// 1. 빈 Job 목록을 생성한다.
-		RunJobsRequest request = new RunJobsRequest();
+		JobBatchRequest request = new JobBatchRequest();
 		request.setJobs(Collections.emptyList());
 		
 		// 2. 일괄 즉시 실행 요청 시 예외가 발생하는지 검증한다.
@@ -122,9 +122,9 @@ class DynamicJobServiceTest {
 		);
 	}
 	
-	private RunJobTargetDto createTarget(String jobName, String jobGroup) {
+	private JobTargetDto createTarget(String jobName, String jobGroup) {
 		
-		RunJobTargetDto target = new RunJobTargetDto();
+		JobTargetDto target = new JobTargetDto();
 		target.setJobName(jobName);
 		target.setJobGroup(jobGroup);
 		

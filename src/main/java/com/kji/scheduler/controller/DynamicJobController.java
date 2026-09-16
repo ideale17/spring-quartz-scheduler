@@ -18,8 +18,8 @@ import com.kji.scheduler.dto.CreateJobRequest;
 import com.kji.scheduler.dto.JobHistoryPageDto;
 import com.kji.scheduler.dto.JobHistorySearchDto;
 import com.kji.scheduler.dto.JobInfoDto;
-import com.kji.scheduler.dto.RunJobsRequest;
-import com.kji.scheduler.dto.RunJobsResponse;
+import com.kji.scheduler.dto.JobBatchRequest;
+import com.kji.scheduler.dto.JobBatchResponse;
 import com.kji.scheduler.dto.ScheduleType;
 import com.kji.scheduler.dto.UpdateJobRequest;
 import com.kji.scheduler.service.DynamicJobService;
@@ -155,10 +155,10 @@ public class DynamicJobController {
     
     // Job 일괄 즉시 실행
     @PostMapping("/runJobs")
-    public ResponseEntity<?> runJobs(@RequestBody RunJobsRequest request) {
+    public ResponseEntity<?> runJobs(@RequestBody JobBatchRequest request) {
     	
     	try {
-    		RunJobsResponse response = dynamicJobService.runJobs(request);
+    		JobBatchResponse response = dynamicJobService.runJobs(request);
     		return ResponseEntity.ok(response);
     		
     	} catch (IllegalArgumentException e) {

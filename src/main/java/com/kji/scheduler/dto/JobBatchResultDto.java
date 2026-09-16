@@ -3,7 +3,7 @@ package com.kji.scheduler.dto;
 import lombok.Data;
 
 @Data
-public class RunJobResultDto {
+public class JobBatchResultDto {
 	
 	private String jobName;
 	private String jobGroup;

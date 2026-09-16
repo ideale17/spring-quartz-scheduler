@@ -5,11 +5,11 @@ import java.util.List;
 import lombok.Data;
 
 @Data
-public class RunJobsResponse {
+public class JobBatchResponse {
 	
 	private int totalCount;
 	private int successCount;
 	private int failCount;
-	private List<RunJobResultDto> results;
+	private List<JobBatchResultDto> results;
 	
 }

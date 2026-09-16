@@ -26,10 +26,10 @@ import com.kji.scheduler.dto.JobHistoryPageDto;
 import com.kji.scheduler.dto.JobHistorySearchDto;
 import com.kji.scheduler.dto.JobInfoDto;
 import com.kji.scheduler.dto.MisfirePolicy;
-import com.kji.scheduler.dto.RunJobResultDto;
-import com.kji.scheduler.dto.RunJobTargetDto;
-import com.kji.scheduler.dto.RunJobsRequest;
-import com.kji.scheduler.dto.RunJobsResponse;
+import com.kji.scheduler.dto.JobBatchResultDto;
+import com.kji.scheduler.dto.JobTargetDto;
+import com.kji.scheduler.dto.JobBatchRequest;
+import com.kji.scheduler.dto.JobBatchResponse;
 import com.kji.scheduler.dto.ScheduleType;
 import com.kji.scheduler.dto.UpdateJobRequest;
 import com.kji.scheduler.job.ExternalApiCallJob;
@@ -499,7 +499,7 @@ public class DynamicJobService {
     }
     
     // Job 일괄 즉시 실행
-    public RunJobsResponse runJobs(RunJobsRequest request) {
+    public JobBatchResponse runJobs(JobBatchRequest request) {
     	
     	// 1. 실행할 Job 목록이 존재하는지 확인한다.
     	if (request == null || request.getJobs() == null || request.getJobs().isEmpty()) {
@@ -507,14 +507,14 @@ public class DynamicJobService {
     	}
     	
     	// 2. 각 Job의 실행 요청 결과를 저장할 목록을 생성한다.
-    	List<RunJobResultDto> results = new ArrayList<>();
+    	List<JobBatchResultDto> results = new ArrayList<>();
     	int successCount = 0;
     	int failCount = 0;
     	
     	// 3. 선택한 Job을 하나씩 즉시 실행한다.
-    	for (RunJobTargetDto target : request.getJobs()) {
+    	for (JobTargetDto target : request.getJobs()) {
     		
-    		RunJobResultDto result = new RunJobResultDto();
+    		JobBatchResultDto result = new JobBatchResultDto();
     		
     		if (target == null) {
     			result.setSuccess(false);
@@ -545,7 +545,7 @@ public class DynamicJobService {
     	}
     	
     	// 4. 전체 실행 요청 결과를 생성한다.
-    	RunJobsResponse response = new RunJobsResponse();
+    	JobBatchResponse response = new JobBatchResponse();
     	response.setTotalCount(request.getJobs().size());
     	response.setSuccessCount(successCount);
     	response.setFailCount(failCount);
