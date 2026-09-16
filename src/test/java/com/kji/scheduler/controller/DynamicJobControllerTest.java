@@ -142,4 +142,190 @@ class DynamicJobControllerTest {
 				));
 	}
 	
+	@Test
+	void resumeJobs_정상요청이면_200과재시작결과를반환한다() throws Exception {
+		
+		// 1. 요청 데이터를 생성한다.
+		JobTargetDto target = new JobTargetDto();
+		target.setJobName("job1");
+		target.setJobGroup("group1");
+		
+		JobBatchRequest request = new JobBatchRequest();
+		request.setJobs(List.of(target));
+		
+		// 2. Service가 반환할 재시작 결과를 생성한다.
+		JobBatchResultDto result = new JobBatchResultDto();
+		result.setJobName("job1");
+		result.setJobGroup("group1");
+		result.setSuccess(true);
+		result.setMessage("재시작 성공");
+		
+		JobBatchResponse response = new JobBatchResponse();
+		response.setTotalCount(1);
+		response.setSuccessCount(1);
+		response.setFailCount(0);
+		response.setResults(List.of(result));
+		
+		when(dynamicJobService.resumeJobs(any(JobBatchRequest.class)))
+				.thenReturn(response);
+		
+		// 3. 일괄 재시작 API를 호출하고 응답을 검증한다.
+		mockMvc.perform(
+				post("/jobs/resumeJobs")
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(objectMapper.writeValueAsString(request))
+		)
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.totalCount").value(1))
+				.andExpect(jsonPath("$.successCount").value(1))
+				.andExpect(jsonPath("$.failCount").value(0))
+				.andExpect(jsonPath("$.results[0].jobName").value("job1"))
+				.andExpect(jsonPath("$.results[0].success").value(true));
+	}
+
+	@Test
+	void resumeJobs_재시작할Job이없으면_400을반환한다() throws Exception {
+		
+		// 1. 빈 요청 데이터를 생성한다.
+		JobBatchRequest request = new JobBatchRequest();
+		request.setJobs(List.of());
+		
+		// 2. Service에서 잘못된 요청 예외가 발생하도록 설정한다.
+		when(dynamicJobService.resumeJobs(any(JobBatchRequest.class)))
+				.thenThrow(new IllegalArgumentException(
+						"재시작할 Job을 하나 이상 선택해야 합니다."
+				));
+		
+		// 3. API 호출 결과가 400인지 검증한다.
+		mockMvc.perform(
+				post("/jobs/resumeJobs")
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(objectMapper.writeValueAsString(request))
+		)
+				.andExpect(status().isBadRequest())
+				.andExpect(content().string(
+						"잘못된 요청: 재시작할 Job을 하나 이상 선택해야 합니다."
+				));
+	}
+
+	@Test
+	void resumeJobs_서버오류가발생하면_500을반환한다() throws Exception {
+		
+		// 1. 정상 형태의 요청 데이터를 생성한다.
+		JobTargetDto target = new JobTargetDto();
+		target.setJobName("job1");
+		target.setJobGroup("group1");
+		
+		JobBatchRequest request = new JobBatchRequest();
+		request.setJobs(List.of(target));
+		
+		// 2. Service에서 예상하지 못한 오류가 발생하도록 설정한다.
+		when(dynamicJobService.resumeJobs(any(JobBatchRequest.class)))
+				.thenThrow(new RuntimeException("테스트 오류"));
+		
+		// 3. API 호출 결과가 500인지 검증한다.
+		mockMvc.perform(
+				post("/jobs/resumeJobs")
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(objectMapper.writeValueAsString(request))
+		)
+				.andExpect(status().isInternalServerError())
+				.andExpect(content().string(
+						"서버 내부 오류: 테스트 오류"
+				));
+	}
+	
+	@Test
+	void pauseJobs_정상요청이면_200과중지결과를반환한다() throws Exception {
+		
+		// 1. 요청 데이터를 생성한다.
+		JobTargetDto target = new JobTargetDto();
+		target.setJobName("job1");
+		target.setJobGroup("group1");
+		
+		JobBatchRequest request = new JobBatchRequest();
+		request.setJobs(List.of(target));
+		
+		// 2. Service가 반환할 중지 결과를 생성한다.
+		JobBatchResultDto result = new JobBatchResultDto();
+		result.setJobName("job1");
+		result.setJobGroup("group1");
+		result.setSuccess(true);
+		result.setMessage("중지 성공");
+		
+		JobBatchResponse response = new JobBatchResponse();
+		response.setTotalCount(1);
+		response.setSuccessCount(1);
+		response.setFailCount(0);
+		response.setResults(List.of(result));
+		
+		when(dynamicJobService.pauseJobs(any(JobBatchRequest.class)))
+				.thenReturn(response);
+		
+		// 3. 일괄 중지 API를 호출하고 응답을 검증한다.
+		mockMvc.perform(
+				post("/jobs/pauseJobs")
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(objectMapper.writeValueAsString(request))
+		)
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.totalCount").value(1))
+				.andExpect(jsonPath("$.successCount").value(1))
+				.andExpect(jsonPath("$.failCount").value(0))
+				.andExpect(jsonPath("$.results[0].jobName").value("job1"))
+				.andExpect(jsonPath("$.results[0].success").value(true));
+	}
+
+	@Test
+	void pauseJobs_중지할Job이없으면_400을반환한다() throws Exception {
+		
+		// 1. 빈 요청 데이터를 생성한다.
+		JobBatchRequest request = new JobBatchRequest();
+		request.setJobs(List.of());
+		
+		// 2. Service에서 잘못된 요청 예외가 발생하도록 설정한다.
+		when(dynamicJobService.pauseJobs(any(JobBatchRequest.class)))
+				.thenThrow(new IllegalArgumentException(
+						"중지할 Job을 하나 이상 선택해야 합니다."
+				));
+		
+		// 3. API 호출 결과가 400인지 검증한다.
+		mockMvc.perform(
+				post("/jobs/pauseJobs")
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(objectMapper.writeValueAsString(request))
+		)
+				.andExpect(status().isBadRequest())
+				.andExpect(content().string(
+						"잘못된 요청: 중지할 Job을 하나 이상 선택해야 합니다."
+				));
+	}
+
+	@Test
+	void pauseJobs_서버오류가발생하면_500을반환한다() throws Exception {
+		
+		// 1. 정상 형태의 요청 데이터를 생성한다.
+		JobTargetDto target = new JobTargetDto();
+		target.setJobName("job1");
+		target.setJobGroup("group1");
+		
+		JobBatchRequest request = new JobBatchRequest();
+		request.setJobs(List.of(target));
+		
+		// 2. Service에서 예상하지 못한 오류가 발생하도록 설정한다.
+		when(dynamicJobService.pauseJobs(any(JobBatchRequest.class)))
+				.thenThrow(new RuntimeException("테스트 오류"));
+		
+		// 3. API 호출 결과가 500인지 검증한다.
+		mockMvc.perform(
+				post("/jobs/pauseJobs")
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(objectMapper.writeValueAsString(request))
+		)
+				.andExpect(status().isInternalServerError())
+				.andExpect(content().string(
+						"서버 내부 오류: 테스트 오류"
+				));
+	}
+	
 }

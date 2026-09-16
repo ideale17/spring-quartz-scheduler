@@ -169,25 +169,6 @@ public class DynamicJobController {
     	}
     }
     
-    // Job 중지
-    @PostMapping("/pauseJob")
-    public ResponseEntity<String> pauseJob(@RequestParam(name = "jobName") String jobName,
-    									@RequestParam(name = "jobGroup", defaultValue = "default") String jobGroup) {
-    	
-    	try {
-    		dynamicJobService.pauseJob(jobName, jobGroup);
-    		return ResponseEntity.ok("Job 중지됨: " + jobName);
-    		
-        } catch (SchedulerException e) {
-        	return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Job 중지 실패 (Scheduler 예외): " + e.getMessage());
-        	
-        } catch (Exception e) {
-        	return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("서버 내부 오류: " + e.getMessage());
-        	
-        }
-    	
-    }
-    
     // Job 재시작
     @PostMapping("/resumeJob")
     public ResponseEntity<String> resumeJob(@RequestParam(name = "jobName") String jobName,
@@ -207,6 +188,58 @@ public class DynamicJobController {
     	
     }
     
+    // Job 일괄 재시작
+    @PostMapping("/resumeJobs")
+    public ResponseEntity<?> resumeJobs(@RequestBody JobBatchRequest request) {
+    	
+    	try {
+    		JobBatchResponse response = dynamicJobService.resumeJobs(request);
+    		return ResponseEntity.ok(response);
+    		
+    	} catch (IllegalArgumentException e) {
+    		return ResponseEntity.badRequest().body("잘못된 요청: " + e.getMessage());
+    		
+    	} catch (Exception e) {
+    		return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+    				.body("서버 내부 오류: " + e.getMessage());
+    	}
+    }
+    
+    // Job 중지
+    @PostMapping("/pauseJob")
+    public ResponseEntity<String> pauseJob(@RequestParam(name = "jobName") String jobName,
+    									@RequestParam(name = "jobGroup", defaultValue = "default") String jobGroup) {
+    	
+    	try {
+    		dynamicJobService.pauseJob(jobName, jobGroup);
+    		return ResponseEntity.ok("Job 중지됨: " + jobName);
+    		
+        } catch (SchedulerException e) {
+        	return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Job 중지 실패 (Scheduler 예외): " + e.getMessage());
+        	
+        } catch (Exception e) {
+        	return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("서버 내부 오류: " + e.getMessage());
+        	
+        }
+    	
+    }
+    
+    // Job 일괄 중지
+    @PostMapping("/pauseJobs")
+    public ResponseEntity<?> pauseJobs(@RequestBody JobBatchRequest request) {
+    	
+    	try {
+    		JobBatchResponse response = dynamicJobService.pauseJobs(request);
+    		return ResponseEntity.ok(response);
+    		
+    	} catch (IllegalArgumentException e) {
+    		return ResponseEntity.badRequest().body("잘못된 요청: " + e.getMessage());
+    		
+    	} catch (Exception e) {
+    		return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+    				.body("서버 내부 오류: " + e.getMessage());
+    	}
+    }
     
     @GetMapping("/historyJobs")
     public JobHistoryPageDto historyJobs(JobHistorySearchDto searchDto) throws SchedulerException {

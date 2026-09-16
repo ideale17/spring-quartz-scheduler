@@ -554,6 +554,73 @@ public class DynamicJobService {
     	return response;
     }
     
+    // Job 재시작
+    public void resumeJob(String jobName, String jobGroup) throws SchedulerException {
+        JobKey jobKey = JobKey.jobKey(jobName, jobGroup);
+
+        if (scheduler.checkExists(jobKey)) {
+            scheduler.resumeJob(jobKey);
+        } else {
+            throw new SchedulerException("재시작할 Job이 존재하지 않습니다: " + jobName + "/" + jobGroup);
+        }
+    }
+    
+    // Job 일괄 재시작
+    public JobBatchResponse resumeJobs(JobBatchRequest request) {
+    	
+    	// 1. 재시작할 Job 목록이 존재하는지 확인한다.
+    	if (request == null || request.getJobs() == null || request.getJobs().isEmpty()) {
+    		throw new IllegalArgumentException("재시작할 Job을 하나 이상 선택해야 합니다.");
+    	}
+    	
+    	// 2. 각 Job의 재시작 결과를 저장할 목록을 생성한다.
+    	List<JobBatchResultDto> results = new ArrayList<>();
+    	int successCount = 0;
+    	int failCount = 0;
+    	
+    	// 3. 선택한 Job을 하나씩 재시작한다.
+    	for (JobTargetDto target : request.getJobs()) {
+    		
+    		JobBatchResultDto result = new JobBatchResultDto();
+    		
+    		if (target == null) {
+    			result.setSuccess(false);
+    			result.setMessage("Job 정보가 없습니다.");
+    			
+    			results.add(result);
+    			failCount++;
+    			continue;
+    		}
+    		
+    		result.setJobName(target.getJobName());
+    		result.setJobGroup(target.getJobGroup());
+    		
+    		try {
+    			resumeJob(target.getJobName(), target.getJobGroup());
+    			
+    			result.setSuccess(true);
+    			result.setMessage("재시작 성공");
+    			successCount++;
+    			
+    		} catch (Exception e) {
+    			result.setSuccess(false);
+    			result.setMessage(e.getMessage());
+    			failCount++;
+    		}
+    		
+    		results.add(result);
+    	}
+    	
+    	// 4. 전체 재시작 결과를 생성한다.
+    	JobBatchResponse response = new JobBatchResponse();
+    	response.setTotalCount(request.getJobs().size());
+    	response.setSuccessCount(successCount);
+    	response.setFailCount(failCount);
+    	response.setResults(results);
+    	
+    	return response;
+    }
+    
     // Job 중지
     public void pauseJob(String jobName, String jobGroup) throws SchedulerException {
         JobKey jobKey = JobKey.jobKey(jobName, jobGroup);
@@ -564,15 +631,60 @@ public class DynamicJobService {
         }
     }
     
-    // Job 재시작
-    public void resumeJob(String jobName, String jobGroup) throws SchedulerException {
-        JobKey jobKey = JobKey.jobKey(jobName, jobGroup);
-
-        if (scheduler.checkExists(jobKey)) {
-            scheduler.resumeJob(jobKey);
-        } else {
-            throw new SchedulerException("재시작할 Job이 존재하지 않습니다: " + jobName + "/" + jobGroup);
-        }
+    // Job 일괄 중지
+    public JobBatchResponse pauseJobs(JobBatchRequest request) {
+    	
+    	// 1. 중지할 Job 목록이 존재하는지 확인한다.
+    	if (request == null || request.getJobs() == null || request.getJobs().isEmpty()) {
+    		throw new IllegalArgumentException("중지할 Job을 하나 이상 선택해야 합니다.");
+    	}
+    	
+    	// 2. 각 Job의 중지 결과를 저장할 목록을 생성한다.
+    	List<JobBatchResultDto> results = new ArrayList<>();
+    	int successCount = 0;
+    	int failCount = 0;
+    	
+    	// 3. 선택한 Job을 하나씩 중지한다.
+    	for (JobTargetDto target : request.getJobs()) {
+    		
+    		JobBatchResultDto result = new JobBatchResultDto();
+    		
+    		if (target == null) {
+    			result.setSuccess(false);
+    			result.setMessage("Job 정보가 없습니다.");
+    			
+    			results.add(result);
+    			failCount++;
+    			continue;
+    		}
+    		
+    		result.setJobName(target.getJobName());
+    		result.setJobGroup(target.getJobGroup());
+    		
+    		try {
+    			pauseJob(target.getJobName(), target.getJobGroup());
+    			
+    			result.setSuccess(true);
+    			result.setMessage("중지 성공");
+    			successCount++;
+    			
+    		} catch (Exception e) {
+    			result.setSuccess(false);
+    			result.setMessage(e.getMessage());
+    			failCount++;
+    		}
+    		
+    		results.add(result);
+    	}
+    	
+    	// 4. 전체 중지 결과를 생성한다.
+    	JobBatchResponse response = new JobBatchResponse();
+    	response.setTotalCount(request.getJobs().size());
+    	response.setSuccessCount(successCount);
+    	response.setFailCount(failCount);
+    	response.setResults(results);
+    	
+    	return response;
     }
     
     // Job 이력 목록 조회

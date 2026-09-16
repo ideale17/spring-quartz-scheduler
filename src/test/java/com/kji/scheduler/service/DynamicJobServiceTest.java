@@ -131,4 +131,164 @@ class DynamicJobServiceTest {
 		return target;
 	}
 	
+	@Test
+	void resumeJobs_모든Job이존재하면_모두재시작한다() throws Exception {
+
+		// 1. 테스트용 Job 정보를 생성한다.
+		JobTargetDto job1 = createTarget("job1", "group1");
+		JobTargetDto job2 = createTarget("job2", "group2");
+
+		JobBatchRequest request = new JobBatchRequest();
+		request.setJobs(List.of(job1, job2));
+
+		// 2. 두 Job 모두 Quartz에 존재하도록 설정한다.
+		when(scheduler.checkExists(JobKey.jobKey("job1", "group1")))
+				.thenReturn(true);
+
+		when(scheduler.checkExists(JobKey.jobKey("job2", "group2")))
+				.thenReturn(true);
+
+		// 3. 일괄 재시작을 요청한다.
+		JobBatchResponse response = dynamicJobService.resumeJobs(request);
+
+		// 4. 전체 재시작 결과를 검증한다.
+		assertEquals(2, response.getTotalCount());
+		assertEquals(2, response.getSuccessCount());
+		assertEquals(0, response.getFailCount());
+
+		// 5. Quartz 재시작 요청이 각각 호출됐는지 검증한다.
+		verify(scheduler).resumeJob(JobKey.jobKey("job1", "group1"));
+		verify(scheduler).resumeJob(JobKey.jobKey("job2", "group2"));
+	}
+
+	@Test
+	void resumeJobs_일부Job이존재하지않아도_나머지는계속재시작한다() throws Exception {
+
+		// 1. 테스트용 Job 정보를 생성한다.
+		JobTargetDto job1 = createTarget("job1", "group1");
+		JobTargetDto job2 = createTarget("job2", "group2");
+
+		JobBatchRequest request = new JobBatchRequest();
+		request.setJobs(List.of(job1, job2));
+
+		// 2. 첫 번째 Job만 Quartz에 존재하도록 설정한다.
+		when(scheduler.checkExists(JobKey.jobKey("job1", "group1")))
+				.thenReturn(true);
+
+		when(scheduler.checkExists(JobKey.jobKey("job2", "group2")))
+				.thenReturn(false);
+
+		// 3. 일괄 재시작을 요청한다.
+		JobBatchResponse response = dynamicJobService.resumeJobs(request);
+
+		// 4. 부분 성공 결과를 검증한다.
+		assertEquals(2, response.getTotalCount());
+		assertEquals(1, response.getSuccessCount());
+		assertEquals(1, response.getFailCount());
+
+		// 5. 존재하는 Job만 재시작 요청됐는지 검증한다.
+		verify(scheduler).resumeJob(JobKey.jobKey("job1", "group1"));
+		verify(scheduler, never()).resumeJob(JobKey.jobKey("job2", "group2"));
+	}
+
+	@Test
+	void resumeJobs_재시작할Job이없으면_예외가발생한다() {
+
+		// 1. 빈 Job 목록을 생성한다.
+		JobBatchRequest request = new JobBatchRequest();
+		request.setJobs(Collections.emptyList());
+
+		// 2. 일괄 재시작 요청 시 예외가 발생하는지 검증한다.
+		IllegalArgumentException exception = assertThrows(
+				IllegalArgumentException.class,
+				() -> dynamicJobService.resumeJobs(request)
+		);
+
+		// 3. 예외 메시지를 검증한다.
+		assertEquals(
+				"재시작할 Job을 하나 이상 선택해야 합니다.",
+				exception.getMessage()
+		);
+	}
+	
+	@Test
+	void pauseJobs_모든Job이존재하면_모두중지한다() throws Exception {
+
+		// 1. 테스트용 Job 정보를 생성한다.
+		JobTargetDto job1 = createTarget("job1", "group1");
+		JobTargetDto job2 = createTarget("job2", "group2");
+
+		JobBatchRequest request = new JobBatchRequest();
+		request.setJobs(List.of(job1, job2));
+
+		// 2. 두 Job 모두 Quartz에 존재하도록 설정한다.
+		when(scheduler.checkExists(JobKey.jobKey("job1", "group1")))
+				.thenReturn(true);
+
+		when(scheduler.checkExists(JobKey.jobKey("job2", "group2")))
+				.thenReturn(true);
+
+		// 3. 일괄 중지를 요청한다.
+		JobBatchResponse response = dynamicJobService.pauseJobs(request);
+
+		// 4. 전체 중지 결과를 검증한다.
+		assertEquals(2, response.getTotalCount());
+		assertEquals(2, response.getSuccessCount());
+		assertEquals(0, response.getFailCount());
+
+		// 5. Quartz 중지 요청이 각각 호출됐는지 검증한다.
+		verify(scheduler).pauseJob(JobKey.jobKey("job1", "group1"));
+		verify(scheduler).pauseJob(JobKey.jobKey("job2", "group2"));
+	}
+
+	@Test
+	void pauseJobs_일부Job이존재하지않아도_나머지는계속중지한다() throws Exception {
+
+		// 1. 테스트용 Job 정보를 생성한다.
+		JobTargetDto job1 = createTarget("job1", "group1");
+		JobTargetDto job2 = createTarget("job2", "group2");
+
+		JobBatchRequest request = new JobBatchRequest();
+		request.setJobs(List.of(job1, job2));
+
+		// 2. 첫 번째 Job만 Quartz에 존재하도록 설정한다.
+		when(scheduler.checkExists(JobKey.jobKey("job1", "group1")))
+				.thenReturn(true);
+
+		when(scheduler.checkExists(JobKey.jobKey("job2", "group2")))
+				.thenReturn(false);
+
+		// 3. 일괄 중지를 요청한다.
+		JobBatchResponse response = dynamicJobService.pauseJobs(request);
+
+		// 4. 부분 성공 결과를 검증한다.
+		assertEquals(2, response.getTotalCount());
+		assertEquals(1, response.getSuccessCount());
+		assertEquals(1, response.getFailCount());
+
+		// 5. 존재하는 Job만 중지 요청됐는지 검증한다.
+		verify(scheduler).pauseJob(JobKey.jobKey("job1", "group1"));
+		verify(scheduler, never()).pauseJob(JobKey.jobKey("job2", "group2"));
+	}
+
+	@Test
+	void pauseJobs_중지할Job이없으면_예외가발생한다() {
+
+		// 1. 빈 Job 목록을 생성한다.
+		JobBatchRequest request = new JobBatchRequest();
+		request.setJobs(Collections.emptyList());
+
+		// 2. 일괄 중지 요청 시 예외가 발생하는지 검증한다.
+		IllegalArgumentException exception = assertThrows(
+				IllegalArgumentException.class,
+				() -> dynamicJobService.pauseJobs(request)
+		);
+
+		// 3. 예외 메시지를 검증한다.
+		assertEquals(
+				"중지할 Job을 하나 이상 선택해야 합니다.",
+				exception.getMessage()
+		);
+	}
+	
 }
