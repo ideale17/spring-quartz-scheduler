@@ -14,9 +14,11 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestClientResponseException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 
+import com.kji.scheduler.dto.ExternalApiCallLogDto;
 import com.kji.scheduler.dto.ExternalApiDto;
 import com.kji.scheduler.dto.ExternalApiParamDto;
 
@@ -28,18 +30,20 @@ public class ExternalApiExecutionService {
 	private final RestTemplate restTemplate;
 	private final ExternalApiService externalApiService;
 	private final DynamicParameterResolver dynamicParameterResolver;
-	
+	private final ExternalApiCallLogService externalApiCallLogService;
 	
 	public ExternalApiExecutionService(ExternalApiService externalApiService,
 			DynamicParameterResolver dynamicParameterResolver,
-			RestTemplate restTemplate) {
+			RestTemplate restTemplate,
+			ExternalApiCallLogService externalApiCallLogService) {
 		this.externalApiService = externalApiService;
 		this.dynamicParameterResolver = dynamicParameterResolver;
 		this.restTemplate = restTemplate;
+		this.externalApiCallLogService = externalApiCallLogService;
 	}
 	
 	// External API 실행 정보를 생성한다.
-	public void execute(Long externalApiId) {
+	public void execute(Long externalApiId, String fireInstanceId) {
 		
 		// 1. Job 실행 기준 시간을 한 번만 생성한다.
 		LocalDateTime executionTime = LocalDateTime.now();
@@ -107,16 +111,62 @@ public class ExternalApiExecutionService {
 				bodyParams.size()
 		);
 		
-		// 11. External API를 호출한다.
-		ResponseEntity<String> response = callExternalApi(externalApi, headers, queryParams, bodyParams);
-
-		// 12. External API 호출 결과를 기록한다.
-		log.info(
-				"External API 호출 완료. " + "externalApiId: {}, apiName: {}, statusCode: {}",
-				externalApiId,
-				externalApi.getApiName(),
-				response.getStatusCode()
-		);
+		// 11. External API 호출 시작 이력을 저장한다.
+		ExternalApiCallLogDto callLog = new ExternalApiCallLogDto();
+		callLog.setExternalApiId(externalApiId);
+		callLog.setFireInstanceId(fireInstanceId);
+		
+		externalApiCallLogService.insertStart(callLog);
+		
+		// 12. External API 호출 소요 시간 측정을 시작한다.
+		long startTime = System.nanoTime();
+		
+		try {
+			
+			// 13. External API를 호출한다.
+			ResponseEntity<String> response = callExternalApi(externalApi, headers, queryParams, bodyParams);
+			
+			// 14. External API 호출 성공 정보를 저장한다.
+			long runMillis = (System.nanoTime() - startTime) / 1_000_000;
+			
+			callLog.setHttpStatus(response.getStatusCode().value());
+			callLog.setRunMillis(runMillis);
+			
+			externalApiCallLogService.markSuccess(callLog);
+			
+			// 15. External API 호출 결과를 기록한다.
+			log.info(
+					"External API 호출 완료. "
+							+ "externalApiId: {}, apiName: {}, statusCode: {}, runMillis: {}",
+					externalApiId,
+					externalApi.getApiName(),
+					response.getStatusCode(),
+					runMillis
+			);
+			
+		} catch (RestClientResponseException e) {
+			
+			// 16. HTTP 오류 응답 정보를 저장한다.
+			long runMillis = (System.nanoTime() - startTime) / 1_000_000;
+			
+			callLog.setHttpStatus(e.getStatusCode().value());
+			callLog.setRunMillis(runMillis);
+			
+			externalApiCallLogService.markFailed(callLog, e.getMessage());
+			
+			throw e;
+			
+		} catch (Exception e) {
+			
+			// 17. External API 호출 중 발생한 오류 정보를 저장한다.
+			long runMillis = (System.nanoTime() - startTime) / 1_000_000;
+			
+			callLog.setRunMillis(runMillis);
+			
+			externalApiCallLogService.markFailed(callLog, e.getMessage());
+			
+			throw e;
+		}
 		
 	}
 	

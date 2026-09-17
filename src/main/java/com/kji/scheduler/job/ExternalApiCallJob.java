@@ -29,8 +29,11 @@ public class ExternalApiCallJob extends QuartzJobBean {
 			// 1. JobDataMap에서 External API 식별자를 조회한다.
 			Long externalApiId = getExternalApiId(context);
 			
-			// 2. External API 실행 Service에 처리를 위임한다.
-			externalApiExecutionService.execute(externalApiId);
+			// 2. Quartz 실행 인스턴스 ID를 조회한다.
+			String fireInstanceId = context.getFireInstanceId();
+			
+			// 3. External API 실행 Service에 처리를 위임한다.
+			externalApiExecutionService.execute(externalApiId, fireInstanceId);
 			
 		} catch (Exception e) {
 			throw new JobExecutionException("External API 실행 중 오류가 발생했습니다.", e);

@@ -1,0 +1,21 @@
+package com.kji.scheduler.dto;
+
+import java.time.LocalDateTime;
+
+import lombok.Data;
+
+@Data
+public class ExternalApiCallLogDto {
+	
+	private Long apiCallLogId;
+	private Long externalApiId;
+	private String fireInstanceId;
+	private Integer httpStatus;
+	private LocalDateTime startedAt;
+	private LocalDateTime finishedAt;
+	private Long runMillis;
+	private String status;
+	private String errorMessage;
+	private LocalDateTime createdAt;
+	
+}

@@ -143,7 +143,7 @@ public class ExternalApiController {
 		try {
 			
 			// 1. 등록된 External API를 즉시 실행한다.
-			externalApiExecutionService.execute(externalApiId);
+			externalApiExecutionService.execute(externalApiId, null);
 			
 			// 2. 실행 요청 성공 결과를 반환한다.
 			return ResponseEntity.ok("External API 호출 성공");
