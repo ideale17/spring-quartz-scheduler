@@ -1,9 +1,14 @@
 package com.kji.scheduler.service;
 
+import java.util.List;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.kji.scheduler.dto.ExternalApiCallHistoryDto;
+import com.kji.scheduler.dto.ExternalApiCallHistoryPageDto;
+import com.kji.scheduler.dto.ExternalApiCallHistorySearchDto;
 import com.kji.scheduler.dto.ExternalApiCallLogDto;
 import com.kji.scheduler.mapper.ExternalApiCallLogMapper;
 
@@ -39,6 +44,22 @@ public class ExternalApiCallLogService {
 		externalApiCallLogDto.setErrorMessage(errorMessage);
 		
 		mapper.updateFinish(externalApiCallLogDto);
+	}
+	
+	public ExternalApiCallHistoryPageDto getCallHistory(ExternalApiCallHistorySearchDto searchDto) {
+		
+		// 1. 검색조건으로 External API 호출 이력을 조회한다.
+		List<ExternalApiCallHistoryDto> content = mapper.findCallHistory(searchDto);
+		
+		// 2. 동일한 검색조건의 전체 호출 이력 건수를 조회한다.
+		long totalCount = mapper.countCallHistory(searchDto);
+		
+		// 3. 조회 결과와 페이징 정보를 반환한다.
+		return new ExternalApiCallHistoryPageDto(
+				content,
+				totalCount,
+				searchDto.getPage(),
+				searchDto.getSize());
 	}
 	
 }

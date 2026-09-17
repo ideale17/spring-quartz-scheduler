@@ -38,4 +38,62 @@
 		 WHERE API_CALL_LOG_ID = #{apiCallLogId}
 	</update>
 	
+	<!-- External API 호출 이력 조회 -->
+	<select id="findCallHistory"
+			parameterType="com.kji.scheduler.dto.ExternalApiCallHistorySearchDto"
+			resultType="com.kji.scheduler.dto.ExternalApiCallHistoryDto">
+		SELECT
+			L.API_CALL_LOG_ID,
+			L.EXTERNAL_API_ID,
+			A.API_NAME,
+			L.FIRE_INSTANCE_ID,
+			L.HTTP_STATUS,
+			L.STARTED_AT,
+			L.FINISHED_AT,
+			L.RUN_MILLIS,
+			L.STATUS,
+			L.ERROR_MESSAGE,
+			L.CREATED_AT
+		FROM SCHED_EXTERNAL_API_CALL_LOG L
+		LEFT JOIN SCHED_EXTERNAL_API A
+		  ON L.EXTERNAL_API_ID = A.EXTERNAL_API_ID
+		WHERE 1 = 1
+		<if test="apiName != null and apiName != ''">
+			AND A.API_NAME LIKE '%' || #{apiName} || '%'
+		</if>
+		<if test="status != null and status != ''">
+			AND L.STATUS = #{status}
+		</if>
+		<if test="startDate != null">
+			AND L.STARTED_AT <![CDATA[ >= ]]> #{startDate}
+		</if>
+		<if test="endDate != null">
+			AND L.STARTED_AT <![CDATA[ < ]]> #{endDate} + 1
+		</if>
+		ORDER BY L.CREATED_AT DESC, L.API_CALL_LOG_ID DESC
+		OFFSET #{offset} ROWS
+		FETCH NEXT #{size} ROWS ONLY
+	</select>
+	
+	<!-- External API 호출 이력 전체 건수 조회 -->
+	<select id="countCallHistory" parameterType="com.kji.scheduler.dto.ExternalApiCallHistorySearchDto" resultType="long">
+		SELECT COUNT(*)
+		FROM SCHED_EXTERNAL_API_CALL_LOG L
+		LEFT JOIN SCHED_EXTERNAL_API A
+		  ON L.EXTERNAL_API_ID = A.EXTERNAL_API_ID
+		WHERE 1 = 1
+		<if test="apiName != null and apiName != ''">
+			AND A.API_NAME LIKE '%' || #{apiName} || '%'
+		</if>
+		<if test="status != null and status != ''">
+			AND L.STATUS = #{status}
+		</if>
+		<if test="startDate != null">
+			AND L.STARTED_AT <![CDATA[ >= ]]> #{startDate}
+		</if>
+		<if test="endDate != null">
+			AND L.STARTED_AT <![CDATA[ < ]]> #{endDate} + 1
+		</if>
+	</select>
+
 </mapper>

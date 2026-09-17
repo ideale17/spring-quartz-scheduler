@@ -11,7 +11,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.kji.scheduler.dto.ExternalApiCallHistorySearchDto;
 import com.kji.scheduler.dto.ExternalApiRequestDto;
+import com.kji.scheduler.service.ExternalApiCallLogService;
 import com.kji.scheduler.service.ExternalApiExecutionService;
 import com.kji.scheduler.service.ExternalApiService;
 
@@ -21,11 +23,16 @@ public class ExternalApiController {
 	
 	private final ExternalApiService externalApiService;
 	private final ExternalApiExecutionService externalApiExecutionService;
+	private final ExternalApiCallLogService externalApiCallLogService;
 	
-	public ExternalApiController(ExternalApiService externalApiService,
-			ExternalApiExecutionService externalApiExecutionService) {
+	public ExternalApiController(
+			ExternalApiService externalApiService,
+			ExternalApiExecutionService externalApiExecutionService,
+			ExternalApiCallLogService externalApiCallLogService) {
+
 		this.externalApiService = externalApiService;
 		this.externalApiExecutionService = externalApiExecutionService;
+		this.externalApiCallLogService = externalApiCallLogService;
 	}
 	
 	// External API 목록 조회
@@ -156,6 +163,20 @@ public class ExternalApiController {
 			
 		} catch (Exception e) {
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("External API 호출 실패: " + e.getMessage());
+		}
+	}
+	
+	// External API 호출 이력 조회
+	@GetMapping("/callHistory")
+	public ResponseEntity<?> getExternalApiCallHistory(ExternalApiCallHistorySearchDto searchDto) {
+		
+		try {
+			
+			// 1. 검색조건과 페이징 정보로 External API 호출 이력을 조회한다.
+			return ResponseEntity.ok(externalApiCallLogService.getCallHistory(searchDto));
+			
+		} catch (Exception e) {
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("External API 호출 이력 조회 실패: " + e.getMessage());
 		}
 	}
 	
