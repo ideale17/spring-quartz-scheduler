@@ -20,11 +20,9 @@ Thumbs.db
 .classpath
 bin/
 
-# === 환경 설정 제외 (보안) ===
-application.yml
-application-*.yml
-application.properties
-application-*.properties
-
 # === 기타 ===
 node_modules/
+
+# Local DB credentials
+config/application-oracle-secret.properties
+config/application-postgresql-secret.properties

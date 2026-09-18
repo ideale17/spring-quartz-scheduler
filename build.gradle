@@ -28,6 +28,7 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-security'
 	
 	implementation 'com.oracle.database.jdbc:ojdbc11:21.9.0.0'
+	runtimeOnly 'org.postgresql:postgresql'
 	implementation 'org.mybatis.spring.boot:mybatis-spring-boot-starter:3.0.5'
 	
 	compileOnly 'org.projectlombok:lombok'
