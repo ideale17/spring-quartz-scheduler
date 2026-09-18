@@ -67,7 +67,7 @@
 		<if test="startDate != null">
 			AND L.STARTED_AT <![CDATA[ >= ]]> #{startDate}
 		</if>
-		<if test="endDate != null">
+		<if test="endDateExclusive != null">
 			AND L.STARTED_AT <![CDATA[ < ]]> #{endDateExclusive}
 		</if>
 		ORDER BY L.CREATED_AT DESC, L.API_CALL_LOG_ID DESC
@@ -91,7 +91,7 @@
 		<if test="startDate != null">
 			AND L.STARTED_AT <![CDATA[ >= ]]> #{startDate}
 		</if>
-		<if test="endDate != null">
+		<if test="endDateExclusive != null">
 			AND L.STARTED_AT <![CDATA[ < ]]> #{endDateExclusive}
 		</if>
 	</select>
