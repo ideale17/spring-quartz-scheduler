@@ -11,6 +11,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
@@ -148,11 +149,21 @@ public class ExternalApiExecutionService {
 			
 			// 16. HTTP 오류 응답 정보를 저장한다.
 			long runMillis = (System.nanoTime() - startTime) / 1_000_000;
+			String errorMessage = buildHttpErrorMessage(e);
 			
 			callLog.setHttpStatus(e.getStatusCode().value());
 			callLog.setRunMillis(runMillis);
 			
-			externalApiCallLogService.markFailed(callLog, e.getMessage());
+			externalApiCallLogService.markFailed(callLog, errorMessage);
+			
+			// 17. 전체 오류 정보는 서버 로그에 기록한다.
+			log.error(
+					"External API 호출 실패. externalApiId: {}, apiName: {}, statusCode: {}",
+					externalApiId,
+					externalApi.getApiName(),
+					e.getStatusCode(),
+					e
+			);
 			
 			throw e;
 			
@@ -160,14 +171,63 @@ public class ExternalApiExecutionService {
 			
 			// 17. External API 호출 중 발생한 오류 정보를 저장한다.
 			long runMillis = (System.nanoTime() - startTime) / 1_000_000;
+			String errorMessage = buildErrorMessage(e);
 			
 			callLog.setRunMillis(runMillis);
 			
-			externalApiCallLogService.markFailed(callLog, e.getMessage());
+			externalApiCallLogService.markFailed(callLog, errorMessage);
+			
+			// 19. 전체 오류 정보는 서버 로그에 기록한다.
+			log.error(
+					"External API 호출 중 오류 발생. externalApiId: {}, apiName: {}",
+					externalApiId,
+					externalApi.getApiName(),
+					e
+			);
 			
 			throw e;
 		}
 		
+	}
+	
+	// HTTP 오류 응답의 저장용 메시지를 생성한다.
+	private String buildHttpErrorMessage(RestClientResponseException e) {
+		int statusCode = e.getStatusCode().value();
+		
+		return switch (statusCode) {
+			case 400 -> "외부 API 요청 정보 오류";
+			case 401 -> "외부 API 인증 실패";
+			case 403 -> "외부 API 접근 권한 없음";
+			case 404 -> "외부 API 요청 대상 없음";
+			case 408 -> "외부 API 요청 시간 초과";
+			case 429 -> "외부 API 호출 한도 초과";
+			case 502 -> "외부 API 게이트웨이 오류";
+			case 503 -> "외부 API 서비스 사용 불가";
+			case 504 -> "외부 API 응답 시간 초과";
+			default -> {
+				if (e.getStatusCode().is4xxClientError()) {
+					yield "외부 API 요청 오류";
+				}
+				
+				if (e.getStatusCode().is5xxServerError()) {
+					yield "외부 API 서버 오류";
+				}
+				
+				yield "외부 API 호출 실패";
+			}
+		};
+	}
+	
+	// 일반 오류의 저장용 메시지를 생성한다.
+	private String buildErrorMessage(Exception e) {
+		
+		String message = e.getMessage();
+		
+		if (message == null || message.isBlank()) {
+			return e.getClass().getSimpleName();
+		}
+		
+		return e.getClass().getSimpleName() + " - " + message;
 	}
 	
 	// 필수 External API 파라미터의 값을 검증한다.

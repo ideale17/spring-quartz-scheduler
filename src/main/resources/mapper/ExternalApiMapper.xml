@@ -51,7 +51,8 @@
                   PARAM_ID
 	</select>
 	
-	<insert id="insertExternalApi" parameterType="com.kji.scheduler.dto.ExternalApiDto" useGeneratedKeys="true" keyProperty="externalApiId" keyColumn="EXTERNAL_API_ID">
+	<insert id="insertExternalApi" parameterType="com.kji.scheduler.dto.ExternalApiDto" 
+	useGeneratedKeys="true" keyProperty="externalApiId" keyColumn="external_api_id">
 	    INSERT INTO SCHED_EXTERNAL_API (
 	    	API_NAME,
 	    	API_URL,

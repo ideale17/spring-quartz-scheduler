@@ -10,7 +10,7 @@
 			parameterType="com.kji.scheduler.dto.ExternalApiCallLogDto"
 			useGeneratedKeys="true"
 			keyProperty="apiCallLogId"
-			keyColumn="API_CALL_LOG_ID">
+			keyColumn="api_call_log_id">
 		INSERT INTO SCHED_EXTERNAL_API_CALL_LOG (
 			EXTERNAL_API_ID,
 			FIRE_INSTANCE_ID,
