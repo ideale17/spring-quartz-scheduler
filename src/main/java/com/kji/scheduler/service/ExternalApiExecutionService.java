@@ -1,5 +1,7 @@
 package com.kji.scheduler.service;
 
+import java.net.ConnectException;
+import java.net.SocketTimeoutException;
 import java.net.URI;
 import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
@@ -11,10 +13,10 @@ import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClientResponseException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
@@ -167,9 +169,29 @@ public class ExternalApiExecutionService {
 			
 			throw e;
 			
+		} catch (ResourceAccessException e) {
+			
+			// 18. External API 통신 오류 정보를 저장한다.
+			long runMillis = (System.nanoTime() - startTime) / 1_000_000;
+			String errorMessage = buildResourceAccessErrorMessage(e);
+			
+			callLog.setRunMillis(runMillis);
+			
+			externalApiCallLogService.markFailed(callLog, errorMessage);
+			
+			// 19. 전체 통신 오류 정보는 서버 로그에 기록한다.
+			log.error(
+					"External API 통신 실패. externalApiId: {}, apiName: {}",
+					externalApiId,
+					externalApi.getApiName(),
+					e
+			);
+			
+			throw e;
+			
 		} catch (Exception e) {
 			
-			// 17. External API 호출 중 발생한 오류 정보를 저장한다.
+			// 20. External API 호출 중 발생한 오류 정보를 저장한다.
 			long runMillis = (System.nanoTime() - startTime) / 1_000_000;
 			String errorMessage = buildErrorMessage(e);
 			
@@ -177,7 +199,7 @@ public class ExternalApiExecutionService {
 			
 			externalApiCallLogService.markFailed(callLog, errorMessage);
 			
-			// 19. 전체 오류 정보는 서버 로그에 기록한다.
+			// 21. 전체 오류 정보는 서버 로그에 기록한다.
 			log.error(
 					"External API 호출 중 오류 발생. externalApiId: {}, apiName: {}",
 					externalApiId,
@@ -218,6 +240,26 @@ public class ExternalApiExecutionService {
 		};
 	}
 	
+	// External API 통신 오류의 저장용 메시지를 생성한다.
+	private String buildResourceAccessErrorMessage(ResourceAccessException e) {
+		
+		Throwable cause = e.getCause();
+		
+		while (cause != null) {
+			if (cause instanceof SocketTimeoutException) {
+				return "외부 API 응답 시간 초과";
+			}
+			
+			if (cause instanceof ConnectException) {
+				return "외부 API 연결 실패";
+			}
+			
+			cause = cause.getCause();
+		}
+		
+		return "외부 API 통신 오류";
+	}
+	
 	// 일반 오류의 저장용 메시지를 생성한다.
 	private String buildErrorMessage(Exception e) {
 		
@@ -240,10 +282,7 @@ public class ExternalApiExecutionService {
 		
 		// 2. 필수 파라미터의 값이 없으면 예외를 발생시킨다.
 		if (resolvedValue == null || resolvedValue.isBlank()) {
-			throw new IllegalArgumentException(
-					"필수 External API 파라미터 값이 없습니다. "
-							+ "paramName: " + param.getParamName()
-			);
+			throw new IllegalArgumentException("필수 External API 파라미터 값이 없습니다. " + "paramName: " + param.getParamName());
 		}
 	}
 	
