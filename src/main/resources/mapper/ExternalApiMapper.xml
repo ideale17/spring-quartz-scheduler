@@ -67,8 +67,8 @@
 	    	#{httpMethod},
 	    	#{enabled},
 	    	#{description},
-	    	SYSTIMESTAMP,
-	    	SYSTIMESTAMP
+	    	CURRENT_TIMESTAMP,
+	    	CURRENT_TIMESTAMP
 	    )
 	</insert>
 	
@@ -106,7 +106,7 @@
 		       HTTP_METHOD = #{httpMethod},
 		       ENABLED = #{enabled},
 		       DESCRIPTION = #{description, jdbcType=VARCHAR},
-		       UPDATED_AT = SYSTIMESTAMP
+		       UPDATED_AT = CURRENT_TIMESTAMP
 		 WHERE EXTERNAL_API_ID = #{externalApiId}
 	</update>
 	

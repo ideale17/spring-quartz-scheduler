@@ -11,6 +11,7 @@ public class ExternalApiCallHistorySearchDto {
 	private String status;
 	private LocalDate startDate;
 	private LocalDate endDate;
+	private LocalDate endDateExclusive;
 	
 	private int page = 1;
 	private int size = 10;

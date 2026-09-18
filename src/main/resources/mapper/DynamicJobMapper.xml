@@ -111,7 +111,7 @@
             AND ACTUAL_FIRE_TIME <![CDATA[ >= ]]> #{startDate}
         </if>
         <if test="endDate != null">
-            AND ACTUAL_FIRE_TIME <![CDATA[ < ]]> #{endDate} + 1
+            AND ACTUAL_FIRE_TIME <![CDATA[ < ]]> #{endDateExclusive}
         </if>
         ORDER BY CREATED_AT DESC, LOG_ID DESC
         OFFSET #{offset} ROWS
@@ -135,7 +135,7 @@
             AND ACTUAL_FIRE_TIME <![CDATA[ >= ]]> #{startDate}
         </if>
         <if test="endDate != null">
-            AND ACTUAL_FIRE_TIME <![CDATA[ < ]]> #{endDate} + 1
+            AND ACTUAL_FIRE_TIME <![CDATA[ < ]]> #{endDateExclusive}
         </if>
     
 	</select>

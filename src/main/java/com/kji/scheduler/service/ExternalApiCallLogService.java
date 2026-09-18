@@ -48,13 +48,18 @@ public class ExternalApiCallLogService {
 	
 	public ExternalApiCallHistoryPageDto getCallHistory(ExternalApiCallHistorySearchDto searchDto) {
 		
-		// 1. 검색조건으로 External API 호출 이력을 조회한다.
+		// 1. 종료일이 있으면 조회 종료 시각을 다음 날로 계산한다.
+		if (searchDto.getEndDate() != null) {
+			searchDto.setEndDateExclusive(searchDto.getEndDate().plusDays(1));
+		}
+		
+		// 2. 검색조건으로 External API 호출 이력을 조회한다.
 		List<ExternalApiCallHistoryDto> content = mapper.findCallHistory(searchDto);
 		
-		// 2. 동일한 검색조건의 전체 호출 이력 건수를 조회한다.
+		// 3. 동일한 검색조건의 전체 호출 이력 건수를 조회한다.
 		long totalCount = mapper.countCallHistory(searchDto);
 		
-		// 3. 조회 결과와 페이징 정보를 반환한다.
+		// 4. 조회 결과와 페이징 정보를 반환한다.
 		return new ExternalApiCallHistoryPageDto(
 				content,
 				totalCount,

@@ -690,13 +690,18 @@ public class DynamicJobService {
     // Job 이력 목록 조회
     public JobHistoryPageDto getJobHistory(JobHistorySearchDto searchDto) {
     	
-    	// 1. 검색 조건에 맞는 실행 이력 목록을 조회한다.
+    	// 1. 종료일이 있으면 조회 종료 시각을 다음 날로 계산한다.
+    	if (searchDto.getEndDate() != null) {
+    		searchDto.setEndDateExclusive(searchDto.getEndDate().plusDays(1));
+    	}
+    	
+    	// 2. 검색 조건에 맞는 실행 이력 목록을 조회한다.
         List<JobHistoryDto> content = dynamicJobMapper.findJobHistory(searchDto);
 
-        // 2. 검색 조건에 맞는 전체 실행 이력 건수를 조회한다.
+        // 3. 검색 조건에 맞는 전체 실행 이력 건수를 조회한다.
         long totalCount = dynamicJobMapper.countJobHistory(searchDto);
 
-        // 3. 실행 이력 목록과 페이징 정보를 반환한다.
+        // 4. 실행 이력 목록과 페이징 정보를 반환한다.
         return new JobHistoryPageDto(
                 content,
                 totalCount,

@@ -29,7 +29,7 @@ INSERT INTO app_user (
 VALUES (
     'admin1',
     '$2a$10$46ikTYGHM12Sljb2LRWuu.5Hq2SN/ZQAfSY/WBarCQUPX4Rb.g1UW',
-    1
+    TRUE
 );
 
 

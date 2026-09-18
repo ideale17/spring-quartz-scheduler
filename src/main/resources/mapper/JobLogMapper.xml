@@ -18,7 +18,7 @@
   <update id="updateFinish">
     UPDATE SCHED_EXEC_LOG
        SET STATUS = #{status},
-           FINISHED_AT = SYSTIMESTAMP,
+           FINISHED_AT = CURRENT_TIMESTAMP,
            RUN_MILLIS = #{runMillis, jdbcType=NUMERIC},
            EXCEPTION_MESSAGE = #{exceptionMessage, jdbcType=VARCHAR}
      WHERE FIRE_INSTANCE_ID = #{fireInstanceId}
@@ -27,7 +27,7 @@
   <update id="updateVetoed">
     UPDATE SCHED_EXEC_LOG
        SET STATUS = 'VETOED',
-           FINISHED_AT = SYSTIMESTAMP
+           FINISHED_AT = CURRENT_TIMESTAMP
      WHERE FIRE_INSTANCE_ID = #{fireInstanceId}
   </update>
   

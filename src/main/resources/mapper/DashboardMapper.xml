@@ -11,8 +11,8 @@
                NVL(SUM(CASE WHEN STATUS = 'SUCCESS' THEN 1 ELSE 0 END), 0) AS SUCCESS_COUNT,
                NVL(SUM(CASE WHEN STATUS = 'FAILED' THEN 1 ELSE 0 END), 0) AS FAILED_COUNT
           FROM SCHED_EXEC_LOG
-         WHERE ACTUAL_FIRE_TIME >= TRUNC(SYSDATE)
-           AND ACTUAL_FIRE_TIME <![CDATA[ < ]]> TRUNC(SYSDATE) + 1
+         WHERE ACTUAL_FIRE_TIME <![CDATA[ >= ]]> #{startDateTime}
+           AND ACTUAL_FIRE_TIME <![CDATA[ < ]]> #{endDateTime}
 	</select>
 	
 	<!-- 최근 실패 Job 조회 -->

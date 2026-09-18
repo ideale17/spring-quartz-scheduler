@@ -1,5 +1,7 @@
 package com.kji.scheduler.service;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 import org.quartz.Scheduler;
@@ -50,13 +52,17 @@ public class DashboardService {
 			}
 		}
 		
-		// 3. 오늘 실행 현황을 조회한다.
-		DashboardExecutionSummaryDto executionSummary = dashboardMapper.findTodayExecutionSummary();
+		// 3. 오늘 실행 현황 조회 범위를 계산한다.
+		LocalDateTime todayStart = LocalDate.now().atStartOfDay();
+		LocalDateTime tomorrowStart = todayStart.plusDays(1);
 		
-		// 4. 최근 실패 Job 목록을 조회한다.
+		// 4. 오늘 실행 현황을 조회한다.
+		DashboardExecutionSummaryDto executionSummary = dashboardMapper.findTodayExecutionSummary(todayStart, tomorrowStart);
+		
+		// 5. 최근 실패 Job 목록을 조회한다.
 		List<RecentFailedJobDto> recentFailedJobs = dashboardMapper.findRecentFailedJobs();
 		
-		// 5. 조회한 정보를 Dashboard 응답 DTO에 설정한다.
+		// 6. 조회한 정보를 Dashboard 응답 DTO에 설정한다.
 		DashboardDto dashboard = new DashboardDto();
 		
 		dashboard.setTotalJobCount(totalJobCount);

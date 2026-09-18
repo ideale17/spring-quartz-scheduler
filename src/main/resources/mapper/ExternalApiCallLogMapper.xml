@@ -21,9 +21,9 @@
 		VALUES (
 			#{externalApiId},
 			#{fireInstanceId, jdbcType=VARCHAR},
-			SYSTIMESTAMP,
+			CURRENT_TIMESTAMP,
 			#{status},
-			SYSTIMESTAMP
+			CURRENT_TIMESTAMP
 		)
 	</insert>
 	
@@ -31,7 +31,7 @@
 	<update id="updateFinish" parameterType="com.kji.scheduler.dto.ExternalApiCallLogDto">
 		UPDATE SCHED_EXTERNAL_API_CALL_LOG
 		   SET HTTP_STATUS = #{httpStatus, jdbcType=NUMERIC},
-		       FINISHED_AT = SYSTIMESTAMP,
+		       FINISHED_AT = CURRENT_TIMESTAMP,
 		       RUN_MILLIS = #{runMillis, jdbcType=NUMERIC},
 		       STATUS = #{status},
 		       ERROR_MESSAGE = #{errorMessage, jdbcType=VARCHAR}
@@ -68,7 +68,7 @@
 			AND L.STARTED_AT <![CDATA[ >= ]]> #{startDate}
 		</if>
 		<if test="endDate != null">
-			AND L.STARTED_AT <![CDATA[ < ]]> #{endDate} + 1
+			AND L.STARTED_AT <![CDATA[ < ]]> #{endDateExclusive}
 		</if>
 		ORDER BY L.CREATED_AT DESC, L.API_CALL_LOG_ID DESC
 		OFFSET #{offset} ROWS
@@ -92,7 +92,7 @@
 			AND L.STARTED_AT <![CDATA[ >= ]]> #{startDate}
 		</if>
 		<if test="endDate != null">
-			AND L.STARTED_AT <![CDATA[ < ]]> #{endDate} + 1
+			AND L.STARTED_AT <![CDATA[ < ]]> #{endDateExclusive}
 		</if>
 	</select>
 
