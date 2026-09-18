@@ -110,7 +110,7 @@
         <if test="startDate != null">
             AND ACTUAL_FIRE_TIME <![CDATA[ >= ]]> #{startDate}
         </if>
-        <if test="endDate != null">
+        <if test="endDateExclusive != null">
             AND ACTUAL_FIRE_TIME <![CDATA[ < ]]> #{endDateExclusive}
         </if>
         ORDER BY CREATED_AT DESC, LOG_ID DESC
@@ -134,7 +134,7 @@
         <if test="startDate != null">
             AND ACTUAL_FIRE_TIME <![CDATA[ >= ]]> #{startDate}
         </if>
-        <if test="endDate != null">
+        <if test="endDateExclusive != null">
             AND ACTUAL_FIRE_TIME <![CDATA[ < ]]> #{endDateExclusive}
         </if>
     
