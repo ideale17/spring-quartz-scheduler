@@ -50,3 +50,13 @@ jobs:
       - name: Test SSH connection
         run: |
           ssh "${{ secrets.NCP_USER }}@${{ secrets.NCP_HOST }}" "whoami && hostname"
+      - name: Download bootJar artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: scheduler-service
+          path: deploy-artifact
+
+      - name: Upload bootJar to Naver Cloud
+        run: |
+          scp deploy-artifact/scheduler-service.jar \
+             "${{ secrets.NCP_USER }}@${{ secrets.NCP_HOST }}:/home/deploy/scheduler-service.jar"
