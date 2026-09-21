@@ -35,7 +35,7 @@ jobs:
           name: scheduler-service
           path: build/libs/scheduler-service.jar
 
-  deploy-test:
+  deploy:
     needs: build
     runs-on: ubuntu-latest
 
@@ -50,6 +50,7 @@ jobs:
       - name: Test SSH connection
         run: |
           ssh "${{ secrets.NCP_USER }}@${{ secrets.NCP_HOST }}" "whoami && hostname"
+
       - name: Download bootJar artifact
         uses: actions/download-artifact@v4
         with:
@@ -60,3 +61,10 @@ jobs:
         run: |
           scp deploy-artifact/scheduler-service.jar \
              "${{ secrets.NCP_USER }}@${{ secrets.NCP_HOST }}:/home/deploy/scheduler-service.jar"
+
+      - name: Deploy application
+        run: |
+          ssh "${{ secrets.NCP_USER }}@${{ secrets.NCP_HOST }}" \
+            "sudo /usr/bin/install -o scheduler -g scheduler -m 644 /home/deploy/scheduler-service.jar /opt/scheduler/scheduler-service.jar && \
+             sudo systemctl restart scheduler && \
+             sudo systemctl status scheduler --no-pager"
