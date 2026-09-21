@@ -28,3 +28,10 @@ jobs:
 
       - name: Build bootJar
         run: ./gradlew bootJar
+
+      - name: Upload bootJar artifact
+        uses: actions/upload-artifact@v4
+        with:
+         name: scheduler-service
+         path: build/libs/scheduler-service.jar
+		 
