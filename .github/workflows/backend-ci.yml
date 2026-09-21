@@ -66,5 +66,5 @@ jobs:
         run: |
           ssh "${{ secrets.NCP_USER }}@${{ secrets.NCP_HOST }}" \
             "sudo /usr/bin/install -o scheduler -g scheduler -m 644 /home/deploy/scheduler-service.jar /opt/scheduler/scheduler-service.jar && \
-             sudo /bin/systemctl restart scheduler && \
-             sudo /bin/systemctl status scheduler --no-pager"
+             sudo /usr/bin/systemctl restart scheduler && \
+             sudo /usr/bin/systemctl status scheduler --no-pager"
