@@ -34,4 +34,3 @@ jobs:
         with:
          name: scheduler-service
          path: build/libs/scheduler-service.jar
-		 
