@@ -144,3 +144,35 @@ CREATE TABLE app_user_role (
         FOREIGN KEY (role_id)
         REFERENCES app_role (id)
 );
+
+
+-- =========================================================
+-- 8. External API retry policy
+-- =========================================================
+
+-- External API 호출 실패 시 사용할 재시도 정책 컬럼을 추가한다.
+ALTER TABLE sched_external_api
+    ADD COLUMN retry_enabled CHAR(1) NOT NULL DEFAULT 'N',
+    ADD COLUMN max_retry_count INTEGER NOT NULL DEFAULT 0,
+    ADD COLUMN retry_interval_sec INTEGER NOT NULL DEFAULT 0;
+
+COMMENT ON COLUMN sched_external_api.retry_enabled
+IS 'External API 호출 실패 시 재시도 사용 여부 (Y/N)';
+
+COMMENT ON COLUMN sched_external_api.max_retry_count
+IS '최초 호출 실패 후 추가 재시도 최대 횟수';
+
+COMMENT ON COLUMN sched_external_api.retry_interval_sec
+IS 'External API 재시도 간격(초)';
+
+
+-- =========================================================
+-- 9. External API call retry history
+-- =========================================================
+
+-- External API 재시도 발생 시 각 호출 시도를 구분하기 위한 시도 번호 컬럼을 추가한다.
+ALTER TABLE sched_external_api_call_log
+    ADD COLUMN attempt_no INTEGER NOT NULL DEFAULT 1;
+
+COMMENT ON COLUMN sched_external_api_call_log.attempt_no
+IS 'External API 호출 시도 번호 (1: 최초 호출, 2 이상: 재시도)';
