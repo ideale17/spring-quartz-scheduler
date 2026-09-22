@@ -105,13 +105,13 @@ public class ExternalApiExecutionService {
 		log.info(
 				"External API 요청 정보 생성 완료. "
 						+ "externalApiId: {}, apiName: {}, method: {}, "
-						+ "headerCount: {}, queryCount: {}, bodyCount: {}",
+						+ "headerParams: {}, queryParams: {}, bodyParams: {}",
 				externalApiId,
 				externalApi.getApiName(),
 				externalApi.getHttpMethod(),
-				headers.size(),
-				queryParams.size(),
-				bodyParams.size()
+				headers.keySet(),
+				queryParams.keySet(),
+				bodyParams.keySet()
 		);
 		
 		// 11. External API 호출 시작 이력을 저장한다.
@@ -160,10 +160,11 @@ public class ExternalApiExecutionService {
 			
 			// 17. 전체 오류 정보는 서버 로그에 기록한다.
 			log.error(
-					"External API 호출 실패. externalApiId: {}, apiName: {}, statusCode: {}",
+					"External API 호출 실패. " + "externalApiId: {}, apiName: {}, statusCode: {}, responseBody: {}",
 					externalApiId,
 					externalApi.getApiName(),
 					e.getStatusCode(),
+					e.getResponseBodyAsString(),
 					e
 			);
 			
