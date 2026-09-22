@@ -12,6 +12,11 @@ public class ExternalApiDto {
     private String apiUrl;
     private String httpMethod;
     private String enabled;
+    
+    private String retryEnabled;
+    private Integer maxRetryCount;
+    private Integer retryIntervalSec;
+    
     private String description;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

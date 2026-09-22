@@ -12,6 +12,9 @@
                API_URL,
                HTTP_METHOD,
                ENABLED,
+               RETRY_ENABLED,
+               MAX_RETRY_COUNT,
+               RETRY_INTERVAL_SEC,
                DESCRIPTION,
                CREATED_AT,
                UPDATED_AT
@@ -26,6 +29,9 @@
                API_URL,
                HTTP_METHOD,
                ENABLED,
+               RETRY_ENABLED,
+               MAX_RETRY_COUNT,
+               RETRY_INTERVAL_SEC,
                DESCRIPTION,
                CREATED_AT,
                UPDATED_AT
@@ -58,6 +64,9 @@
 	    	API_URL,
 	    	HTTP_METHOD,
 	    	ENABLED,
+	    	RETRY_ENABLED,
+            MAX_RETRY_COUNT,
+            RETRY_INTERVAL_SEC,
 	    	DESCRIPTION,
 	    	CREATED_AT,
 	    	UPDATED_AT
@@ -67,6 +76,9 @@
 	    	#{apiUrl},
 	    	#{httpMethod},
 	    	#{enabled},
+	    	#{retryEnabled},
+	    	#{maxRetryCount},
+	    	#{retryIntervalSec},
 	    	#{description},
 	    	CURRENT_TIMESTAMP,
 	    	CURRENT_TIMESTAMP
@@ -106,6 +118,9 @@
 		       API_URL = #{apiUrl},
 		       HTTP_METHOD = #{httpMethod},
 		       ENABLED = #{enabled},
+		       RETRY_ENABLED = #{retryEnabled},
+		       MAX_RETRY_COUNT = #{maxRetryCount},
+		       RETRY_INTERVAL_SEC = #{retryIntervalSec},
 		       DESCRIPTION = #{description, jdbcType=VARCHAR},
 		       UPDATED_AT = CURRENT_TIMESTAMP
 		 WHERE EXTERNAL_API_ID = #{externalApiId}

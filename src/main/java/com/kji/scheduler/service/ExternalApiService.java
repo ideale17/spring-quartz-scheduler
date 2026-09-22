@@ -79,15 +79,18 @@ public class ExternalApiService {
 			externalApi.setEnabled("Y");
 		}
 		
-		// 3. External API 기본 정보를 등록한다.
+		// 3. 재시도 설정을 검증하고 기본값을 설정한다.
+		validateRetryPolicy(externalApi);
+		
+		// 4. External API 기본 정보를 등록한다.
 		int insertCount = externalApiMapper.insertExternalApi(externalApi);
 
-		// 4. 등록 결과를 확인한다.
+		// 5. 등록 결과를 확인한다.
 		if (insertCount != 1) {
 			throw new IllegalStateException("External API 등록에 실패했습니다.");
 		}
 		
-		// 5. 생성된 External API 식별자를 반환한다.
+		// 6. 생성된 External API 식별자를 반환한다.
 		return externalApi.getExternalApiId();
 	}
 	
@@ -120,21 +123,24 @@ public class ExternalApiService {
 			externalApi.setEnabled("Y");
 		}
 		
-		// 4. External API 기본 정보를 등록한다.
+		// 4. 재시도 설정을 검증하고 기본값을 설정한다.
+		validateRetryPolicy(externalApi);
+		
+		// 5. External API 기본 정보를 등록한다.
 		int insertCount = externalApiMapper.insertExternalApi(externalApi);
 
 		if (insertCount != 1) {
 			throw new IllegalStateException("External API 등록에 실패했습니다.");
 		}
 		
-		// 5. 생성된 External API 식별자를 확인한다.
+		// 6. 생성된 External API 식별자를 확인한다.
 		Long externalApiId = externalApi.getExternalApiId();
 		
 		if (externalApiId == null) {
 			throw new IllegalStateException("External API 식별자 생성에 실패했습니다.");
 		}
 		
-		// 6. External API 파라미터를 등록한다.
+		// 7. External API 파라미터를 등록한다.
 		if (request.getParams() != null) {
 			for (ExternalApiParamDto param : request.getParams()) {
 				
@@ -195,27 +201,30 @@ public class ExternalApiService {
 			externalApi.setEnabled("Y");
 		}
 		
-		// 5. URL의 식별자를 수정 대상에 설정한다.
+		// 5. 재시도 설정을 검증하고 기본값을 설정한다.
+		validateRetryPolicy(externalApi);
+		
+		// 6. URL의 식별자를 수정 대상에 설정한다.
 		externalApi.setExternalApiId(externalApiId);
 		
-		// 6. External API 기본 정보를 수정한다.
+		// 7. External API 기본 정보를 수정한다.
 		int updateCount = externalApiMapper.updateExternalApi(externalApi);
 		
 		if (updateCount != 1) {
 			throw new IllegalStateException("External API 수정에 실패했습니다.");
 		}
 		
-		// 7. 기존 파라미터를 모두 삭제한다.
+		// 8. 기존 파라미터를 모두 삭제한다.
 		externalApiMapper.deleteExternalApiParams(externalApiId);
 		
-		// 8. 전달받은 파라미터를 다시 등록한다.
+		// 9. 전달받은 파라미터를 다시 등록한다.
 		if (request.getParams() != null) {
 			for (ExternalApiParamDto param : request.getParams()) {
 				
-				// 9. 수정 대상 External API 식별자를 설정한다.
+				// 10. 수정 대상 External API 식별자를 설정한다.
 				param.setExternalApiId(externalApiId);
 				
-				// 10. 기본값을 설정한다.
+				// 11. 기본값을 설정한다.
 				if (param.getRequiredYn() == null || param.getRequiredYn().isBlank()) {
 					param.setRequiredYn("N");
 				}
@@ -224,7 +233,7 @@ public class ExternalApiService {
 					param.setSortOrder(0);
 				}
 				
-				// 11. 파라미터를 등록한다.
+				// 12. 파라미터를 등록한다.
 				int insertCount = externalApiMapper.insertExternalApiParam(param);
 				
 				if (insertCount != 1) {
@@ -262,6 +271,41 @@ public class ExternalApiService {
 			throw new IllegalStateException("External API 삭제에 실패했습니다.");
 		}
 		
+	}
+	
+	// External API 재시도 설정을 검증하고 기본값을 설정한다.
+	private void validateRetryPolicy(ExternalApiDto externalApi) {
+
+		// 1. 재시도 사용 여부가 없으면 기본값 N을 설정한다.
+		if (externalApi.getRetryEnabled() == null || externalApi.getRetryEnabled().isBlank()) {
+			externalApi.setRetryEnabled("N");
+		}
+
+		// 2. 재시도 사용 여부 값을 검증한다.
+		if (!"Y".equals(externalApi.getRetryEnabled())
+				&& !"N".equals(externalApi.getRetryEnabled())) {
+			throw new IllegalArgumentException("재시도 사용 여부는 Y 또는 N이어야 합니다. retryEnabled: " + externalApi.getRetryEnabled()
+			);
+		}
+
+		// 3. 재시도를 사용하지 않으면 재시도 관련 값을 0으로 초기화한다.
+		if ("N".equals(externalApi.getRetryEnabled())) {
+			externalApi.setMaxRetryCount(0);
+			externalApi.setRetryIntervalSec(0);
+			return;
+		}
+
+		// 4. 최대 재시도 횟수를 검증한다.
+		if (externalApi.getMaxRetryCount() == null
+				|| externalApi.getMaxRetryCount() <= 0) {
+			throw new IllegalArgumentException("재시도를 사용하는 경우 최대 재시도 횟수는 1 이상이어야 합니다.");
+		}
+
+		// 5. 재시도 간격을 검증한다.
+		if (externalApi.getRetryIntervalSec() == null
+				|| externalApi.getRetryIntervalSec() <= 0) {
+			throw new IllegalArgumentException("재시도를 사용하는 경우 재시도 간격은 1초 이상이어야 합니다.");
+		}
 	}
 	
 }
