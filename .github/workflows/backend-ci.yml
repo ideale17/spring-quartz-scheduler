@@ -37,34 +37,19 @@ jobs:
 
   deploy:
     needs: build
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
 
     steps:
-      - name: Set up SSH key
-        run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.NCP_SSH_KEY }}" > ~/.ssh/id_ed25519
-          chmod 600 ~/.ssh/id_ed25519
-          ssh-keyscan -H "${{ secrets.NCP_HOST }}" >> ~/.ssh/known_hosts
-
-      - name: Test SSH connection
-        run: |
-          ssh "${{ secrets.NCP_USER }}@${{ secrets.NCP_HOST }}" "whoami && hostname"
-
       - name: Download bootJar artifact
         uses: actions/download-artifact@v4
         with:
           name: scheduler-service
           path: deploy-artifact
 
-      - name: Upload bootJar to Naver Cloud
+      - name: Prepare deployment file
         run: |
-          scp deploy-artifact/scheduler-service.jar \
-             "${{ secrets.NCP_USER }}@${{ secrets.NCP_HOST }}:/home/deploy/scheduler-service.jar"
+          cp deploy-artifact/scheduler-service.jar /home/github-runner/deploy/scheduler-service.jar
 
       - name: Deploy application
         run: |
-          ssh "${{ secrets.NCP_USER }}@${{ secrets.NCP_HOST }}" \
-            "sudo /usr/bin/install -o scheduler -g scheduler -m 644 /home/deploy/scheduler-service.jar /opt/scheduler/scheduler-service.jar && \
-             sudo /usr/bin/systemctl restart scheduler && \
-             sudo /usr/bin/systemctl status scheduler"
+          sudo /usr/local/sbin/deploy-scheduler
