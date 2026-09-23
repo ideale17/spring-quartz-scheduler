@@ -1,14 +1,15 @@
 package com.kji.scheduler.service;
 
+import java.time.Duration;
 import java.util.List;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.kji.scheduler.dto.ExternalApiCallHistoryDto;
 import com.kji.scheduler.dto.ExternalApiCallHistoryPageDto;
 import com.kji.scheduler.dto.ExternalApiCallHistorySearchDto;
+import com.kji.scheduler.dto.ExternalApiCallHistorySummaryDto;
 import com.kji.scheduler.dto.ExternalApiCallLogDto;
 import com.kji.scheduler.mapper.ExternalApiCallLogMapper;
 
@@ -53,13 +54,24 @@ public class ExternalApiCallLogService {
 			searchDto.setEndDateExclusive(searchDto.getEndDate().plusDays(1));
 		}
 		
-		// 2. 검색조건으로 External API 호출 이력을 조회한다.
-		List<ExternalApiCallHistoryDto> content = mapper.findCallHistory(searchDto);
+		// 2. 검색조건으로 External API 실행 단위 호출 이력을 조회한다.
+		List<ExternalApiCallHistorySummaryDto> content = mapper.findCallHistorySummary(searchDto);
 		
-		// 3. 동일한 검색조건의 전체 호출 이력 건수를 조회한다.
-		long totalCount = mapper.countCallHistory(searchDto);
+		// 3. 각 실행의 전체 소요 시간을 계산한다.
+		for (ExternalApiCallHistorySummaryDto history : content) {
+			
+			if (history.getStartedAt() == null || history.getFinishedAt() == null) {
+				continue;
+			}
+			
+			long totalRunMillis = Duration.between(history.getStartedAt(), history.getFinishedAt()).toMillis();
+			history.setTotalRunMillis(totalRunMillis);
+		}
 		
-		// 4. 조회 결과와 페이징 정보를 반환한다.
+		// 4. 동일한 검색조건의 전체 실행 이력 건수를 조회한다.
+		long totalCount = mapper.countCallHistorySummary(searchDto);
+		
+		// 5. 조회 결과와 페이징 정보를 반환한다.
 		return new ExternalApiCallHistoryPageDto(
 				content,
 				totalCount,

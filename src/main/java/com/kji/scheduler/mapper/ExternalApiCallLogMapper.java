@@ -6,6 +6,7 @@ import org.apache.ibatis.annotations.Mapper;
 
 import com.kji.scheduler.dto.ExternalApiCallHistoryDto;
 import com.kji.scheduler.dto.ExternalApiCallHistorySearchDto;
+import com.kji.scheduler.dto.ExternalApiCallHistorySummaryDto;
 import com.kji.scheduler.dto.ExternalApiCallLogDto;
 
 @Mapper
@@ -18,5 +19,11 @@ public interface ExternalApiCallLogMapper {
 	List<ExternalApiCallHistoryDto> findCallHistory(ExternalApiCallHistorySearchDto searchDto);
 
 	long countCallHistory(ExternalApiCallHistorySearchDto searchDto);
+	
+	// External API 실행 단위 호출 이력 조회
+	List<ExternalApiCallHistorySummaryDto> findCallHistorySummary(ExternalApiCallHistorySearchDto searchDto);
+
+	// External API 실행 단위 호출 이력 전체 건수 조회
+	long countCallHistorySummary(ExternalApiCallHistorySearchDto searchDto);
 	
 }

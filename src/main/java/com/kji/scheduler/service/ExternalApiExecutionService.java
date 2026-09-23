@@ -7,6 +7,7 @@ import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -48,8 +49,9 @@ public class ExternalApiExecutionService {
 	// External API 실행 정보를 생성한다.
 	public void execute(Long externalApiId, String fireInstanceId) {
 		
-		// 1. Job 실행 기준 시간을 한 번만 생성한다.
+		// 1. External API 실행 기준 시간과 실행 식별자를 한 번만 생성한다.
 		LocalDateTime executionTime = LocalDateTime.now();
+		String executionId = UUID.randomUUID().toString();
 		
 		// 2. External API 기본 정보를 조회한다.
 		ExternalApiDto externalApi = externalApiService.getExternalApi(externalApiId);
@@ -124,7 +126,7 @@ public class ExternalApiExecutionService {
 		// 12. External API를 호출하고 실패 시 설정된 정책에 따라 재시도한다.
 		for (int attemptNo = 1; attemptNo <= maxAttempts; attemptNo++) {
 			try {
-				executeAttempt(externalApi, fireInstanceId, attemptNo, headers, queryParams, bodyParams);
+				executeAttempt(externalApi, executionId, fireInstanceId, attemptNo, headers, queryParams, bodyParams);
 				return;
 				
 			} catch (RestClientResponseException | ResourceAccessException e) {
@@ -147,6 +149,7 @@ public class ExternalApiExecutionService {
 	// External API를 한 번 호출하고 호출 이력을 저장한다.
 	private void executeAttempt(
 			ExternalApiDto externalApi,
+			String executionId,
 			String fireInstanceId,
 			int attemptNo,
 			Map<String, String> headers,
@@ -156,6 +159,7 @@ public class ExternalApiExecutionService {
 		// 1. External API 호출 시작 이력을 저장한다.
 		ExternalApiCallLogDto callLog = new ExternalApiCallLogDto();
 		callLog.setExternalApiId(externalApi.getExternalApiId());
+		callLog.setExecutionId(executionId);
 		callLog.setFireInstanceId(fireInstanceId);
 		callLog.setAttemptNo(attemptNo);
 		

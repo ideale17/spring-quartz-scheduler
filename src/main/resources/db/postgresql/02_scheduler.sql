@@ -176,3 +176,10 @@ ALTER TABLE sched_external_api_call_log
 
 COMMENT ON COLUMN sched_external_api_call_log.attempt_no
 IS 'External API 호출 시도 번호 (1: 최초 호출, 2 이상: 재시도)';
+
+
+ALTER TABLE sched_external_api_call_log
+    ADD COLUMN execution_id VARCHAR(36);
+
+COMMENT ON COLUMN sched_external_api_call_log.execution_id
+IS 'External API 1회 실행 단위를 식별하는 ID';

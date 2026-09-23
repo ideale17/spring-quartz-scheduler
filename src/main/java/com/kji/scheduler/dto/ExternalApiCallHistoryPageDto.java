@@ -9,7 +9,7 @@ import lombok.Data;
 @AllArgsConstructor
 public class ExternalApiCallHistoryPageDto {
 	
-	private List<ExternalApiCallHistoryDto> content;
+	private List<ExternalApiCallHistorySummaryDto> content;
 	private long totalCount;
 	private int page;
 	private int size;

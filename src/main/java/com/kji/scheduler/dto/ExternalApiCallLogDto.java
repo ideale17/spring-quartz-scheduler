@@ -9,6 +9,7 @@ public class ExternalApiCallLogDto {
 	
 	private Long apiCallLogId;
 	private Long externalApiId;
+	private String executionId;
 	private String fireInstanceId;
 	private Integer attemptNo;
 	private Integer httpStatus;
