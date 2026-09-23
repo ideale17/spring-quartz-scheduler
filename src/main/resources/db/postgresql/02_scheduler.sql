@@ -177,7 +177,7 @@ ALTER TABLE sched_external_api_call_log
 COMMENT ON COLUMN sched_external_api_call_log.attempt_no
 IS 'External API 호출 시도 번호 (1: 최초 호출, 2 이상: 재시도)';
 
-
+-- External API 1회 실행 단위를 식별하기 위한 실행 식별자 컬럼을 추가한다.
 ALTER TABLE sched_external_api_call_log
     ADD COLUMN execution_id VARCHAR(36);
 
