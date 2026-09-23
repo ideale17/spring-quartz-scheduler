@@ -114,22 +114,62 @@ public class ExternalApiExecutionService {
 				bodyParams.keySet()
 		);
 		
-		// 11. External API 호출 시작 이력을 저장한다.
+		// 11. External API 최대 호출 횟수를 계산한다.
+		int maxAttempts = 1;
+		
+		if ("Y".equals(externalApi.getRetryEnabled())) {
+			maxAttempts += externalApi.getMaxRetryCount();
+		}
+		
+		// 12. External API를 호출하고 실패 시 설정된 정책에 따라 재시도한다.
+		for (int attemptNo = 1; attemptNo <= maxAttempts; attemptNo++) {
+			try {
+				executeAttempt(externalApi, fireInstanceId, attemptNo, headers, queryParams, bodyParams);
+				return;
+				
+			} catch (RestClientResponseException | ResourceAccessException e) {
+				
+				// 13. 재시도 가능한 오류인지 확인한다.
+				boolean retryable = isRetryable(e);
+				boolean hasNextAttempt = attemptNo < maxAttempts;
+				
+				if (!retryable || !hasNextAttempt) {
+					throw e;
+				}
+				
+				// 14. 다음 호출 전 재시도 간격만큼 대기한다.
+				waitRetryInterval(externalApi, attemptNo);
+			}
+		}
+		
+	}
+	
+	// External API를 한 번 호출하고 호출 이력을 저장한다.
+	private void executeAttempt(
+			ExternalApiDto externalApi,
+			String fireInstanceId,
+			int attemptNo,
+			Map<String, String> headers,
+			Map<String, String> queryParams,
+			Map<String, String> bodyParams) {
+		
+		// 1. External API 호출 시작 이력을 저장한다.
 		ExternalApiCallLogDto callLog = new ExternalApiCallLogDto();
-		callLog.setExternalApiId(externalApiId);
+		callLog.setExternalApiId(externalApi.getExternalApiId());
 		callLog.setFireInstanceId(fireInstanceId);
+		callLog.setAttemptNo(attemptNo);
 		
 		externalApiCallLogService.insertStart(callLog);
 		
-		// 12. External API 호출 소요 시간 측정을 시작한다.
+		// 2. External API 호출 소요 시간 측정을 시작한다.
 		long startTime = System.nanoTime();
 		
 		try {
 			
-			// 13. External API를 호출한다.
+			// 3. External API를 호출한다.
 			ResponseEntity<String> response = callExternalApi(externalApi, headers, queryParams, bodyParams);
 			
-			// 14. External API 호출 성공 정보를 저장한다.
+			// 4. External API 호출 성공 정보를 저장한다.
 			long runMillis = (System.nanoTime() - startTime) / 1_000_000;
 			
 			callLog.setHttpStatus(response.getStatusCode().value());
@@ -137,19 +177,19 @@ public class ExternalApiExecutionService {
 			
 			externalApiCallLogService.markSuccess(callLog);
 			
-			// 15. External API 호출 결과를 기록한다.
+			// 5. External API 호출 결과를 기록한다.
 			log.info(
-					"External API 호출 완료. "
-							+ "externalApiId: {}, apiName: {}, statusCode: {}, runMillis: {}",
-					externalApiId,
+					"External API 호출 완료. externalApiId: {}, apiName: {}, attemptNo: {}, statusCode: {}, runMillis: {}",
+					externalApi.getExternalApiId(),
 					externalApi.getApiName(),
+					attemptNo,
 					response.getStatusCode(),
 					runMillis
 			);
 			
 		} catch (RestClientResponseException e) {
 			
-			// 16. HTTP 오류 응답 정보를 저장한다.
+			// 6. HTTP 오류 응답 정보를 저장한다.
 			long runMillis = (System.nanoTime() - startTime) / 1_000_000;
 			String errorMessage = buildHttpErrorMessage(e);
 			
@@ -158,11 +198,11 @@ public class ExternalApiExecutionService {
 			
 			externalApiCallLogService.markFailed(callLog, errorMessage);
 			
-			// 17. 전체 오류 정보는 서버 로그에 기록한다.
 			log.error(
-					"External API 호출 실패. " + "externalApiId: {}, apiName: {}, statusCode: {}, responseBody: {}",
-					externalApiId,
+					"External API 호출 실패. externalApiId: {}, apiName: {}, attemptNo: {}, statusCode: {}, responseBody: {}",
+					externalApi.getExternalApiId(),
 					externalApi.getApiName(),
+					attemptNo,
 					e.getStatusCode(),
 					e.getResponseBodyAsString(),
 					e
@@ -172,7 +212,7 @@ public class ExternalApiExecutionService {
 			
 		} catch (ResourceAccessException e) {
 			
-			// 18. External API 통신 오류 정보를 저장한다.
+			// 7. External API 통신 오류 정보를 저장한다.
 			long runMillis = (System.nanoTime() - startTime) / 1_000_000;
 			String errorMessage = buildResourceAccessErrorMessage(e);
 			
@@ -180,11 +220,11 @@ public class ExternalApiExecutionService {
 			
 			externalApiCallLogService.markFailed(callLog, errorMessage);
 			
-			// 19. 전체 통신 오류 정보는 서버 로그에 기록한다.
 			log.error(
-					"External API 통신 실패. externalApiId: {}, apiName: {}",
-					externalApiId,
+					"External API 통신 실패. externalApiId: {}, apiName: {}, attemptNo: {}",
+					externalApi.getExternalApiId(),
 					externalApi.getApiName(),
+					attemptNo,
 					e
 			);
 			
@@ -192,7 +232,7 @@ public class ExternalApiExecutionService {
 			
 		} catch (Exception e) {
 			
-			// 20. External API 호출 중 발생한 오류 정보를 저장한다.
+			// 8. External API 호출 중 발생한 오류 정보를 저장한다.
 			long runMillis = (System.nanoTime() - startTime) / 1_000_000;
 			String errorMessage = buildErrorMessage(e);
 			
@@ -200,15 +240,58 @@ public class ExternalApiExecutionService {
 			
 			externalApiCallLogService.markFailed(callLog, errorMessage);
 			
-			// 21. 전체 오류 정보는 서버 로그에 기록한다.
 			log.error(
-					"External API 호출 중 오류 발생. externalApiId: {}, apiName: {}",
-					externalApiId,
+					"External API 호출 중 오류 발생. externalApiId: {}, apiName: {}, attemptNo: {}",
+					externalApi.getExternalApiId(),
 					externalApi.getApiName(),
+					attemptNo,
 					e
 			);
 			
 			throw e;
+		}
+	}
+	
+	// External API 호출 오류가 재시도 대상인지 확인한다.
+	private boolean isRetryable(Exception e) {
+		
+		// 1. 연결 실패나 응답 시간 초과 등의 통신 오류는 재시도한다.
+		if (e instanceof ResourceAccessException) {
+			return true;
+		}
+		
+		// 2. HTTP 오류가 아니면 재시도하지 않는다.
+		if (!(e instanceof RestClientResponseException responseException)) {
+			return false;
+		}
+		
+		// 3. 일시적인 HTTP 오류만 재시도한다.
+		int statusCode = responseException.getStatusCode().value();
+		
+		return statusCode == 408
+				|| statusCode == 429
+				|| responseException.getStatusCode().is5xxServerError();
+	}
+	
+	// 다음 External API 재시도 전 설정된 시간만큼 대기한다.
+	private void waitRetryInterval(ExternalApiDto externalApi, int attemptNo) {
+		
+		long retryIntervalMillis = externalApi.getRetryIntervalSec() * 1000L;
+		
+		log.info(
+				"External API 재시도 대기. externalApiId: {}, apiName: {}, attemptNo: {}, retryIntervalSec: {}",
+				externalApi.getExternalApiId(),
+				externalApi.getApiName(),
+				attemptNo,
+				externalApi.getRetryIntervalSec()
+		);
+		
+		try {
+			Thread.sleep(retryIntervalMillis);
+			
+		} catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
+			throw new IllegalStateException("External API 재시도 대기 중 인터럽트가 발생했습니다.", e);
 		}
 		
 	}
