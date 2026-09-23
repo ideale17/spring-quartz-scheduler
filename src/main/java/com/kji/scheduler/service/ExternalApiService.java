@@ -275,37 +275,34 @@ public class ExternalApiService {
 	
 	// External API 재시도 설정을 검증하고 기본값을 설정한다.
 	private void validateRetryPolicy(ExternalApiDto externalApi) {
-
+		
 		// 1. 재시도 사용 여부가 없으면 기본값 N을 설정한다.
 		if (externalApi.getRetryEnabled() == null || externalApi.getRetryEnabled().isBlank()) {
 			externalApi.setRetryEnabled("N");
 		}
-
+		
 		// 2. 재시도 사용 여부 값을 검증한다.
-		if (!"Y".equals(externalApi.getRetryEnabled())
-				&& !"N".equals(externalApi.getRetryEnabled())) {
-			throw new IllegalArgumentException("재시도 사용 여부는 Y 또는 N이어야 합니다. retryEnabled: " + externalApi.getRetryEnabled()
-			);
+		if (!"Y".equals(externalApi.getRetryEnabled()) && !"N".equals(externalApi.getRetryEnabled())) {
+			throw new IllegalArgumentException("재시도 사용 여부는 Y 또는 N이어야 합니다. retryEnabled: " + externalApi.getRetryEnabled());
 		}
-
+		
 		// 3. 재시도를 사용하지 않으면 재시도 관련 값을 0으로 초기화한다.
 		if ("N".equals(externalApi.getRetryEnabled())) {
 			externalApi.setMaxRetryCount(0);
 			externalApi.setRetryIntervalSec(0);
 			return;
 		}
-
+		
 		// 4. 최대 재시도 횟수를 검증한다.
-		if (externalApi.getMaxRetryCount() == null
-				|| externalApi.getMaxRetryCount() <= 0) {
+		if (externalApi.getMaxRetryCount() == null || externalApi.getMaxRetryCount() <= 0) {
 			throw new IllegalArgumentException("재시도를 사용하는 경우 최대 재시도 횟수는 1 이상이어야 합니다.");
 		}
-
+		
 		// 5. 재시도 간격을 검증한다.
-		if (externalApi.getRetryIntervalSec() == null
-				|| externalApi.getRetryIntervalSec() <= 0) {
+		if (externalApi.getRetryIntervalSec() == null || externalApi.getRetryIntervalSec() <= 0) {
 			throw new IllegalArgumentException("재시도를 사용하는 경우 재시도 간격은 1초 이상이어야 합니다.");
 		}
+		
 	}
 	
 }
