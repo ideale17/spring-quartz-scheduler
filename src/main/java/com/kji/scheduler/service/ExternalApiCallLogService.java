@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.kji.scheduler.dto.ExternalApiCallHistoryDto;
 import com.kji.scheduler.dto.ExternalApiCallHistoryPageDto;
 import com.kji.scheduler.dto.ExternalApiCallHistorySearchDto;
 import com.kji.scheduler.dto.ExternalApiCallHistorySummaryDto;
@@ -77,6 +78,18 @@ public class ExternalApiCallLogService {
 				totalCount,
 				searchDto.getPage(),
 				searchDto.getSize());
+	}
+	
+	// External API 실행별 호출 시도 이력 조회
+	public List<ExternalApiCallHistoryDto> getCallHistoryDetail(String executionId) {
+		
+		// 1. 실행 식별자를 검증한다.
+		if (executionId == null || executionId.isBlank()) {
+			throw new IllegalArgumentException("External API 실행 식별자는 필수입니다.");
+		}
+		
+		// 2. 실행 식별자로 각 호출 시도 이력을 조회한다.
+		return mapper.findCallHistoryDetail(executionId);
 	}
 	
 }

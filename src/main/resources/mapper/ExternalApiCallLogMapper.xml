@@ -192,4 +192,27 @@
 		</where>
 	</select>
 	
+	<!-- External API 실행별 호출 시도 이력 조회 -->
+	<select id="findCallHistoryDetail" resultType="com.kji.scheduler.dto.ExternalApiCallHistoryDto">
+		SELECT
+			L.API_CALL_LOG_ID,
+			L.EXTERNAL_API_ID,
+			L.EXECUTION_ID,
+			A.API_NAME,
+			L.FIRE_INSTANCE_ID,
+			L.ATTEMPT_NO,
+			L.HTTP_STATUS,
+			L.STARTED_AT,
+			L.FINISHED_AT,
+			L.RUN_MILLIS,
+			L.STATUS,
+			L.ERROR_MESSAGE,
+			L.CREATED_AT
+		FROM SCHED_EXTERNAL_API_CALL_LOG L
+		LEFT JOIN SCHED_EXTERNAL_API A
+		  ON L.EXTERNAL_API_ID = A.EXTERNAL_API_ID
+		WHERE L.EXECUTION_ID = #{executionId}
+		ORDER BY L.ATTEMPT_NO
+	</select>
+	
 </mapper>

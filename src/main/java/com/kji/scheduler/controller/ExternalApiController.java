@@ -180,4 +180,21 @@ public class ExternalApiController {
 		}
 	}
 	
+	// External API 실행별 호출 시도 이력 조회
+	@GetMapping("/callHistory/detail")
+	public ResponseEntity<?> getExternalApiCallHistoryDetail(@RequestParam(name = "executionId") String executionId) {
+		
+		try {
+			
+			// 1. 실행 식별자로 External API 호출 시도 이력을 조회한다.
+			return ResponseEntity.ok(externalApiCallLogService.getCallHistoryDetail(executionId));
+			
+		} catch (IllegalArgumentException e) {
+			return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+			
+		} catch (Exception e) {
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("External API 호출 상세 이력 조회 실패: " + e.getMessage());
+		}
+	}
+	
 }
