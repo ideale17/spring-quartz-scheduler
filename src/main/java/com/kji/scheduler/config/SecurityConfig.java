@@ -51,11 +51,11 @@ public class SecurityConfig {
 			.csrf(csrf -> csrf
 					.csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
 					.csrfTokenRequestHandler(requestHandler)  // 추가: 헤더(X-XSRF-TOKEN) 인식
-					.ignoringRequestMatchers("/auth/login", "/auth/logout")
+					.ignoringRequestMatchers("/auth/login", "/auth/logout", "/auth/signup")
 					)
 			.sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
 			.authorizeHttpRequests(auth -> auth
-					.requestMatchers("/auth/login", "/auth/logout", "/actuator/health", "/h2-console/**").permitAll()
+					.requestMatchers("/auth/login", "/auth/logout", "/auth/signup", "/actuator/health", "/h2-console/**").permitAll()
 					.anyRequest().authenticated()
 					)
 			.headers(h -> h.frameOptions(f -> f.sameOrigin())) // H2 console용

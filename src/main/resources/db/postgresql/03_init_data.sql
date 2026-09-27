@@ -11,9 +11,9 @@
 INSERT INTO app_role (
     name
 )
-VALUES (
-    'ROLE_ADMIN'
-);
+VALUES
+    ('ROLE_ADMIN'),
+    ('ROLE_USER');
 
 
 -- =========================================================
