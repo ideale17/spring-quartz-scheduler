@@ -82,15 +82,18 @@ public class ExternalApiService {
 		// 3. 재시도 설정을 검증하고 기본값을 설정한다.
 		validateRetryPolicy(externalApi);
 		
-		// 4. External API 기본 정보를 등록한다.
+		// 4. 재시도 설정을 검증하고 기본값을 설정한다.
+		validateRetryPolicy(externalApi);
+				
+		// 5. External API 기본 정보를 등록한다.
 		int insertCount = externalApiMapper.insertExternalApi(externalApi);
 
-		// 5. 등록 결과를 확인한다.
+		// 6. 등록 결과를 확인한다.
 		if (insertCount != 1) {
 			throw new IllegalStateException("External API 등록에 실패했습니다.");
 		}
 		
-		// 6. 생성된 External API 식별자를 반환한다.
+		// 7. 생성된 External API 식별자를 반환한다.
 		return externalApi.getExternalApiId();
 	}
 	
@@ -126,28 +129,31 @@ public class ExternalApiService {
 		// 4. 재시도 설정을 검증하고 기본값을 설정한다.
 		validateRetryPolicy(externalApi);
 		
-		// 5. External API 기본 정보를 등록한다.
+		// 5. 인증 설정을 검증하고 기본값을 설정한다.
+		validateAuth(externalApi);
+		
+		// 6. External API 기본 정보를 등록한다.
 		int insertCount = externalApiMapper.insertExternalApi(externalApi);
 
 		if (insertCount != 1) {
 			throw new IllegalStateException("External API 등록에 실패했습니다.");
 		}
 		
-		// 6. 생성된 External API 식별자를 확인한다.
+		// 7. 생성된 External API 식별자를 확인한다.
 		Long externalApiId = externalApi.getExternalApiId();
 		
 		if (externalApiId == null) {
 			throw new IllegalStateException("External API 식별자 생성에 실패했습니다.");
 		}
 		
-		// 7. External API 파라미터를 등록한다.
+		// 8. External API 파라미터를 등록한다.
 		if (request.getParams() != null) {
 			for (ExternalApiParamDto param : request.getParams()) {
 				
-				// 7. 생성된 External API 식별자를 파라미터에 설정한다.
+				// 9. 생성된 External API 식별자를 파라미터에 설정한다.
 				param.setExternalApiId(externalApiId);
 				
-				// 8. 파라미터 기본값을 설정한다.
+				// 10. 파라미터 기본값을 설정한다.
 				if (param.getRequiredYn() == null || param.getRequiredYn().isBlank()) {
 					param.setRequiredYn("N");
 				}
@@ -156,7 +162,7 @@ public class ExternalApiService {
 					param.setSortOrder(0);
 				}
 				
-				// 9. 파라미터를 등록한다.
+				// 11. 파라미터를 등록한다.
 				int paramInsertCount = externalApiMapper.insertExternalApiParam(param);
 				
 				if (paramInsertCount != 1) {
@@ -165,7 +171,7 @@ public class ExternalApiService {
 			}
 		}
 		
-		// 10. 생성된 External API 식별자를 반환한다.
+		// 12. 생성된 External API 식별자를 반환한다.
 		return externalApiId;
 	}
 	
@@ -204,27 +210,30 @@ public class ExternalApiService {
 		// 5. 재시도 설정을 검증하고 기본값을 설정한다.
 		validateRetryPolicy(externalApi);
 		
-		// 6. URL의 식별자를 수정 대상에 설정한다.
+		// 6. 인증 설정을 검증하고 기본값을 설정한다.
+		validateAuth(externalApi);
+		
+		// 7. URL의 식별자를 수정 대상에 설정한다.
 		externalApi.setExternalApiId(externalApiId);
 		
-		// 7. External API 기본 정보를 수정한다.
+		// 8. External API 기본 정보를 수정한다.
 		int updateCount = externalApiMapper.updateExternalApi(externalApi);
 		
 		if (updateCount != 1) {
 			throw new IllegalStateException("External API 수정에 실패했습니다.");
 		}
 		
-		// 8. 기존 파라미터를 모두 삭제한다.
+		// 9. 기존 파라미터를 모두 삭제한다.
 		externalApiMapper.deleteExternalApiParams(externalApiId);
 		
-		// 9. 전달받은 파라미터를 다시 등록한다.
+		// 10. 전달받은 파라미터를 다시 등록한다.
 		if (request.getParams() != null) {
 			for (ExternalApiParamDto param : request.getParams()) {
 				
-				// 10. 수정 대상 External API 식별자를 설정한다.
+				// 11. 수정 대상 External API 식별자를 설정한다.
 				param.setExternalApiId(externalApiId);
 				
-				// 11. 기본값을 설정한다.
+				// 12. 기본값을 설정한다.
 				if (param.getRequiredYn() == null || param.getRequiredYn().isBlank()) {
 					param.setRequiredYn("N");
 				}
@@ -233,7 +242,7 @@ public class ExternalApiService {
 					param.setSortOrder(0);
 				}
 				
-				// 12. 파라미터를 등록한다.
+				// 13. 파라미터를 등록한다.
 				int insertCount = externalApiMapper.insertExternalApiParam(param);
 				
 				if (insertCount != 1) {
@@ -303,6 +312,77 @@ public class ExternalApiService {
 			throw new IllegalArgumentException("재시도를 사용하는 경우 재시도 간격은 1초 이상이어야 합니다.");
 		}
 		
+	}
+	
+	// External API 인증 설정을 검증하고 기본값을 설정한다.
+	private void validateAuth(ExternalApiDto externalApi) {
+	    
+	    // 1. 인증 방식이 없으면 인증 없음으로 설정한다.
+	    if (externalApi.getAuthType() == null || externalApi.getAuthType().isBlank()) {
+	        externalApi.setAuthType("NONE");
+	    }
+	    
+	    // 2. 인증 방식에 따라 필요한 값을 검증한다.
+	    switch (externalApi.getAuthType()) {
+	    
+		    case "NONE":
+		        externalApi.setAuthLocation(null);
+		        externalApi.setAuthKey(null);
+		        externalApi.setAuthValue(null);
+		        externalApi.setAuthUsername(null);
+		        externalApi.setAuthPassword(null);
+		        break;
+		        
+		    case "API_KEY":
+		        if (externalApi.getAuthLocation() == null || externalApi.getAuthLocation().isBlank()) {
+		            throw new IllegalArgumentException("API Key 인증은 전달 위치가 필수입니다.");
+		        }
+		        
+		        if (!"HEADER".equals(externalApi.getAuthLocation()) && !"QUERY".equals(externalApi.getAuthLocation())) {
+		            throw new IllegalArgumentException("API Key 전달 위치는 HEADER 또는 QUERY여야 합니다. authLocation: " + externalApi.getAuthLocation());
+		        }
+		        
+		        if (externalApi.getAuthKey() == null || externalApi.getAuthKey().isBlank()) {
+		            throw new IllegalArgumentException("API Key 인증은 Key 이름이 필수입니다.");
+		        }
+		        
+		        if (externalApi.getAuthValue() == null || externalApi.getAuthValue().isBlank()) {
+		            throw new IllegalArgumentException("API Key 인증은 Key 값이 필수입니다.");
+		        }
+		        
+		        externalApi.setAuthUsername(null);
+		        externalApi.setAuthPassword(null);
+		        break;
+		        
+		    case "BEARER":
+		        if (externalApi.getAuthValue() == null || externalApi.getAuthValue().isBlank()) {
+		            throw new IllegalArgumentException("Bearer Token 인증은 Token 값이 필수입니다.");
+		        }
+		        
+		        externalApi.setAuthLocation(null);
+		        externalApi.setAuthKey(null);
+		        externalApi.setAuthUsername(null);
+		        externalApi.setAuthPassword(null);
+		        break;
+		        
+		    case "BASIC":
+		        if (externalApi.getAuthUsername() == null || externalApi.getAuthUsername().isBlank()) {
+		            throw new IllegalArgumentException("Basic Auth는 사용자명이 필수입니다.");
+		        }
+		        
+		        if (externalApi.getAuthPassword() == null || externalApi.getAuthPassword().isBlank()) {
+		            throw new IllegalArgumentException("Basic Auth는 비밀번호가 필수입니다.");
+		        }
+		        
+		        externalApi.setAuthLocation(null);
+		        externalApi.setAuthKey(null);
+		        externalApi.setAuthValue(null);
+		        break;
+		        
+		    default:
+		        throw new IllegalArgumentException(
+		                "지원하지 않는 인증 방식입니다. authType: " + externalApi.getAuthType());
+	    }
 	}
 	
 }

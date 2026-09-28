@@ -15,6 +15,12 @@
                RETRY_ENABLED,
                MAX_RETRY_COUNT,
                RETRY_INTERVAL_SEC,
+               AUTH_TYPE,
+               AUTH_LOCATION,
+               AUTH_KEY,
+               AUTH_VALUE,
+               AUTH_USERNAME,
+               AUTH_PASSWORD,
                DESCRIPTION,
                CREATED_AT,
                UPDATED_AT
@@ -32,6 +38,12 @@
                RETRY_ENABLED,
                MAX_RETRY_COUNT,
                RETRY_INTERVAL_SEC,
+               AUTH_TYPE,
+               AUTH_LOCATION,
+               AUTH_KEY,
+               AUTH_VALUE,
+               AUTH_USERNAME,
+               AUTH_PASSWORD,
                DESCRIPTION,
                CREATED_AT,
                UPDATED_AT
@@ -57,31 +69,46 @@
                   PARAM_ID
 	</select>
 	
-	<insert id="insertExternalApi" parameterType="com.kji.scheduler.dto.ExternalApiDto" 
-	useGeneratedKeys="true" keyProperty="externalApiId" keyColumn="external_api_id">
+	<insert id="insertExternalApi" 
+			parameterType="com.kji.scheduler.dto.ExternalApiDto" 
+			useGeneratedKeys="true"
+			keyProperty="externalApiId"
+			keyColumn="external_api_id">
 	    INSERT INTO SCHED_EXTERNAL_API (
 	    	API_NAME,
-	    	API_URL,
-	    	HTTP_METHOD,
-	    	ENABLED,
-	    	RETRY_ENABLED,
+            API_URL,
+            HTTP_METHOD,
+            ENABLED,
+            RETRY_ENABLED,
             MAX_RETRY_COUNT,
             RETRY_INTERVAL_SEC,
-	    	DESCRIPTION,
-	    	CREATED_AT,
-	    	UPDATED_AT
+            AUTH_TYPE,
+            AUTH_LOCATION,
+            AUTH_KEY,
+            AUTH_VALUE,
+            AUTH_USERNAME,
+            AUTH_PASSWORD,
+            DESCRIPTION,
+            CREATED_AT,
+            UPDATED_AT
 	    )
 	    VALUES (
-	    	#{apiName},
-	    	#{apiUrl},
-	    	#{httpMethod},
-	    	#{enabled},
-	    	#{retryEnabled},
-	    	#{maxRetryCount},
-	    	#{retryIntervalSec},
-	    	#{description},
-	    	CURRENT_TIMESTAMP,
-	    	CURRENT_TIMESTAMP
+	        #{apiName},
+            #{apiUrl},
+            #{httpMethod},
+            #{enabled},
+            #{retryEnabled},
+            #{maxRetryCount},
+            #{retryIntervalSec},
+            #{authType},
+            #{authLocation, jdbcType=VARCHAR},
+            #{authKey, jdbcType=VARCHAR},
+            #{authValue, jdbcType=VARCHAR},
+            #{authUsername, jdbcType=VARCHAR},
+            #{authPassword, jdbcType=VARCHAR},
+            #{description, jdbcType=VARCHAR},
+            CURRENT_TIMESTAMP,
+            CURRENT_TIMESTAMP
 	    )
 	</insert>
 	
@@ -121,6 +148,12 @@
 		       RETRY_ENABLED = #{retryEnabled},
 		       MAX_RETRY_COUNT = #{maxRetryCount},
 		       RETRY_INTERVAL_SEC = #{retryIntervalSec},
+		       AUTH_TYPE = #{authType},
+               AUTH_LOCATION = #{authLocation, jdbcType=VARCHAR},
+               AUTH_KEY = #{authKey, jdbcType=VARCHAR},
+               AUTH_VALUE = #{authValue, jdbcType=VARCHAR},
+               AUTH_USERNAME = #{authUsername, jdbcType=VARCHAR},
+               AUTH_PASSWORD = #{authPassword, jdbcType=VARCHAR},
 		       DESCRIPTION = #{description, jdbcType=VARCHAR},
 		       UPDATED_AT = CURRENT_TIMESTAMP
 		 WHERE EXTERNAL_API_ID = #{externalApiId}

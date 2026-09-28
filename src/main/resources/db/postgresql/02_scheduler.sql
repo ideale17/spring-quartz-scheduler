@@ -310,3 +310,49 @@ CREATE TABLE app_user_role (
         FOREIGN KEY (role_id)
         REFERENCES app_role (id)
 );
+
+
+-- =========================================================
+-- 9. External API authentication
+-- =========================================================
+
+-- External API 호출 시 사용할 인증 정보를 추가한다.
+ALTER TABLE sched_external_api
+    ADD COLUMN auth_type VARCHAR(20) NOT NULL DEFAULT 'NONE',
+    ADD COLUMN auth_location VARCHAR(20),
+    ADD COLUMN auth_key VARCHAR(200),
+    ADD COLUMN auth_value VARCHAR(2000),
+    ADD COLUMN auth_username VARCHAR(200),
+    ADD COLUMN auth_password VARCHAR(2000);
+
+-- 인증 방식
+ALTER TABLE sched_external_api
+    ADD CONSTRAINT ck_sched_external_api_auth_type
+        CHECK (auth_type IN ('NONE', 'API_KEY', 'BEARER', 'BASIC'));
+
+-- API Key 전달 위치
+ALTER TABLE sched_external_api
+    ADD CONSTRAINT ck_sched_external_api_auth_location
+        CHECK (
+            auth_location IS NULL
+            OR auth_location IN ('HEADER', 'QUERY')
+        );
+
+-- 인증 정보 컬럼 설명
+COMMENT ON COLUMN sched_external_api.auth_type
+IS 'External API 인증 방식 (NONE, API_KEY, BEARER, BASIC)';
+
+COMMENT ON COLUMN sched_external_api.auth_location
+IS 'API Key 전달 위치 (HEADER, QUERY)';
+
+COMMENT ON COLUMN sched_external_api.auth_key
+IS 'API Key 이름 (예: X-API-KEY, serviceKey)';
+
+COMMENT ON COLUMN sched_external_api.auth_value
+IS 'API Key 또는 Bearer Token 값';
+
+COMMENT ON COLUMN sched_external_api.auth_username
+IS 'Basic Authentication 사용자명';
+
+COMMENT ON COLUMN sched_external_api.auth_password
+IS 'Basic Authentication 비밀번호';
