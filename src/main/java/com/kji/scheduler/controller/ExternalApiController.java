@@ -48,12 +48,12 @@ public class ExternalApiController {
 		
 	}
 	
-	// External API 단건 조회
+	// External API 상세 조회
 	@GetMapping("/detail")
 	public ResponseEntity<?> getExternalApi(@RequestParam(name = "externalApiId") Long externalApiId) {
 		
 		try {
-			return ResponseEntity.ok(externalApiService.getExternalApi(externalApiId));
+			return ResponseEntity.ok(externalApiService.getExternalApiDetail(externalApiId));
 			
 		} catch (IllegalArgumentException e) {
 			return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());

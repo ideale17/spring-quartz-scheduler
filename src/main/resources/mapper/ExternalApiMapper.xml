@@ -50,7 +50,40 @@
           FROM SCHED_EXTERNAL_API
          WHERE EXTERNAL_API_ID = #{externalApiId}
 	</select>
-
+	
+	<!-- External API 화면용 단건 조회 -->
+	<select id="findExternalApiDetail" resultType="com.kji.scheduler.dto.ExternalApiDto">
+        SELECT EXTERNAL_API_ID,
+               API_NAME,
+               API_URL,
+               HTTP_METHOD,
+               ENABLED,
+               RETRY_ENABLED,
+               MAX_RETRY_COUNT,
+               RETRY_INTERVAL_SEC,
+               AUTH_TYPE,
+               AUTH_LOCATION,
+               AUTH_KEY,
+               AUTH_USERNAME,
+               CASE
+                   WHEN AUTH_VALUE IS NOT NULL
+                        AND AUTH_VALUE <![CDATA[<>]]> ''
+                   THEN TRUE
+                   ELSE FALSE
+               END AS AUTH_VALUE_CONFIGURED,
+               CASE
+                   WHEN AUTH_PASSWORD IS NOT NULL
+                        AND AUTH_PASSWORD <![CDATA[<>]]> ''
+                   THEN TRUE
+                   ELSE FALSE
+               END AS AUTH_PASSWORD_CONFIGURED,
+               DESCRIPTION,
+               CREATED_AT,
+               UPDATED_AT
+          FROM SCHED_EXTERNAL_API
+         WHERE EXTERNAL_API_ID = #{externalApiId}
+	</select>
+	
 	<!-- External API 파라미터 목록 조회 -->
 	<select id="findExternalApiParamList" resultType="com.kji.scheduler.dto.ExternalApiParamDto">
         SELECT PARAM_ID,

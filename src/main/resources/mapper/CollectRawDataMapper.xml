@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.kji.scheduler.mapper.CollectRawDataMapper">
+
+	<!-- 수집 원본 데이터 저장 -->
+	<insert id="insertCollectRawData" parameterType="com.kji.scheduler.dto.CollectRawDataDto">
+		INSERT INTO sched_collect_raw_data (
+			execution_id,
+			external_api_id,
+			response_body,
+			content_type
+		)
+		VALUES (
+			#{executionId},
+			#{externalApiId},
+			#{responseBody},
+			#{contentType}
+		)
+	</insert>
+	
+</mapper>

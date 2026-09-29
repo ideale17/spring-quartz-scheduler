@@ -16,7 +16,10 @@ public interface ExternalApiMapper {
 
 	// External API 단건 조회
 	ExternalApiDto findExternalApi(@Param("externalApiId") Long externalApiId);
-
+	
+	// External API 화면용 단건 조회
+	ExternalApiDto findExternalApiDetail(@Param("externalApiId") Long externalApiId);
+	
 	// External API 파라미터 목록 조회
 	List<ExternalApiParamDto> findExternalApiParamList(@Param("externalApiId") Long externalApiId);
 	

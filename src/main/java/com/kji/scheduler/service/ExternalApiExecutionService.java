@@ -22,6 +22,7 @@ import org.springframework.web.client.RestClientResponseException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 
+import com.kji.scheduler.dto.CollectRawDataDto;
 import com.kji.scheduler.dto.ExternalApiCallLogDto;
 import com.kji.scheduler.dto.ExternalApiDto;
 import com.kji.scheduler.dto.ExternalApiParamDto;
@@ -41,15 +42,18 @@ public class ExternalApiExecutionService {
 	private final ExternalApiService externalApiService;
 	private final DynamicParameterResolver dynamicParameterResolver;
 	private final ExternalApiCallLogService externalApiCallLogService;
+	private final CollectRawDataService collectRawDataService;
 	
 	public ExternalApiExecutionService(ExternalApiService externalApiService,
 			DynamicParameterResolver dynamicParameterResolver,
 			RestTemplate restTemplate,
-			ExternalApiCallLogService externalApiCallLogService) {
+			ExternalApiCallLogService externalApiCallLogService,
+			CollectRawDataService collectRawDataService) {
 		this.externalApiService = externalApiService;
 		this.dynamicParameterResolver = dynamicParameterResolver;
 		this.restTemplate = restTemplate;
 		this.externalApiCallLogService = externalApiCallLogService;
+		this.collectRawDataService = collectRawDataService;
 	}
 	
 	/**
@@ -312,7 +316,20 @@ public class ExternalApiExecutionService {
 			// 3. External API를 호출한다.
 			ResponseEntity<String> response = callExternalApi(externalApi, headers, queryParams, bodyParams);
 			
-			// 4. External API 호출 성공 정보를 저장한다.
+			// 4. External API 응답 원본 데이터를 구성한다.
+			CollectRawDataDto rawData = new CollectRawDataDto();
+			rawData.setExecutionId(executionId);
+			rawData.setExternalApiId(externalApi.getExternalApiId());
+			rawData.setResponseBody(response.getBody());
+			
+			if (response.getHeaders().getContentType() != null) {
+				rawData.setContentType(response.getHeaders().getContentType().toString());
+			}
+			
+			// 5. External API 응답 원본 데이터를 저장한다.
+			collectRawDataService.insertCollectRawData(rawData);
+			
+			// 6. External API 호출 성공 정보를 저장한다.
 			long runMillis = (System.nanoTime() - startTime) / 1_000_000;
 			
 			callLog.setHttpStatus(response.getStatusCode().value());
@@ -320,7 +337,7 @@ public class ExternalApiExecutionService {
 			
 			externalApiCallLogService.markSuccess(callLog);
 			
-			// 5. External API 호출 결과를 기록한다.
+			// 7. External API 호출 결과를 기록한다.
 			log.info(
 					"External API 호출 완료. externalApiId: {}, apiName: {}, attemptNo: {}, statusCode: {}, runMillis: {}",
 					externalApi.getExternalApiId(),
@@ -332,7 +349,7 @@ public class ExternalApiExecutionService {
 			
 		} catch (RestClientResponseException e) {
 			
-			// 6. HTTP 오류 응답 정보를 저장한다.
+			// 8. HTTP 오류 응답 정보를 저장한다.
 			long runMillis = (System.nanoTime() - startTime) / 1_000_000;
 			String errorMessage = buildHttpErrorMessage(e);
 			
@@ -355,7 +372,7 @@ public class ExternalApiExecutionService {
 			
 		} catch (ResourceAccessException e) {
 			
-			// 7. External API 통신 오류 정보를 저장한다.
+			// 9. External API 통신 오류 정보를 저장한다.
 			long runMillis = (System.nanoTime() - startTime) / 1_000_000;
 			String errorMessage = buildResourceAccessErrorMessage(e);
 			
@@ -375,7 +392,7 @@ public class ExternalApiExecutionService {
 			
 		} catch (Exception e) {
 			
-			// 8. External API 호출 중 발생한 오류 정보를 저장한다.
+			// 10. External API 호출 중 발생한 오류 정보를 저장한다.
 			long runMillis = (System.nanoTime() - startTime) / 1_000_000;
 			String errorMessage = buildErrorMessage(e);
 			

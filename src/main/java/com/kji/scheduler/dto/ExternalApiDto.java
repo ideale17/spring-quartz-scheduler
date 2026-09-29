@@ -30,6 +30,9 @@ public class ExternalApiDto {
     private String authUsername;
     private String authPassword;
     
+    private Boolean authValueConfigured;
+    private Boolean authPasswordConfigured;
+    
     private String description;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

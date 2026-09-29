@@ -44,6 +44,20 @@ public class ExternalApiService {
 		return externalApi;
 	}
 	
+	// External API 화면용 단건 조회
+	public ExternalApiDto getExternalApiDetail(Long externalApiId) {
+		
+	    // 1. 화면에 표시할 External API 기본 정보를 조회한다.
+	    ExternalApiDto externalApi = externalApiMapper.findExternalApiDetail(externalApiId);
+	    
+	    // 2. 조회 결과가 없으면 예외를 발생시킨다.
+	    if (externalApi == null) {
+	        throw new IllegalArgumentException("존재하지 않는 External API입니다. externalApiId: " + externalApiId);
+	    }
+	    
+	    return externalApi;
+	}
+	
 	// External API 파라미터 목록 조회
 	public List<ExternalApiParamDto> getExternalApiParamList(Long externalApiId) {
 		
@@ -179,8 +193,8 @@ public class ExternalApiService {
 	@Transactional
 	public void updateExternalApiWithParams(Long externalApiId, ExternalApiRequestDto request) {
 		
-		// 1. 수정 대상 External API 존재 여부를 확인한다.
-		getExternalApi(externalApiId);
+		// 1. 수정 대상 External API 정보를 조회한다.
+		ExternalApiDto savedExternalApi = getExternalApi(externalApiId);
 		
 		// 2. 수정 요청 정보를 검증한다.
 		if (request == null || request.getExternalApi() == null) {
@@ -210,20 +224,44 @@ public class ExternalApiService {
 		// 5. 재시도 설정을 검증하고 기본값을 설정한다.
 		validateRetryPolicy(externalApi);
 		
-		// 6. 인증 설정을 검증하고 기본값을 설정한다.
+		// 6. 인증 방식이 동일하고 비밀값을 새로 입력하지 않은 경우 기존 값을 유지한다.
+		if (savedExternalApi.getAuthType() != null && savedExternalApi.getAuthType().equals(externalApi.getAuthType())) {
+		    if ("API_KEY".equals(externalApi.getAuthType())
+		            && (externalApi.getAuthValue() == null
+		            || externalApi.getAuthValue().isBlank())) {
+		    	
+		        externalApi.setAuthValue(savedExternalApi.getAuthValue());
+		    }
+		    
+		    if ("BEARER".equals(externalApi.getAuthType())
+		            && (externalApi.getAuthValue() == null
+		            || externalApi.getAuthValue().isBlank())) {
+		    	
+		        externalApi.setAuthValue(savedExternalApi.getAuthValue());
+		    }
+		    
+		    if ("BASIC".equals(externalApi.getAuthType())
+		            && (externalApi.getAuthPassword() == null
+		            || externalApi.getAuthPassword().isBlank())) {
+		    	
+		        externalApi.setAuthPassword(savedExternalApi.getAuthPassword());
+		    }
+		}
+		
+		// 7. 인증 설정을 검증하고 기본값을 설정한다.
 		validateAuth(externalApi);
 		
-		// 7. URL의 식별자를 수정 대상에 설정한다.
+		// 8. URL의 식별자를 수정 대상에 설정한다.
 		externalApi.setExternalApiId(externalApiId);
 		
-		// 8. External API 기본 정보를 수정한다.
+		// 9. External API 기본 정보를 수정한다.
 		int updateCount = externalApiMapper.updateExternalApi(externalApi);
 		
 		if (updateCount != 1) {
 			throw new IllegalStateException("External API 수정에 실패했습니다.");
 		}
 		
-		// 9. 기존 파라미터를 모두 삭제한다.
+		// 10. 기존 파라미터를 모두 삭제한다.
 		externalApiMapper.deleteExternalApiParams(externalApiId);
 		
 		// 10. 전달받은 파라미터를 다시 등록한다.
