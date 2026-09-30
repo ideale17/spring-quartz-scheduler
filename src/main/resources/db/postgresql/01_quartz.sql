@@ -1,3 +1,8 @@
+-- =========================================================
+-- Quartz scheduler tables
+-- PostgreSQL
+-- =========================================================
+
 -- Thanks to Patrick Lightbody for submitting this...
 --
 -- In your Quartz properties file, you'll need to set 
