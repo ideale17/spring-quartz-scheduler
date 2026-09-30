@@ -55,7 +55,13 @@ public class SecurityConfig {
 					)
 			.sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
 			.authorizeHttpRequests(auth -> auth
-					.requestMatchers("/auth/login", "/auth/logout", "/auth/signup", "/actuator/health", "/h2-console/**").permitAll()
+					.requestMatchers(
+							"/auth/login",
+							"/auth/logout",
+							"/auth/signup",
+							"/auth/signup-enabled",
+							"/actuator/health",
+							"/h2-console/**").permitAll()
 					.anyRequest().authenticated()
 					)
 			.headers(h -> h.frameOptions(f -> f.sameOrigin())) // H2 console용

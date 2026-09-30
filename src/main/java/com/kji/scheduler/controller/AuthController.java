@@ -24,6 +24,8 @@ public class AuthController {
 	
 	public record LoginReq(String username, String password) {}
 	public record MeRes(String username) {}
+	public record SignupEnabledRes(boolean signupEnabled) {}
+	public record ErrorRes(String message) {}
 	
 	@GetMapping("/me")
 	public ResponseEntity<?> me(Authentication auth) {
@@ -36,13 +38,25 @@ public class AuthController {
 	}
 	
 	@PostMapping("/signup")
-	public ResponseEntity<Void> signup(@RequestBody SignupRequest request) {
+	public ResponseEntity<?> signup(@RequestBody SignupRequest request) {
 		
-		// 1. 회원가입을 처리한다.
-		appUserService.signup(request);
+		try {
+			
+			// 1. 회원가입을 처리한다.
+			appUserService.signup(request);
+			
+			// 2. 회원가입 성공 응답을 반환한다.
+			return ResponseEntity.ok().build();
+			
+		} catch (IllegalArgumentException | IllegalStateException e) {
+			return ResponseEntity.badRequest().body(new ErrorRes(e.getMessage()));
+		}
 		
-		// 2. 회원가입 성공 응답을 반환한다.
-		return ResponseEntity.ok().build();
+	}
+	
+	@GetMapping("/signup-enabled")
+	public ResponseEntity<SignupEnabledRes> signupEnabled() {
+		return ResponseEntity.ok(new SignupEnabledRes(appUserService.isSignupEnabled()));
 	}
 	
 }
