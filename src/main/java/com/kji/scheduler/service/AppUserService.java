@@ -33,6 +33,10 @@ public class AppUserService {
 			throw new IllegalArgumentException("비밀번호는 필수입니다.");
 		}
 		
+		if (!request.getPassword().equals(request.getPasswordConfirm())) {
+			throw new IllegalArgumentException("비밀번호가 일치하지 않습니다.");
+		}
+		
 		// 2. 아이디 중복 여부를 확인한다.
 		if (appUserRepository.findByUsername(request.getUsername()).isPresent()) {
 			throw new IllegalArgumentException("이미 사용 중인 아이디입니다.");
