@@ -292,3 +292,105 @@ CREATE INDEX idx_collect_raw_data_execution_id
 
 CREATE INDEX idx_collect_raw_data_api_collected_at
     ON sched_collect_raw_data (external_api_id, collected_at);
+
+
+-- =========================================================
+-- 6. External API paging
+-- =========================================================
+
+CREATE TABLE sched_external_api_paging (
+    external_api_id BIGINT PRIMARY KEY,
+
+    enabled CHAR(1) NOT NULL DEFAULT 'N',
+
+    pagination_type VARCHAR(30) NOT NULL,
+    termination_type VARCHAR(30) NOT NULL,
+
+    page_param_location VARCHAR(20) NOT NULL,
+    page_param_name VARCHAR(100) NOT NULL,
+    page_start INTEGER NOT NULL DEFAULT 1,
+
+    size_param_location VARCHAR(20) NOT NULL,
+    size_param_name VARCHAR(100) NOT NULL,
+    page_size INTEGER NOT NULL,
+
+    total_count_path VARCHAR(500) NOT NULL,
+
+    max_request_count INTEGER NOT NULL DEFAULT 100,
+
+    created_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_external_api_paging_api
+        FOREIGN KEY (external_api_id)
+        REFERENCES sched_external_api (external_api_id),
+
+    CONSTRAINT ck_external_api_paging_enabled
+        CHECK (enabled IN ('Y', 'N')),
+
+    CONSTRAINT ck_external_api_pagination_type
+        CHECK (pagination_type IN ('PAGE')),
+
+    CONSTRAINT ck_external_api_termination_type
+        CHECK (termination_type IN ('TOTAL_COUNT')),
+
+    CONSTRAINT ck_external_api_page_param_location
+        CHECK (page_param_location IN ('QUERY', 'BODY')),
+
+    CONSTRAINT ck_external_api_size_param_location
+        CHECK (size_param_location IN ('QUERY', 'BODY')),
+
+    CONSTRAINT ck_external_api_page_start
+        CHECK (page_start >= 0),
+
+    CONSTRAINT ck_external_api_page_size
+        CHECK (page_size > 0),
+
+    CONSTRAINT ck_external_api_max_request_count
+        CHECK (max_request_count > 0)
+);
+
+COMMENT ON TABLE sched_external_api_paging
+IS 'External API 페이징 호출 설정';
+
+COMMENT ON COLUMN sched_external_api_paging.external_api_id
+IS 'External API 식별자';
+
+COMMENT ON COLUMN sched_external_api_paging.enabled
+IS '페이징 사용 여부(Y/N)';
+
+COMMENT ON COLUMN sched_external_api_paging.pagination_type
+IS '페이징 방식(PAGE)';
+
+COMMENT ON COLUMN sched_external_api_paging.termination_type
+IS '페이징 종료 방식(TOTAL_COUNT)';
+
+COMMENT ON COLUMN sched_external_api_paging.page_param_location
+IS '페이지 번호 파라미터 전달 위치(QUERY, BODY)';
+
+COMMENT ON COLUMN sched_external_api_paging.page_param_name
+IS '페이지 번호 파라미터명';
+
+COMMENT ON COLUMN sched_external_api_paging.page_start
+IS '시작 페이지 번호';
+
+COMMENT ON COLUMN sched_external_api_paging.size_param_location
+IS '페이지 크기 파라미터 전달 위치(QUERY, BODY)';
+
+COMMENT ON COLUMN sched_external_api_paging.size_param_name
+IS '페이지 크기 파라미터명';
+
+COMMENT ON COLUMN sched_external_api_paging.page_size
+IS '페이지당 요청 건수';
+
+COMMENT ON COLUMN sched_external_api_paging.total_count_path
+IS '응답에서 전체 건수를 조회할 경로';
+
+COMMENT ON COLUMN sched_external_api_paging.max_request_count
+IS '1회 실행에서 허용할 최대 페이징 요청 횟수';
+
+COMMENT ON COLUMN sched_external_api_paging.created_at
+IS '생성 일시';
+
+COMMENT ON COLUMN sched_external_api_paging.updated_at
+IS '수정 일시';

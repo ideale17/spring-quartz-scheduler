@@ -192,6 +192,34 @@
 		 WHERE EXTERNAL_API_ID = #{externalApiId}
 	</update>
 	
+	<!-- External API 기본 정보 수정 -->
+	<update id="updateExternalApiBasic">
+		UPDATE SCHED_EXTERNAL_API
+		   SET API_NAME = #{basic.apiName},
+		       API_URL = #{basic.apiUrl},
+		       HTTP_METHOD = #{basic.httpMethod},
+		       ENABLED = #{basic.enabled},
+		       RETRY_ENABLED = #{basic.retryEnabled},
+		       MAX_RETRY_COUNT = #{basic.maxRetryCount},
+		       RETRY_INTERVAL_SEC = #{basic.retryIntervalSec},
+		       DESCRIPTION = #{basic.description, jdbcType=VARCHAR},
+		       UPDATED_AT = CURRENT_TIMESTAMP
+		 WHERE EXTERNAL_API_ID = #{externalApiId}
+	</update>
+	
+	<!-- External API 인증 정보 수정 -->
+	<update id="updateExternalApiAuth">
+		UPDATE SCHED_EXTERNAL_API
+		   SET AUTH_TYPE = #{auth.authType},
+		       AUTH_LOCATION = #{auth.authLocation, jdbcType=VARCHAR},
+		       AUTH_KEY = #{auth.authKey, jdbcType=VARCHAR},
+		       AUTH_VALUE = #{auth.authValue, jdbcType=VARCHAR},
+		       AUTH_USERNAME = #{auth.authUsername, jdbcType=VARCHAR},
+		       AUTH_PASSWORD = #{auth.authPassword, jdbcType=VARCHAR},
+		       UPDATED_AT = CURRENT_TIMESTAMP
+		 WHERE EXTERNAL_API_ID = #{externalApiId}
+	</update>
+	
 	<!-- External API 파라미터 전체 삭제 -->
 	<delete id="deleteExternalApiParams">
 		DELETE FROM SCHED_EXTERNAL_API_PARAM
@@ -203,5 +231,85 @@
 		DELETE FROM SCHED_EXTERNAL_API
 		 WHERE EXTERNAL_API_ID = #{externalApiId}
 	</delete>
-
+	
+	<!-- External API 페이징 설정 조회 -->
+	<select id="findExternalApiPaging" resultType="com.kji.scheduler.dto.ExternalApiPagingDto">
+		SELECT EXTERNAL_API_ID,
+		       ENABLED,
+		       PAGINATION_TYPE,
+		       TERMINATION_TYPE,
+		       PAGE_PARAM_LOCATION,
+		       PAGE_PARAM_NAME,
+		       PAGE_START,
+		       SIZE_PARAM_LOCATION,
+		       SIZE_PARAM_NAME,
+		       PAGE_SIZE,
+		       TOTAL_COUNT_PATH,
+		       MAX_REQUEST_COUNT,
+		       CREATED_AT,
+		       UPDATED_AT
+		  FROM SCHED_EXTERNAL_API_PAGING
+		 WHERE EXTERNAL_API_ID = #{externalApiId}
+	</select>
+	
+	<!-- External API 페이징 설정 저장 -->
+	<insert id="insertExternalApiPaging" parameterType="com.kji.scheduler.dto.ExternalApiPagingDto">
+		INSERT INTO SCHED_EXTERNAL_API_PAGING (
+			EXTERNAL_API_ID,
+			ENABLED,
+			PAGINATION_TYPE,
+			TERMINATION_TYPE,
+			PAGE_PARAM_LOCATION,
+			PAGE_PARAM_NAME,
+			PAGE_START,
+			SIZE_PARAM_LOCATION,
+			SIZE_PARAM_NAME,
+			PAGE_SIZE,
+			TOTAL_COUNT_PATH,
+			MAX_REQUEST_COUNT,
+			CREATED_AT,
+			UPDATED_AT
+		)
+		VALUES (
+			#{externalApiId},
+			#{enabled},
+			#{paginationType},
+			#{terminationType},
+			#{pageParamLocation},
+			#{pageParamName},
+			#{pageStart},
+			#{sizeParamLocation},
+			#{sizeParamName},
+			#{pageSize},
+			#{totalCountPath},
+			#{maxRequestCount},
+			CURRENT_TIMESTAMP,
+			CURRENT_TIMESTAMP
+		)
+	</insert>
+	
+	<!-- External API 페이징 설정 수정 -->
+	<update id="updateExternalApiPaging" parameterType="com.kji.scheduler.dto.ExternalApiPagingDto">
+		UPDATE SCHED_EXTERNAL_API_PAGING
+		   SET ENABLED = #{enabled},
+		       PAGINATION_TYPE = #{paginationType},
+		       TERMINATION_TYPE = #{terminationType},
+		       PAGE_PARAM_LOCATION = #{pageParamLocation},
+		       PAGE_PARAM_NAME = #{pageParamName},
+		       PAGE_START = #{pageStart},
+		       SIZE_PARAM_LOCATION = #{sizeParamLocation},
+		       SIZE_PARAM_NAME = #{sizeParamName},
+		       PAGE_SIZE = #{pageSize},
+		       TOTAL_COUNT_PATH = #{totalCountPath},
+		       MAX_REQUEST_COUNT = #{maxRequestCount},
+		       UPDATED_AT = CURRENT_TIMESTAMP
+		 WHERE EXTERNAL_API_ID = #{externalApiId}
+	</update>
+	
+	<!-- External API 페이징 설정 삭제 -->
+	<delete id="deleteExternalApiPaging">
+		DELETE FROM SCHED_EXTERNAL_API_PAGING
+		 WHERE EXTERNAL_API_ID = #{externalApiId}
+	</delete>
+	
 </mapper>

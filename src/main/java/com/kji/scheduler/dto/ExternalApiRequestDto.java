@@ -10,5 +10,6 @@ public class ExternalApiRequestDto {
 	
 	private ExternalApiDto externalApi;
 	private List<ExternalApiParamDto> params = new ArrayList<>();
+	private ExternalApiPagingDto paging;
 	
 }
