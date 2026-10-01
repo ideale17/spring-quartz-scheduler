@@ -10,12 +10,14 @@
 		INSERT INTO sched_collect_raw_data (
 			execution_id,
 			external_api_id,
+			request_sequence,
 			response_body,
 			content_type
 		)
 		VALUES (
 			#{executionId},
 			#{externalApiId},
+			#{requestSequence},
 			#{responseBody},
 			#{contentType}
 		)

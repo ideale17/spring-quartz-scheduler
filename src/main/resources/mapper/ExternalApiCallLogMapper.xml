@@ -15,6 +15,7 @@
 			EXTERNAL_API_ID,
 			EXECUTION_ID,
 			FIRE_INSTANCE_ID,
+			REQUEST_SEQUENCE,
 			ATTEMPT_NO,
 			STARTED_AT,
 			STATUS,
@@ -24,6 +25,7 @@
 			#{externalApiId},
 			#{executionId},
 			#{fireInstanceId, jdbcType=VARCHAR},
+			#{requestSequence},
 			#{attemptNo},
 			CURRENT_TIMESTAMP,
 			#{status},
@@ -51,6 +53,7 @@
 			L.EXTERNAL_API_ID,
 			A.API_NAME,
 			L.FIRE_INSTANCE_ID,
+			L.REQUEST_SEQUENCE,
 			L.ATTEMPT_NO,
 			L.HTTP_STATUS,
 			L.STARTED_AT,
@@ -200,6 +203,7 @@
 			L.EXECUTION_ID,
 			A.API_NAME,
 			L.FIRE_INSTANCE_ID,
+			L.REQUEST_SEQUENCE,
 			L.ATTEMPT_NO,
 			L.HTTP_STATUS,
 			L.STARTED_AT,
@@ -212,7 +216,8 @@
 		LEFT JOIN SCHED_EXTERNAL_API A
 		  ON L.EXTERNAL_API_ID = A.EXTERNAL_API_ID
 		WHERE L.EXECUTION_ID = #{executionId}
-		ORDER BY L.ATTEMPT_NO
+		ORDER BY L.REQUEST_SEQUENCE,
+		         L.ATTEMPT_NO
 	</select>
 	
 </mapper>

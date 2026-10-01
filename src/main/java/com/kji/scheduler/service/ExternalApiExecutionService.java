@@ -1,5 +1,6 @@
 package com.kji.scheduler.service;
 
+import java.io.StringReader;
 import java.net.ConnectException;
 import java.net.SocketTimeoutException;
 import java.net.URI;
@@ -8,6 +9,10 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.xpath.XPathConstants;
+import javax.xml.xpath.XPathFactory;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -21,10 +26,15 @@ import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClientResponseException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
+import org.w3c.dom.Document;
+import org.xml.sax.InputSource;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.kji.scheduler.dto.CollectRawDataDto;
 import com.kji.scheduler.dto.ExternalApiCallLogDto;
 import com.kji.scheduler.dto.ExternalApiDto;
+import com.kji.scheduler.dto.ExternalApiPagingDto;
 import com.kji.scheduler.dto.ExternalApiParamDto;
 
 /**
@@ -44,16 +54,20 @@ public class ExternalApiExecutionService {
 	private final ExternalApiCallLogService externalApiCallLogService;
 	private final CollectRawDataService collectRawDataService;
 	
+	private final ObjectMapper objectMapper;
+	
 	public ExternalApiExecutionService(ExternalApiService externalApiService,
 			DynamicParameterResolver dynamicParameterResolver,
 			RestTemplate restTemplate,
 			ExternalApiCallLogService externalApiCallLogService,
-			CollectRawDataService collectRawDataService) {
+			CollectRawDataService collectRawDataService,
+			ObjectMapper objectMapper) {
 		this.externalApiService = externalApiService;
 		this.dynamicParameterResolver = dynamicParameterResolver;
 		this.restTemplate = restTemplate;
 		this.externalApiCallLogService = externalApiCallLogService;
 		this.collectRawDataService = collectRawDataService;
+		this.objectMapper = objectMapper;
 	}
 	
 	/**
@@ -81,6 +95,9 @@ public class ExternalApiExecutionService {
 		
 		// 5. External API 파라미터 목록을 조회한다.
 		List<ExternalApiParamDto> params = externalApiService.getExternalApiParamList(externalApiId);
+		
+		// 6. External API 페이징 설정을 조회한다.
+		ExternalApiPagingDto paging = externalApiService.getExternalApiPaging(externalApiId);
 		
 		// 6. 요청 위치별 파라미터를 저장할 Map을 생성한다.
 		Map<String, String> headers = new LinkedHashMap<>();
@@ -137,22 +154,88 @@ public class ExternalApiExecutionService {
 				bodyParams.keySet()
 		);
 		
-		// 13. External API 최대 호출 횟수를 계산한다.
+		// 14. 페이징 설정이 없거나 사용하지 않으면 External API를 한 번 호출한다.
+		if (paging == null || !"Y".equals(paging.getEnabled())) {
+			executeRequest(
+					externalApi,
+					executionId,
+					fireInstanceId,
+					1,
+					headers,
+					queryParams,
+					bodyParams
+			);
+			
+			return;
+		}
+		
+		// 15. 현재 지원하는 페이징 방식과 종료 조건을 확인한다.
+		if (!"PAGE".equals(paging.getPaginationType())) {
+			throw new IllegalStateException("지원하지 않는 페이징 방식입니다. paginationType: " + paging.getPaginationType());
+		}
+		
+		if (!"TOTAL_COUNT".equals(paging.getTerminationType())) {
+			throw new IllegalStateException("지원하지 않는 페이징 종료 방식입니다. terminationType: " + paging.getTerminationType());
+		}
+		
+		// 16. 페이지 방식 External API를 호출한다.
+		executePagePagination(
+				externalApi,
+				paging,
+				executionId,
+				fireInstanceId,
+				headers,
+				queryParams,
+				bodyParams
+		);
+		
+	}
+	
+	/**
+	 * External API 요청 한 건을 실행하고 실패 시 설정된 정책에 따라 재시도한다.
+	 *
+	 * @param externalApi		호출할 External API 정보
+	 * @param executionId		API 실행 단위 식별자
+	 * @param fireInstanceId	Quartz 실행 인스턴스 식별자
+	 * @param requestSequence	현재 요청 순번
+	 * @param headers			요청에 적용할 HTTP Header 정보
+	 * @param queryParams		요청 URL에 적용할 Query Parameter 정보
+	 * @param bodyParams		요청 Body에 적용할 Parameter 정보
+	 */
+	private ResponseEntity<String> executeRequest(
+			ExternalApiDto externalApi,
+			String executionId,
+			String fireInstanceId,
+			int requestSequence,
+			Map<String, String> headers,
+			Map<String, String> queryParams,
+			Map<String, String> bodyParams) {
+		
+		// 1. External API 최대 호출 시도 횟수를 계산한다.
 		int maxAttempts = 1;
 		
 		if ("Y".equals(externalApi.getRetryEnabled())) {
 			maxAttempts += externalApi.getMaxRetryCount();
 		}
 		
-		// 14. External API를 호출하고 실패 시 설정된 정책에 따라 재시도한다.
+		// 2. External API를 호출하고 실패 시 설정된 정책에 따라 재시도한다.
 		for (int attemptNo = 1; attemptNo <= maxAttempts; attemptNo++) {
 			try {
-				executeAttempt(externalApi, executionId, fireInstanceId, attemptNo, headers, queryParams, bodyParams);
-				return;
+				
+				return executeAttempt(
+						externalApi,
+						executionId,
+						fireInstanceId,
+						requestSequence,
+						attemptNo,
+						headers,
+						queryParams,
+						bodyParams
+				);
 				
 			} catch (RestClientResponseException | ResourceAccessException e) {
 				
-				// 15. 재시도 가능한 오류인지 확인한다.
+				// 3. 재시도 가능한 오류인지 확인한다.
 				boolean retryable = isRetryable(e);
 				boolean hasNextAttempt = attemptNo < maxAttempts;
 				
@@ -160,9 +243,380 @@ public class ExternalApiExecutionService {
 					throw e;
 				}
 				
-				// 16. 다음 호출 전 재시도 간격만큼 대기한다.
+				// 4. 다음 호출 전 재시도 간격만큼 대기한다.
 				waitRetryInterval(externalApi, attemptNo);
 			}
+		}
+		
+		throw new IllegalStateException("External API 호출 결과를 확인할 수 없습니다.");
+		
+	}
+	
+	/**
+	 * External API를 한 번 호출하고 호출 이력을 저장한다.
+	 *
+	 * @param externalApi		호출할 External API 정보
+	 * @param executionId		API 실행 단위 식별자
+	 * @param fireInstanceId	Quartz 실행 인스턴스 식별자
+	 * @param requestSequence	현재 요청 순번
+	 * @param attemptNo			현재 호출 시도 횟수
+	 * @param headers			요청에 적용할 HTTP Header 정보
+	 * @param queryParams		요청 URL에 적용할 Query Parameter 정보
+	 * @param bodyParams		요청 Body에 적용할 Parameter 정보
+	 */
+	private ResponseEntity<String> executeAttempt(
+			ExternalApiDto externalApi,
+			String executionId,
+			String fireInstanceId,
+			int requestSequence,
+			int attemptNo,
+			Map<String, String> headers,
+			Map<String, String> queryParams,
+			Map<String, String> bodyParams) {
+		
+		// 1. External API 호출 시작 이력을 저장한다.
+		ExternalApiCallLogDto callLog = new ExternalApiCallLogDto();
+		callLog.setExternalApiId(externalApi.getExternalApiId());
+		callLog.setExecutionId(executionId);
+		callLog.setFireInstanceId(fireInstanceId);
+		callLog.setRequestSequence(requestSequence);
+		callLog.setAttemptNo(attemptNo);
+		
+		externalApiCallLogService.insertStart(callLog);
+		
+		// 2. External API 호출 소요 시간 측정을 시작한다.
+		long startTime = System.nanoTime();
+		
+		try {
+			
+			// 3. External API를 호출한다.
+			ResponseEntity<String> response = callExternalApi(externalApi, headers, queryParams, bodyParams);
+			
+			// 4. External API 응답 원본 데이터를 구성한다.
+			CollectRawDataDto rawData = new CollectRawDataDto();
+			rawData.setExecutionId(executionId);
+			rawData.setExternalApiId(externalApi.getExternalApiId());
+			rawData.setRequestSequence(requestSequence);
+			rawData.setResponseBody(response.getBody());
+			
+			if (response.getHeaders().getContentType() != null) {
+				rawData.setContentType(response.getHeaders().getContentType().toString());
+			}
+			
+			// 5. External API 응답 원본 데이터를 저장한다.
+			collectRawDataService.insertCollectRawData(rawData);
+			
+			// 6. External API 호출 성공 정보를 저장한다.
+			long runMillis = (System.nanoTime() - startTime) / 1_000_000;
+			
+			callLog.setHttpStatus(response.getStatusCode().value());
+			callLog.setRunMillis(runMillis);
+			
+			externalApiCallLogService.markSuccess(callLog);
+			
+			// 7. External API 호출 결과를 기록한다.
+			log.info(
+					"External API 호출 완료. externalApiId: {}, apiName: {}, requestSequence: {}, attemptNo: {}, statusCode: {}, runMillis: {}",
+					externalApi.getExternalApiId(),
+					externalApi.getApiName(),
+					requestSequence,
+					attemptNo,
+					response.getStatusCode(),
+					runMillis
+			);
+			
+			return response;
+			
+		} catch (RestClientResponseException e) {
+			
+			// 8. HTTP 오류 응답 정보를 저장한다.
+			long runMillis = (System.nanoTime() - startTime) / 1_000_000;
+			String errorMessage = buildHttpErrorMessage(e);
+			
+			callLog.setHttpStatus(e.getStatusCode().value());
+			callLog.setRunMillis(runMillis);
+			
+			externalApiCallLogService.markFailed(callLog, errorMessage);
+			
+			log.error(
+					"External API 호출 실패. externalApiId: {}, apiName: {}, requestSequence: {}, attemptNo: {}, statusCode: {}, responseBody: {}",
+					externalApi.getExternalApiId(),
+					externalApi.getApiName(),
+					requestSequence,
+					attemptNo,
+					e.getStatusCode(),
+					e.getResponseBodyAsString(),
+					e
+			);
+			
+			throw e;
+			
+		} catch (ResourceAccessException e) {
+			
+			// 9. External API 통신 오류 정보를 저장한다.
+			long runMillis = (System.nanoTime() - startTime) / 1_000_000;
+			String errorMessage = buildResourceAccessErrorMessage(e);
+			
+			callLog.setRunMillis(runMillis);
+			
+			externalApiCallLogService.markFailed(callLog, errorMessage);
+			
+			log.error(
+					"External API 통신 실패. externalApiId: {}, apiName: {}, attemptNo: {}",
+					externalApi.getExternalApiId(),
+					externalApi.getApiName(),
+					attemptNo,
+					e
+			);
+			
+			throw e;
+			
+		} catch (Exception e) {
+			
+			// 10. External API 호출 중 발생한 오류 정보를 저장한다.
+			long runMillis = (System.nanoTime() - startTime) / 1_000_000;
+			String errorMessage = buildErrorMessage(e);
+			
+			callLog.setRunMillis(runMillis);
+			
+			externalApiCallLogService.markFailed(callLog, errorMessage);
+			
+			log.error(
+					"External API 호출 중 오류 발생. externalApiId: {}, apiName: {}, attemptNo: {}",
+					externalApi.getExternalApiId(),
+					externalApi.getApiName(),
+					attemptNo,
+					e
+			);
+			
+			throw e;
+		}
+	}
+	
+	/**
+	 * PAGE 방식의 External API 페이징 호출을 처리한다.
+	 *
+	 * @param externalApi		호출할 External API 정보
+	 * @param paging			페이징 설정
+	 * @param executionId		API 실행 단위 식별자
+	 * @param fireInstanceId	Quartz 실행 인스턴스 식별자
+	 * @param headers			기본 HTTP Header
+	 * @param queryParams		기본 Query Parameter
+	 * @param bodyParams		기본 Body Parameter
+	 */
+	private void executePagePagination(
+			ExternalApiDto externalApi,
+			ExternalApiPagingDto paging,
+			String executionId,
+			String fireInstanceId,
+			Map<String, String> headers,
+			Map<String, String> queryParams,
+			Map<String, String> bodyParams) {
+		
+		// 1. 페이징 시작 정보를 설정한다.
+		int currentPage = paging.getPageStart();
+		
+		// 2. 최대 요청 횟수까지 페이지별 API 호출을 반복한다.
+		for (int requestSequence = 1; requestSequence <= paging.getMaxRequestCount(); requestSequence++) {
+			
+			// 3. 현재 페이지 호출용 파라미터 Map을 생성한다.
+			Map<String, String> pageQueryParams = new LinkedHashMap<>(queryParams);
+			Map<String, String> pageBodyParams = new LinkedHashMap<>(bodyParams);
+			
+			// 4. 페이지 번호와 페이지 크기 파라미터를 적용한다.
+			applyPagingParams(paging, currentPage, pageQueryParams, pageBodyParams);
+			
+			// 5. 현재 페이지의 External API를 호출한다.
+			ResponseEntity<String> response = executeRequest(
+					externalApi,
+					executionId,
+					fireInstanceId,
+					requestSequence,
+					headers,
+					pageQueryParams,
+					pageBodyParams
+			);
+			
+			// 6. 응답에서 전체 데이터 건수를 조회한다.
+			long totalCount = extractTotalCount(response.getBody(), paging.getTotalCountPath());
+			
+			log.info(
+					"External API 페이징 호출 완료. externalApiId: {}, requestSequence: {}, currentPage: {}, pageSize: {}, totalCount: {}",
+					externalApi.getExternalApiId(),
+					requestSequence,
+					currentPage,
+					paging.getPageSize(),
+					totalCount
+			);
+			
+			// 7. 현재까지 요청 가능한 데이터 범위가 전체 건수 이상이면 종료한다.
+			if ((long) requestSequence * paging.getPageSize() >= totalCount) {
+				return;
+			}
+			
+			// 8. 다음 페이지 번호를 설정한다.
+			currentPage++;
+		}
+		
+		// 9. 최대 요청 횟수 안에 페이징이 종료되지 않으면 예외를 발생시킨다.
+		throw new IllegalStateException(
+				"External API 페이징 최대 요청 횟수를 초과했습니다. "
+						+ "externalApiId: " + externalApi.getExternalApiId()
+						+ ", maxRequestCount: " + paging.getMaxRequestCount()
+		);
+	}
+	
+	/**
+	 * 현재 페이지 번호와 페이지 크기를 요청 파라미터에 적용한다.
+	 *
+	 * @param paging
+	 * @param currentPage
+	 * @param queryParams
+	 * @param bodyParams
+	 */
+	private void applyPagingParams(
+			ExternalApiPagingDto paging,
+			int currentPage,
+			Map<String, String> queryParams,
+			Map<String, String> bodyParams) {
+		
+		// 1. 페이지 번호 파라미터를 적용한다.
+		switch (paging.getPageParamLocation()) {
+			case "QUERY" ->
+				queryParams.put(paging.getPageParamName(), String.valueOf(currentPage));
+				
+			case "BODY" ->
+				bodyParams.put(paging.getPageParamName(), String.valueOf(currentPage));
+				
+			default ->
+				throw new IllegalStateException("지원하지 않는 페이지 번호 파라미터 위치입니다. location: " + paging.getPageParamLocation());
+		}
+		
+		// 2. 페이지 크기 파라미터를 적용한다.
+		switch (paging.getSizeParamLocation()) {
+			case "QUERY" ->
+				queryParams.put(paging.getSizeParamName(), String.valueOf(paging.getPageSize()));
+				
+			case "BODY" ->
+				bodyParams.put(paging.getSizeParamName(), String.valueOf(paging.getPageSize()));
+				
+			default ->
+				throw new IllegalStateException("지원하지 않는 페이지 크기 파라미터 위치입니다. location: " + paging.getSizeParamLocation());
+		}
+		
+	}
+	
+	/**
+	 * External API 응답에서 전체 데이터 건수를 조회한다.
+	 *
+	 * @param responseBody
+	 * @param totalCountPath
+	 * @return
+	 */
+	private long extractTotalCount(String responseBody, String totalCountPath) {
+		
+		// 1. 응답 데이터와 전체 건수 경로를 확인한다.
+		if (responseBody == null || responseBody.isBlank()) {
+			throw new IllegalStateException("External API 응답 데이터가 없어 전체 건수를 확인할 수 없습니다.");
+		}
+		
+		if (totalCountPath == null || totalCountPath.isBlank()) {
+			throw new IllegalStateException("전체 건수 조회 경로가 설정되지 않았습니다.");
+		}
+		
+		String trimmedBody = responseBody.trim();
+		
+		// 2. JSON 응답이면 JSON 경로에서 전체 건수를 조회한다.
+		if (trimmedBody.startsWith("{") || trimmedBody.startsWith("[")) {
+			return extractJsonTotalCount(trimmedBody, totalCountPath);
+		}
+		
+		// 3. XML 응답이면 XML 경로에서 전체 건수를 조회한다.
+		if (trimmedBody.startsWith("<")) {
+			return extractXmlTotalCount(trimmedBody, totalCountPath);
+		}
+		
+		throw new IllegalStateException("지원하지 않는 External API 응답 형식입니다.");
+		
+	}
+	
+	/**
+	 * TODO
+	 *
+	 * @param responseBody
+	 * @param totalCountPath
+	 * @return
+	 */
+	private long extractJsonTotalCount(String responseBody, String totalCountPath) {
+		
+		try {
+			
+			// 1. JSON 응답을 파싱한다.
+			JsonNode currentNode = objectMapper.readTree(responseBody);
+			
+			// 2. 설정된 경로를 순서대로 이동한다.
+			for (String path : totalCountPath.split("\\.")) {
+				currentNode = currentNode.path(path);
+				
+				if (currentNode.isMissingNode() || currentNode.isNull()) {
+					throw new IllegalStateException("JSON 응답에서 전체 건수 경로를 찾을 수 없습니다. totalCountPath: " + totalCountPath);
+				}
+			}
+			
+			// 3. 전체 건수를 숫자로 변환한다.
+			return currentNode.asLong();
+			
+		} catch (IllegalStateException e) {
+			throw e;
+			
+		} catch (Exception e) {
+			throw new IllegalStateException("JSON 응답의 전체 건수 조회에 실패했습니다. totalCountPath: " + totalCountPath, e);
+		}
+		
+	}
+	
+	/**
+	 * TODO
+	 *
+	 * @param responseBody
+	 * @param totalCountPath
+	 * @return
+	 */
+	private long extractXmlTotalCount(String responseBody, String totalCountPath) {
+		
+		try {
+			
+			// 1. XML Document를 생성한다.
+			DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+			
+			factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
+			factory.setFeature("http://xml.org/sax/features/external-general-entities", false);
+			factory.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
+			
+			Document document = factory.newDocumentBuilder().parse(
+					new InputSource(new StringReader(responseBody))
+			);
+			
+			// 2. 점(.) 형식의 경로를 XPath 형식으로 변환한다.
+			String xpathExpression = "/" + totalCountPath.replace(".", "/");
+			
+			// 3. XML 응답에서 전체 건수를 조회한다.
+			String totalCountValue = (String) XPathFactory.newInstance()
+					.newXPath()
+					.evaluate(xpathExpression, document, XPathConstants.STRING);
+			
+			if (totalCountValue == null || totalCountValue.isBlank()) {
+				throw new IllegalStateException("XML 응답에서 전체 건수 경로를 찾을 수 없습니다. totalCountPath: " + totalCountPath);
+			}
+			
+			// 4. 전체 건수를 숫자로 변환한다.
+			return Long.parseLong(totalCountValue.trim());
+			
+		} catch (IllegalStateException e) {
+			throw e;
+			
+		} catch (Exception e) {
+			throw new IllegalStateException("XML 응답의 전체 건수 조회에 실패했습니다. totalCountPath: " + totalCountPath, e);
 		}
 		
 	}
@@ -277,139 +731,6 @@ public class ExternalApiExecutionService {
 	            
 	    }
 	    
-	}
-	
-	/**
-	 * External API를 한 번 호출하고 호출 이력을 저장한다.
-	 *
-	 * @param externalApi		호출할 External API 정보
-	 * @param executionId		API 실행 단위 식별자
-	 * @param fireInstanceId	Quartz 실행 인스턴스 식별자
-	 * @param attemptNo			현재 호출 시도 횟수
-	 * @param headers			요청에 적용할 HTTP Header 정보
-	 * @param queryParams		요청 URL에 적용할 Query Parameter 정보
-	 * @param bodyParams		요청 Body에 적용할 Parameter 정보
-	 */
-	private void executeAttempt(
-			ExternalApiDto externalApi,
-			String executionId,
-			String fireInstanceId,
-			int attemptNo,
-			Map<String, String> headers,
-			Map<String, String> queryParams,
-			Map<String, String> bodyParams) {
-		
-		// 1. External API 호출 시작 이력을 저장한다.
-		ExternalApiCallLogDto callLog = new ExternalApiCallLogDto();
-		callLog.setExternalApiId(externalApi.getExternalApiId());
-		callLog.setExecutionId(executionId);
-		callLog.setFireInstanceId(fireInstanceId);
-		callLog.setAttemptNo(attemptNo);
-		
-		externalApiCallLogService.insertStart(callLog);
-		
-		// 2. External API 호출 소요 시간 측정을 시작한다.
-		long startTime = System.nanoTime();
-		
-		try {
-			
-			// 3. External API를 호출한다.
-			ResponseEntity<String> response = callExternalApi(externalApi, headers, queryParams, bodyParams);
-			
-			// 4. External API 응답 원본 데이터를 구성한다.
-			CollectRawDataDto rawData = new CollectRawDataDto();
-			rawData.setExecutionId(executionId);
-			rawData.setExternalApiId(externalApi.getExternalApiId());
-			rawData.setResponseBody(response.getBody());
-			
-			if (response.getHeaders().getContentType() != null) {
-				rawData.setContentType(response.getHeaders().getContentType().toString());
-			}
-			
-			// 5. External API 응답 원본 데이터를 저장한다.
-			collectRawDataService.insertCollectRawData(rawData);
-			
-			// 6. External API 호출 성공 정보를 저장한다.
-			long runMillis = (System.nanoTime() - startTime) / 1_000_000;
-			
-			callLog.setHttpStatus(response.getStatusCode().value());
-			callLog.setRunMillis(runMillis);
-			
-			externalApiCallLogService.markSuccess(callLog);
-			
-			// 7. External API 호출 결과를 기록한다.
-			log.info(
-					"External API 호출 완료. externalApiId: {}, apiName: {}, attemptNo: {}, statusCode: {}, runMillis: {}",
-					externalApi.getExternalApiId(),
-					externalApi.getApiName(),
-					attemptNo,
-					response.getStatusCode(),
-					runMillis
-			);
-			
-		} catch (RestClientResponseException e) {
-			
-			// 8. HTTP 오류 응답 정보를 저장한다.
-			long runMillis = (System.nanoTime() - startTime) / 1_000_000;
-			String errorMessage = buildHttpErrorMessage(e);
-			
-			callLog.setHttpStatus(e.getStatusCode().value());
-			callLog.setRunMillis(runMillis);
-			
-			externalApiCallLogService.markFailed(callLog, errorMessage);
-			
-			log.error(
-					"External API 호출 실패. externalApiId: {}, apiName: {}, attemptNo: {}, statusCode: {}, responseBody: {}",
-					externalApi.getExternalApiId(),
-					externalApi.getApiName(),
-					attemptNo,
-					e.getStatusCode(),
-					e.getResponseBodyAsString(),
-					e
-			);
-			
-			throw e;
-			
-		} catch (ResourceAccessException e) {
-			
-			// 9. External API 통신 오류 정보를 저장한다.
-			long runMillis = (System.nanoTime() - startTime) / 1_000_000;
-			String errorMessage = buildResourceAccessErrorMessage(e);
-			
-			callLog.setRunMillis(runMillis);
-			
-			externalApiCallLogService.markFailed(callLog, errorMessage);
-			
-			log.error(
-					"External API 통신 실패. externalApiId: {}, apiName: {}, attemptNo: {}",
-					externalApi.getExternalApiId(),
-					externalApi.getApiName(),
-					attemptNo,
-					e
-			);
-			
-			throw e;
-			
-		} catch (Exception e) {
-			
-			// 10. External API 호출 중 발생한 오류 정보를 저장한다.
-			long runMillis = (System.nanoTime() - startTime) / 1_000_000;
-			String errorMessage = buildErrorMessage(e);
-			
-			callLog.setRunMillis(runMillis);
-			
-			externalApiCallLogService.markFailed(callLog, errorMessage);
-			
-			log.error(
-					"External API 호출 중 오류 발생. externalApiId: {}, apiName: {}, attemptNo: {}",
-					externalApi.getExternalApiId(),
-					externalApi.getApiName(),
-					attemptNo,
-					e
-			);
-			
-			throw e;
-		}
 	}
 	
 	/**

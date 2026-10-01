@@ -16,6 +16,7 @@ public class CollectRawDataDto {
 	private Long rawDataId;
 	private String executionId;
 	private Long externalApiId;
+	private Integer requestSequence = 1;
 	private String responseBody;
 	private String contentType;
 	private LocalDateTime collectedAt;
