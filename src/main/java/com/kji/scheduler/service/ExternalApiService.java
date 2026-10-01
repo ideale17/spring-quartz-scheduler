@@ -170,14 +170,35 @@ public class ExternalApiService {
 			throw new IllegalStateException("External API 식별자 생성에 실패했습니다.");
 		}
 		
-		// 8. External API 파라미터를 등록한다.
+		// 8. 페이징 설정이 있으면 등록한다.
+		ExternalApiPagingDto paging = request.getPaging();
+		
+		if (paging != null) {
+			
+			// 8-1. External API 식별자를 설정한다.
+			paging.setExternalApiId(externalApiId);
+			
+			// 8-2. 페이징 설정을 검증하고 기본값을 설정한다.
+			validatePaging(paging);
+			
+			// 8-3. 페이징 설정을 등록한다.
+			int pagingInsertCount = externalApiMapper.insertExternalApiPaging(paging);
+			
+			if (pagingInsertCount != 1) {
+				throw new IllegalStateException("External API 페이징 설정 등록에 실패했습니다.");
+			}
+			
+		}
+		
+		// 9. External API 파라미터를 등록한다.
 		if (request.getParams() != null) {
+			
 			for (ExternalApiParamDto param : request.getParams()) {
 				
-				// 9. 생성된 External API 식별자를 파라미터에 설정한다.
+				// 9-1. 생성된 External API 식별자를 파라미터에 설정한다.
 				param.setExternalApiId(externalApiId);
 				
-				// 10. 파라미터 기본값을 설정한다.
+				// 9-2. 파라미터 기본값을 설정한다.
 				if (param.getRequiredYn() == null || param.getRequiredYn().isBlank()) {
 					param.setRequiredYn("N");
 				}
@@ -186,16 +207,17 @@ public class ExternalApiService {
 					param.setSortOrder(0);
 				}
 				
-				// 11. 파라미터를 등록한다.
+				// 9-3. 파라미터를 등록한다.
 				int paramInsertCount = externalApiMapper.insertExternalApiParam(param);
 				
 				if (paramInsertCount != 1) {
 					throw new IllegalStateException("External API 파라미터 등록에 실패했습니다. " + "paramName: " + param.getParamName());
 				}
 			}
+			
 		}
 		
-		// 12. 생성된 External API 식별자를 반환한다.
+		// 10. 생성된 External API 식별자를 반환한다.
 		return externalApiId;
 	}
 	
