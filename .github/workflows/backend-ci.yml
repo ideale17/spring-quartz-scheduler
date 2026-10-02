@@ -28,28 +28,3 @@ jobs:
 
       - name: Build bootJar
         run: ./gradlew bootJar
-
-      - name: Upload bootJar artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: scheduler-service
-          path: build/libs/scheduler-service.jar
-
-  deploy:
-    needs: build
-    runs-on: self-hosted
-
-    steps:
-      - name: Download bootJar artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: scheduler-service
-          path: deploy-artifact
-
-      - name: Prepare deployment file
-        run: |
-          cp deploy-artifact/scheduler-service.jar /home/github-runner/deploy/scheduler-service.jar
-
-      - name: Deploy application
-        run: |
-          sudo /usr/local/sbin/deploy-scheduler
