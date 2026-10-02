@@ -110,16 +110,43 @@ Quartz `JobListener`를 이용하여 Job 실행 상태를 기록합니다.
 
 스케줄과 실제 외부 API 호출 정보를 직접 결합하지 않고 별도의 관리 구조로 분리했습니다.
 
-External API 기본정보와 함께 다음 위치의 동적 파라미터를 관리할 수 있습니다.
+External API 기본정보와 함께 다음 위치의 파라미터를 관리할 수 있습니다.
 
 * Query
 * Path
 * Header
 * Body
 
-Job 코드에 특정 API의 URL이나 파라미터를 직접 작성하지 않고, DB에 등록된 API 정보를 기반으로 호출할 수 있도록 구성했습니다.
+파라미터는 고정값과 실행 시점에 결정되는 동적값을 구분하여 관리하며,
+Job 코드에 특정 API의 URL이나 파라미터를 직접 작성하지 않고 DB에 등록된 API 정보를 기반으로 호출할 수 있도록 구성했습니다.
 
-External API 호출 실패 시 설정된 정책에 따라 재시도할 수 있으며, 최초 호출과 재시도를 실행 단위별로 구분하여 이력을 관리합니다.
+External API 인증은 다음 방식을 지원합니다.
+
+* API Key
+* Bearer Token
+* Basic Authentication
+
+API Key는 Header 또는 Query Parameter에 적용할 수 있으며,
+인증 방식별 필수값을 실행 전에 검증하도록 처리했습니다.
+
+External API 호출 실패 시 설정된 재시도 횟수와 간격에 따라 재시도할 수 있으며,
+최초 호출과 재시도를 `attemptNo`로 구분하여 호출 이력을 저장합니다.
+
+한 번의 API 실행에는 별도의 `executionId`를 생성하여
+최초 호출과 재시도 이력을 동일한 실행 단위로 추적할 수 있도록 구성했습니다.
+
+API 호출 성공 시 응답 원문과 Content-Type을 Raw Data로 별도 저장합니다.
+
+Raw Data에는 다음 정보를 함께 저장하여 API 호출 이력과 수집 데이터를 추적할 수 있도록 구성했습니다.
+
+* executionId
+* externalApiId
+* responseBody
+* contentType
+* collectedAt
+
+이를 통해 External API 호출 이력과 실제 수집된 원본 데이터를 분리하여 관리하고,
+향후 데이터 가공이나 재처리 시 원본 응답을 다시 활용할 수 있도록 구성했습니다.
 
 ### 3.6 인증 및 보안
 
