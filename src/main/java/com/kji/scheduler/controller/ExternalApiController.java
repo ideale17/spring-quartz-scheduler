@@ -20,6 +20,7 @@ import com.kji.scheduler.dto.ExternalApiPagingDto;
 import com.kji.scheduler.dto.ExternalApiParamDto;
 import com.kji.scheduler.dto.ExternalApiRequestDto;
 import com.kji.scheduler.service.ExternalApiCallLogService;
+import com.kji.scheduler.service.ExternalApiExecutionLogService;
 import com.kji.scheduler.service.ExternalApiExecutionService;
 import com.kji.scheduler.service.ExternalApiService;
 
@@ -30,15 +31,18 @@ public class ExternalApiController {
 	private final ExternalApiService externalApiService;
 	private final ExternalApiExecutionService externalApiExecutionService;
 	private final ExternalApiCallLogService externalApiCallLogService;
+	private final ExternalApiExecutionLogService externalApiExecutionLogService;
 	
 	public ExternalApiController(
 			ExternalApiService externalApiService,
 			ExternalApiExecutionService externalApiExecutionService,
-			ExternalApiCallLogService externalApiCallLogService) {
+			ExternalApiCallLogService externalApiCallLogService,
+			ExternalApiExecutionLogService externalApiExecutionLogService) {
 
 		this.externalApiService = externalApiService;
 		this.externalApiExecutionService = externalApiExecutionService;
 		this.externalApiCallLogService = externalApiCallLogService;
+		this.externalApiExecutionLogService = externalApiExecutionLogService;
 	}
 	
 	// External API 목록 조회
@@ -318,17 +322,18 @@ public class ExternalApiController {
 		}
 	}
 	
-	// External API 호출 이력 조회
+	// External API 실행 이력 조회
 	@GetMapping("/callHistory")
 	public ResponseEntity<?> getExternalApiCallHistory(ExternalApiCallHistorySearchDto searchDto) {
 		
 		try {
 			
-			// 1. 검색조건과 페이징 정보로 External API 호출 이력을 조회한다.
-			return ResponseEntity.ok(externalApiCallLogService.getCallHistory(searchDto));
+			// 1. 검색조건과 페이징 정보로 External API 실행 이력을 조회한다.
+			return ResponseEntity.ok(externalApiExecutionLogService.getExecutionHistory(searchDto));
 			
 		} catch (Exception e) {
-			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("External API 호출 이력 조회 실패: " + e.getMessage());
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+					.body("External API 실행 이력 조회 실패: " + e.getMessage());
 		}
 	}
 	

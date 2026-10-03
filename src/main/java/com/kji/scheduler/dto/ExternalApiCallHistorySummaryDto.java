@@ -17,6 +17,7 @@ public class ExternalApiCallHistorySummaryDto {
 	private Integer retryCount;
 	private Long totalRunMillis;
 	private Long apiRunMillis;
+	private String errorMessage;
 	private LocalDateTime startedAt;
 	private LocalDateTime finishedAt;
 	

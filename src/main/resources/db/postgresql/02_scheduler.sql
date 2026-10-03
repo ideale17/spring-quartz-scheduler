@@ -5,7 +5,7 @@
 
 
 -- =========================================================
--- 1. Job execution log
+-- 1. 스케줄러 Job 실행 이력
 -- =========================================================
 
 CREATE TABLE sched_exec_log (
@@ -118,9 +118,63 @@ CREATE TABLE sched_external_api (
         )
 );
 
+COMMENT ON TABLE sched_external_api
+IS 'External API 기본 정보';
+
+COMMENT ON COLUMN sched_external_api.external_api_id
+IS '외부 API 식별자';
+
+COMMENT ON COLUMN sched_external_api.api_name
+IS '외부 API 이름';
+
+COMMENT ON COLUMN sched_external_api.api_url
+IS '외부 API 호출 URL';
+
+COMMENT ON COLUMN sched_external_api.http_method
+IS 'HTTP 메서드(GET, POST, PUT, PATCH, DELETE)';
+
+COMMENT ON COLUMN sched_external_api.enabled
+IS '사용 여부(Y/N)';
+
+COMMENT ON COLUMN sched_external_api.retry_enabled
+IS 'External API 호출 실패 시 재시도 사용 여부(Y/N)';
+
+COMMENT ON COLUMN sched_external_api.max_retry_count
+IS '최초 호출 실패 후 추가 재시도 최대 횟수';
+
+COMMENT ON COLUMN sched_external_api.retry_interval_sec
+IS 'External API 재시도 간격(초)';
+
+COMMENT ON COLUMN sched_external_api.auth_type
+IS 'External API 인증 방식(NONE, API_KEY, BEARER, BASIC)';
+
+COMMENT ON COLUMN sched_external_api.auth_location
+IS 'API Key 전달 위치(HEADER, QUERY)';
+
+COMMENT ON COLUMN sched_external_api.auth_key
+IS 'API Key 이름(예: X-API-KEY, serviceKey)';
+
+COMMENT ON COLUMN sched_external_api.auth_value
+IS 'API Key 또는 Bearer Token 값';
+
+COMMENT ON COLUMN sched_external_api.auth_username
+IS 'Basic Authentication 사용자명';
+
+COMMENT ON COLUMN sched_external_api.auth_password
+IS 'Basic Authentication 비밀번호';
+
+COMMENT ON COLUMN sched_external_api.description
+IS '외부 API 설명';
+
+COMMENT ON COLUMN sched_external_api.created_at
+IS '생성 일시';
+
+COMMENT ON COLUMN sched_external_api.updated_at
+IS '수정 일시';
+
 
 -- =========================================================
--- 3. External API parameter
+-- 3. External API 호출 파라미터 정보
 -- =========================================================
 
 CREATE TABLE sched_external_api_param (
@@ -191,7 +245,64 @@ IS '파라미터 설명';
 
 
 -- =========================================================
--- 4. External API call log
+-- 4. External API 실행 단위 이력
+-- =========================================================
+
+CREATE TABLE sched_external_api_exec_log (
+    execution_id VARCHAR(36) PRIMARY KEY,
+    external_api_id BIGINT NOT NULL,
+    fire_instance_id VARCHAR(200),
+
+    started_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    finished_at TIMESTAMP(6),
+    run_millis BIGINT,
+
+    status VARCHAR(20) NOT NULL,
+    error_message VARCHAR(2000),
+
+    created_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_external_api_exec_log_api
+        FOREIGN KEY (external_api_id)
+        REFERENCES sched_external_api (external_api_id),
+
+    CONSTRAINT ck_external_api_exec_log_status
+        CHECK (status IN ('RUNNING', 'SUCCESS', 'FAILED'))
+);
+
+COMMENT ON TABLE sched_external_api_exec_log
+IS 'External API 실행 단위 이력';
+
+COMMENT ON COLUMN sched_external_api_exec_log.execution_id
+IS 'External API 1회 실행 단위 식별자';
+
+COMMENT ON COLUMN sched_external_api_exec_log.external_api_id
+IS 'External API 식별자';
+
+COMMENT ON COLUMN sched_external_api_exec_log.fire_instance_id
+IS 'Quartz 실행 인스턴스 식별자';
+
+COMMENT ON COLUMN sched_external_api_exec_log.started_at
+IS 'External API 실행 시작 일시';
+
+COMMENT ON COLUMN sched_external_api_exec_log.finished_at
+IS 'External API 실행 종료 일시';
+
+COMMENT ON COLUMN sched_external_api_exec_log.run_millis
+IS 'External API 전체 실행 소요 시간(ms)';
+
+COMMENT ON COLUMN sched_external_api_exec_log.status
+IS 'External API 실행 상태(RUNNING, SUCCESS, FAILED)';
+
+COMMENT ON COLUMN sched_external_api_exec_log.error_message
+IS 'External API 실행 실패 시 오류 메시지';
+
+COMMENT ON COLUMN sched_external_api_exec_log.created_at
+IS '로그 생성 일시';
+
+
+-- =========================================================
+-- 4. External API 호출 이력
 -- =========================================================
 
 CREATE TABLE sched_external_api_call_log (
@@ -254,7 +365,7 @@ IS '로그 생성 일시';
 
 
 -- =========================================================
--- 5. sched_collect_raw_data
+-- 5. External API 호출을 통해 수집한 원본 응답 데이터
 -- =========================================================
 
 CREATE TABLE sched_collect_raw_data (
@@ -303,7 +414,7 @@ CREATE INDEX idx_collect_raw_data_api_collected_at
 
 
 -- =========================================================
--- 6. External API paging
+-- 6. External API 페이징 호출 설정
 -- =========================================================
 
 CREATE TABLE sched_external_api_paging (

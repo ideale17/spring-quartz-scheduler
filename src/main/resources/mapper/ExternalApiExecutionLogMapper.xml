@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.kji.scheduler.mapper.ExternalApiExecutionLogMapper">
+	
+	<!-- External API 실행 시작 이력을 저장한다. -->
+	<insert id="insertStart">
+		INSERT INTO SCHED_EXTERNAL_API_EXEC_LOG (
+			EXECUTION_ID,
+			EXTERNAL_API_ID,
+			FIRE_INSTANCE_ID,
+			STARTED_AT,
+			STATUS,
+			CREATED_AT
+		) VALUES (
+			#{executionId},
+			#{externalApiId},
+			#{fireInstanceId},
+			#{startedAt},
+			#{status},
+			CURRENT_TIMESTAMP
+		)
+	</insert>
+	
+	<!-- External API 실행 종료 결과를 갱신한다. -->
+	<update id="updateFinish">
+		UPDATE SCHED_EXTERNAL_API_EXEC_LOG
+		   SET FINISHED_AT = #{finishedAt},
+		       RUN_MILLIS = #{runMillis},
+		       STATUS = #{status},
+		       ERROR_MESSAGE = #{errorMessage}
+		 WHERE EXECUTION_ID = #{executionId}
+	</update>
+	
+	<!-- External API 실행 이력 조회 -->
+	<select id="findExecutionHistory"
+			parameterType="com.kji.scheduler.dto.ExternalApiCallHistorySearchDto"
+			resultType="com.kji.scheduler.dto.ExternalApiCallHistorySummaryDto">
+		WITH CALL_SUMMARY AS (
+			SELECT
+				EXECUTION_ID,
+				COUNT(DISTINCT REQUEST_SEQUENCE) AS REQUEST_COUNT,
+				COUNT(*) AS ATTEMPT_COUNT,
+				COUNT(*) - COUNT(DISTINCT REQUEST_SEQUENCE) AS RETRY_COUNT,
+				COALESCE(SUM(RUN_MILLIS), 0) AS API_RUN_MILLIS
+			FROM SCHED_EXTERNAL_API_CALL_LOG
+			GROUP BY EXECUTION_ID
+		)
+		SELECT
+			E.EXECUTION_ID,
+			E.EXTERNAL_API_ID,
+			A.API_NAME,
+			E.FIRE_INSTANCE_ID,
+			E.STATUS,
+			E.ERROR_MESSAGE,
+			COALESCE(C.REQUEST_COUNT, 0) AS REQUEST_COUNT,
+			COALESCE(C.ATTEMPT_COUNT, 0) AS ATTEMPT_COUNT,
+			COALESCE(C.RETRY_COUNT, 0) AS RETRY_COUNT,
+			E.RUN_MILLIS AS TOTAL_RUN_MILLIS,
+			COALESCE(C.API_RUN_MILLIS, 0) AS API_RUN_MILLIS,
+			E.STARTED_AT,
+			E.FINISHED_AT
+		FROM SCHED_EXTERNAL_API_EXEC_LOG E
+		LEFT JOIN SCHED_EXTERNAL_API A
+		  ON E.EXTERNAL_API_ID = A.EXTERNAL_API_ID
+		LEFT JOIN CALL_SUMMARY C
+		  ON E.EXECUTION_ID = C.EXECUTION_ID
+		WHERE 1 = 1
+		<if test="apiName != null and apiName != ''">
+			AND A.API_NAME LIKE '%' || #{apiName} || '%'
+		</if>
+		<if test="status != null and status != ''">
+			AND E.STATUS = #{status}
+		</if>
+		<if test="startDate != null">
+			AND E.STARTED_AT <![CDATA[ >= ]]> #{startDate}
+		</if>
+		<if test="endDateExclusive != null">
+			AND E.STARTED_AT <![CDATA[ < ]]> #{endDateExclusive}
+		</if>
+		ORDER BY E.STARTED_AT DESC
+		OFFSET #{offset} ROWS
+		FETCH NEXT #{size} ROWS ONLY
+	</select>
+	
+	<!-- External API 실행 이력 전체 건수 조회 -->
+	<select id="countExecutionHistory"
+			parameterType="com.kji.scheduler.dto.ExternalApiCallHistorySearchDto"
+			resultType="long">
+		SELECT COUNT(*)
+		FROM SCHED_EXTERNAL_API_EXEC_LOG E
+		LEFT JOIN SCHED_EXTERNAL_API A
+		  ON E.EXTERNAL_API_ID = A.EXTERNAL_API_ID
+		WHERE 1 = 1
+		<if test="apiName != null and apiName != ''">
+			AND A.API_NAME LIKE '%' || #{apiName} || '%'
+		</if>
+		<if test="status != null and status != ''">
+			AND E.STATUS = #{status}
+		</if>
+		<if test="startDate != null">
+			AND E.STARTED_AT <![CDATA[ >= ]]> #{startDate}
+		</if>
+		<if test="endDateExclusive != null">
+			AND E.STARTED_AT <![CDATA[ < ]]> #{endDateExclusive}
+		</if>
+	</select>
+
+</mapper>

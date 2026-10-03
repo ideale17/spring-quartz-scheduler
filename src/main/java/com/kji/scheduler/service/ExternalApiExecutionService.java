@@ -34,6 +34,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.kji.scheduler.dto.CollectRawDataDto;
 import com.kji.scheduler.dto.ExternalApiCallLogDto;
 import com.kji.scheduler.dto.ExternalApiDto;
+import com.kji.scheduler.dto.ExternalApiExecutionLogDto;
 import com.kji.scheduler.dto.ExternalApiPagingDto;
 import com.kji.scheduler.dto.ExternalApiParamDto;
 
@@ -52,6 +53,7 @@ public class ExternalApiExecutionService {
 	private final ExternalApiService externalApiService;
 	private final DynamicParameterResolver dynamicParameterResolver;
 	private final ExternalApiCallLogService externalApiCallLogService;
+	private final ExternalApiExecutionLogService externalApiExecutionLogService;
 	private final CollectRawDataService collectRawDataService;
 	
 	private final ObjectMapper objectMapper;
@@ -60,12 +62,14 @@ public class ExternalApiExecutionService {
 			DynamicParameterResolver dynamicParameterResolver,
 			RestTemplate restTemplate,
 			ExternalApiCallLogService externalApiCallLogService,
+			ExternalApiExecutionLogService externalApiExecutionLogService,
 			CollectRawDataService collectRawDataService,
 			ObjectMapper objectMapper) {
 		this.externalApiService = externalApiService;
 		this.dynamicParameterResolver = dynamicParameterResolver;
 		this.restTemplate = restTemplate;
 		this.externalApiCallLogService = externalApiCallLogService;
+		this.externalApiExecutionLogService = externalApiExecutionLogService;
 		this.collectRawDataService = collectRawDataService;
 		this.objectMapper = objectMapper;
 	}
@@ -85,109 +89,136 @@ public class ExternalApiExecutionService {
 		// 2. External API 기본 정보를 조회한다.
 		ExternalApiDto externalApi = externalApiService.getExternalApi(externalApiId);
 		
-		// 3. External API 사용 가능 여부를 확인한다.
-		if (!"Y".equals(externalApi.getEnabled())) {
-			throw new IllegalStateException("사용 중지된 External API입니다. externalApiId: " + externalApiId);
-		}
+		// 3. External API 실행 이력을 생성한다.
+		ExternalApiExecutionLogDto executionLog = new ExternalApiExecutionLogDto();
+		executionLog.setExecutionId(executionId);
+		executionLog.setExternalApiId(externalApiId);
+		executionLog.setFireInstanceId(fireInstanceId);
+
+		externalApiExecutionLogService.insertStart(executionLog);
 		
-		// 4. External API 인증 설정을 검증한다.
-		validateAuthentication(externalApi);
-		
-		// 5. External API 파라미터 목록을 조회한다.
-		List<ExternalApiParamDto> params = externalApiService.getExternalApiParamList(externalApiId);
-		
-		// 6. External API 페이징 설정을 조회한다.
-		ExternalApiPagingDto paging = externalApiService.getExternalApiPaging(externalApiId);
-		
-		// 6. 요청 위치별 파라미터를 저장할 Map을 생성한다.
-		Map<String, String> headers = new LinkedHashMap<>();
-		Map<String, String> queryParams = new LinkedHashMap<>();
-		Map<String, String> bodyParams = new LinkedHashMap<>();
-		
-		// 7. 각 파라미터의 실제 실행 값을 생성한다.
-		for (ExternalApiParamDto param : params) {
+		try {
 			
-			String resolvedValue = dynamicParameterResolver.resolve(param, executionTime);
-			
-			// 8. 필수 파라미터의 값 존재 여부를 확인한다.
-			validateRequiredParam(param, resolvedValue);
-			
-			// 9. 값이 없는 선택 파라미터는 요청에서 제외한다.
-			if (resolvedValue == null) {
-				continue;
+			// 4. External API 사용 가능 여부를 확인한다.
+			if (!"Y".equals(externalApi.getEnabled())) {
+				throw new IllegalStateException("사용 중지된 External API입니다. externalApiId: " + externalApiId);
 			}
 			
-			// 10. 파라미터 전달 위치에 따라 요청 정보를 분리한다.
-			switch (param.getParamLocation()) {
+			// 5. External API 인증 설정을 검증한다.
+			validateAuthentication(externalApi);
 			
-				case "HEADER" ->
-					headers.put(param.getParamName(), resolvedValue);
+			// 6. External API 파라미터 목록을 조회한다.
+			List<ExternalApiParamDto> params = externalApiService.getExternalApiParamList(externalApiId);
+			
+			// 7. External API 페이징 설정을 조회한다.
+			ExternalApiPagingDto paging = externalApiService.getExternalApiPaging(externalApiId);
+			
+			// 8. 요청 위치별 파라미터를 저장할 Map을 생성한다.
+			Map<String, String> headers = new LinkedHashMap<>();
+			Map<String, String> queryParams = new LinkedHashMap<>();
+			Map<String, String> bodyParams = new LinkedHashMap<>();
+			
+			// 9. 각 파라미터의 실제 실행 값을 생성한다.
+			for (ExternalApiParamDto param : params) {
 				
-				case "QUERY" ->
-					queryParams.put(param.getParamName(), resolvedValue);
+				String resolvedValue = dynamicParameterResolver.resolve(param, executionTime);
 				
-				case "BODY" ->
-					bodyParams.put(param.getParamName(), resolvedValue);
+				// 9-1. 필수 파라미터의 값 존재 여부를 확인한다.
+				validateRequiredParam(param, resolvedValue);
 				
-				default ->
-					throw new IllegalArgumentException(
-							"지원하지 않는 External API 파라미터 위치입니다. "
-									+ "paramName: " + param.getParamName()
-									+ ", paramLocation: " + param.getParamLocation()
-					);
+				// 9-2. 값이 없는 선택 파라미터는 요청에서 제외한다.
+				if (resolvedValue == null) {
+					continue;
+				}
+				
+				// 9-3. 파라미터 전달 위치에 따라 요청 정보를 분리한다.
+				switch (param.getParamLocation()) {
+				
+					case "HEADER" ->
+						headers.put(param.getParamName(), resolvedValue);
+					
+					case "QUERY" ->
+						queryParams.put(param.getParamName(), resolvedValue);
+					
+					case "BODY" ->
+						bodyParams.put(param.getParamName(), resolvedValue);
+					
+					default ->
+						throw new IllegalArgumentException(
+								"지원하지 않는 External API 파라미터 위치입니다. "
+										+ "paramName: " + param.getParamName()
+										+ ", paramLocation: " + param.getParamLocation()
+						);
+				}
 			}
-		}
-		
-		// 11. External API 인증 정보를 요청에 적용한다.
-		applyAuthentication(externalApi, headers, queryParams);
-		
-		// 12. External API 요청 정보 생성 결과를 기록한다.
-		log.info(
-				"External API 요청 정보 생성 완료. "
-						+ "externalApiId: {}, apiName: {}, method: {}, "
-						+ "headerParams: {}, queryParams: {}, bodyParams: {}",
-				externalApiId,
-				externalApi.getApiName(),
-				externalApi.getHttpMethod(),
-				headers.keySet(),
-				queryParams.keySet(),
-				bodyParams.keySet()
-		);
-		
-		// 14. 페이징 설정이 없거나 사용하지 않으면 External API를 한 번 호출한다.
-		if (paging == null || !"Y".equals(paging.getEnabled())) {
-			executeRequest(
+			
+			// 10. External API 인증 정보를 요청에 적용한다.
+			applyAuthentication(externalApi, headers, queryParams);
+			
+			// 11. External API 요청 정보 생성 결과를 기록한다.
+			log.info(
+					"External API 요청 정보 생성 완료. "
+							+ "externalApiId: {}, apiName: {}, method: {}, "
+							+ "headerParams: {}, queryParams: {}, bodyParams: {}",
+					externalApiId,
+					externalApi.getApiName(),
+					externalApi.getHttpMethod(),
+					headers.keySet(),
+					queryParams.keySet(),
+					bodyParams.keySet()
+			);
+			
+			// 12. 페이징 설정이 없거나 사용하지 않으면 External API를 한 번 호출한다.
+			if (paging == null || !"Y".equals(paging.getEnabled())) {
+				executeRequest(
+						externalApi,
+						executionId,
+						fireInstanceId,
+						1,
+						headers,
+						queryParams,
+						bodyParams
+				);
+				
+				// External API 전체 실행을 성공 처리한다.
+				externalApiExecutionLogService.markSuccess(executionLog);
+				
+				return;
+			}
+			
+			// 13. 현재 지원하는 페이징 방식과 종료 조건을 확인한다.
+			if (!"PAGE".equals(paging.getPaginationType())) {
+				throw new IllegalStateException("지원하지 않는 페이징 방식입니다. paginationType: " + paging.getPaginationType());
+			}
+			
+			if (!"TOTAL_COUNT".equals(paging.getTerminationType())) {
+				throw new IllegalStateException("지원하지 않는 페이징 종료 방식입니다. terminationType: " + paging.getTerminationType());
+			}
+			
+			// 14. 페이지 방식 External API를 호출한다.
+			executePagePagination(
 					externalApi,
+					paging,
 					executionId,
 					fireInstanceId,
-					1,
 					headers,
 					queryParams,
 					bodyParams
 			);
 			
-			return;
+			// 15. External API 전체 실행을 성공 처리한다.
+			externalApiExecutionLogService.markSuccess(executionLog);
+			
+		} catch (Exception e) {
+			
+			externalApiExecutionLogService.markFailed(
+					executionLog,
+					e.getMessage()
+			);
+
+			throw e;
+			
 		}
-		
-		// 15. 현재 지원하는 페이징 방식과 종료 조건을 확인한다.
-		if (!"PAGE".equals(paging.getPaginationType())) {
-			throw new IllegalStateException("지원하지 않는 페이징 방식입니다. paginationType: " + paging.getPaginationType());
-		}
-		
-		if (!"TOTAL_COUNT".equals(paging.getTerminationType())) {
-			throw new IllegalStateException("지원하지 않는 페이징 종료 방식입니다. terminationType: " + paging.getTerminationType());
-		}
-		
-		// 16. 페이지 방식 External API를 호출한다.
-		executePagePagination(
-				externalApi,
-				paging,
-				executionId,
-				fireInstanceId,
-				headers,
-				queryParams,
-				bodyParams
-		);
 		
 	}
 	
