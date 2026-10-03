@@ -104,32 +104,23 @@
 		</if>
 	</select>
 	
-	<!-- External API 실행 단위 호출 이력 조회 -->
+		<!-- External API 실행 단위 호출 이력 조회 -->
 	<select id="findCallHistorySummary"
 			parameterType="com.kji.scheduler.dto.ExternalApiCallHistorySearchDto"
 			resultType="com.kji.scheduler.dto.ExternalApiCallHistorySummaryDto">
-		SELECT
-			S.EXECUTION_ID,
-			S.EXTERNAL_API_ID,
-			S.API_NAME,
-			S.FIRE_INSTANCE_ID,
-			L.STATUS,
-			S.ATTEMPT_COUNT,
-			S.ATTEMPT_COUNT - 1 AS RETRY_COUNT,
-			S.API_RUN_MILLIS,
-			S.STARTED_AT,
-			S.FINISHED_AT
-		FROM (
+		WITH CALL_LOG AS (
 			SELECT
+				L.API_CALL_LOG_ID,
 				L.EXECUTION_ID,
 				L.EXTERNAL_API_ID,
 				A.API_NAME,
-				MAX(L.FIRE_INSTANCE_ID) AS FIRE_INSTANCE_ID,
-				COUNT(*) AS ATTEMPT_COUNT,
-				COALESCE(SUM(L.RUN_MILLIS), 0) AS API_RUN_MILLIS,
-				MIN(L.STARTED_AT) AS STARTED_AT,
-				MAX(L.FINISHED_AT) AS FINISHED_AT,
-				MAX(L.ATTEMPT_NO) AS LAST_ATTEMPT_NO
+				L.FIRE_INSTANCE_ID,
+				L.REQUEST_SEQUENCE,
+				L.ATTEMPT_NO,
+				L.RUN_MILLIS,
+				L.STARTED_AT,
+				L.FINISHED_AT,
+				L.STATUS
 			FROM SCHED_EXTERNAL_API_CALL_LOG L
 			LEFT JOIN SCHED_EXTERNAL_API A
 			  ON L.EXTERNAL_API_ID = A.EXTERNAL_API_ID
@@ -143,14 +134,53 @@
 			<if test="endDateExclusive != null">
 				AND L.STARTED_AT <![CDATA[ < ]]> #{endDateExclusive}
 			</if>
+		),
+		SUMMARY AS (
+			SELECT
+				EXECUTION_ID,
+				EXTERNAL_API_ID,
+				API_NAME,
+				MAX(FIRE_INSTANCE_ID) AS FIRE_INSTANCE_ID,
+				COUNT(DISTINCT REQUEST_SEQUENCE) AS REQUEST_COUNT,
+				COUNT(*) AS ATTEMPT_COUNT,
+				COUNT(*) - COUNT(DISTINCT REQUEST_SEQUENCE) AS RETRY_COUNT,
+				COALESCE(SUM(RUN_MILLIS), 0) AS API_RUN_MILLIS,
+				MIN(STARTED_AT) AS STARTED_AT
+			FROM CALL_LOG
 			GROUP BY
-				L.EXECUTION_ID,
-				L.EXTERNAL_API_ID,
-				A.API_NAME
-		) S
-		JOIN SCHED_EXTERNAL_API_CALL_LOG L
+				EXECUTION_ID,
+				EXTERNAL_API_ID,
+				API_NAME
+		),
+		LAST_LOG AS (
+			SELECT
+				EXECUTION_ID,
+				STATUS,
+				FINISHED_AT,
+				ROW_NUMBER() OVER (
+					PARTITION BY EXECUTION_ID
+					ORDER BY REQUEST_SEQUENCE DESC,
+							 ATTEMPT_NO DESC,
+							 API_CALL_LOG_ID DESC
+				) AS ROW_NO
+			FROM CALL_LOG
+		)
+		SELECT
+			S.EXECUTION_ID,
+			S.EXTERNAL_API_ID,
+			S.API_NAME,
+			S.FIRE_INSTANCE_ID,
+			L.STATUS,
+			S.REQUEST_COUNT,
+			S.ATTEMPT_COUNT,
+			S.RETRY_COUNT,
+			S.API_RUN_MILLIS,
+			S.STARTED_AT,
+			L.FINISHED_AT
+		FROM SUMMARY S
+		JOIN LAST_LOG L
 		  ON L.EXECUTION_ID = S.EXECUTION_ID
-		 AND L.ATTEMPT_NO = S.LAST_ATTEMPT_NO
+		 AND L.ROW_NO = 1
 		<where>
 			<if test="status != null and status != ''">
 				L.STATUS = #{status}
@@ -161,15 +191,17 @@
 		FETCH NEXT #{size} ROWS ONLY
 	</select>
 	
-	<!-- External API 실행 단위 호출 이력 전체 건수 조회 -->
+		<!-- External API 실행 단위 호출 이력 전체 건수 조회 -->
 	<select id="countCallHistorySummary"
 			parameterType="com.kji.scheduler.dto.ExternalApiCallHistorySearchDto"
 			resultType="long">
-		SELECT COUNT(*)
-		FROM (
+		WITH CALL_LOG AS (
 			SELECT
+				L.API_CALL_LOG_ID,
 				L.EXECUTION_ID,
-				MAX(L.ATTEMPT_NO) AS LAST_ATTEMPT_NO
+				L.REQUEST_SEQUENCE,
+				L.ATTEMPT_NO,
+				L.STATUS
 			FROM SCHED_EXTERNAL_API_CALL_LOG L
 			LEFT JOIN SCHED_EXTERNAL_API A
 			  ON L.EXTERNAL_API_ID = A.EXTERNAL_API_ID
@@ -183,16 +215,25 @@
 			<if test="endDateExclusive != null">
 				AND L.STARTED_AT <![CDATA[ < ]]> #{endDateExclusive}
 			</if>
-			GROUP BY L.EXECUTION_ID
-		) S
-		JOIN SCHED_EXTERNAL_API_CALL_LOG L
-		  ON L.EXECUTION_ID = S.EXECUTION_ID
-		 AND L.ATTEMPT_NO = S.LAST_ATTEMPT_NO
-		<where>
-			<if test="status != null and status != ''">
-				L.STATUS = #{status}
-			</if>
-		</where>
+		),
+		LAST_LOG AS (
+			SELECT
+				EXECUTION_ID,
+				STATUS,
+				ROW_NUMBER() OVER (
+					PARTITION BY EXECUTION_ID
+					ORDER BY REQUEST_SEQUENCE DESC,
+							 ATTEMPT_NO DESC,
+							 API_CALL_LOG_ID DESC
+				) AS ROW_NO
+			FROM CALL_LOG
+		)
+		SELECT COUNT(*)
+		FROM LAST_LOG
+		WHERE ROW_NO = 1
+		<if test="status != null and status != ''">
+			AND STATUS = #{status}
+		</if>
 	</select>
 	
 	<!-- External API 실행별 호출 시도 이력 조회 -->

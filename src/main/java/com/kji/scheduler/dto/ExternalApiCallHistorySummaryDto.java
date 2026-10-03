@@ -12,6 +12,7 @@ public class ExternalApiCallHistorySummaryDto {
 	private String apiName;
 	private String fireInstanceId;
 	private String status;
+	private Integer requestCount;
 	private Integer attemptCount;
 	private Integer retryCount;
 	private Long totalRunMillis;
