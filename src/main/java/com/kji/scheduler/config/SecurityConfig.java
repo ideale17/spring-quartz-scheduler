@@ -84,7 +84,10 @@ public class SecurityConfig {
 	CorsConfigurationSource corsConfigurationSource() {
 		
 		CorsConfiguration cfg = new CorsConfiguration();
-		cfg.setAllowedOrigins(List.of("http://localhost:5173"));
+		cfg.setAllowedOrigins(List.of(
+				"http://localhost:5173",
+				"https://scheduler.pomibori.dev"
+				));
 		cfg.setAllowedMethods(List.of("GET","POST","PUT","DELETE","PATCH","OPTIONS"));
 		cfg.setAllowedHeaders(List.of("Content-Type","X-XSRF-TOKEN","Authorization"));
 		cfg.setAllowCredentials(true); // 세션 쿠키 전송 허용
