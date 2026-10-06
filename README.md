@@ -282,6 +282,36 @@ Raw Data에는 다음 정보를 함께 저장합니다.
 향후 데이터 가공이나 재처리 시 원본 데이터를 다시 활용할 수 있도록 했습니다.
 
 
+### 4.x Job 실행과 External API 실행 상태 분리
+
+외부 API 페이징 호출을 구현한 이후,
+개별 HTTP 요청은 모두 성공했지만 최대 페이지 호출 제한에 도달하여
+전체 데이터 수집은 실패하는 경우가 발생했습니다.
+
+기존에는 `SCHED_EXTERNAL_API_CALL_LOG`의 마지막 호출 상태를
+External API 전체 실행 상태처럼 사용하고 있었기 때문에,
+Job 실행 이력은 실패인데 External API 호출 이력은 성공으로 표시되는
+상태 불일치가 발생할 수 있었습니다.
+
+이를 해결하기 위해 실행 상태의 책임을 다음과 같이 분리했습니다.
+
+- `SCHED_EXEC_LOG`
+  - Quartz Job 전체 실행 상태 관리
+- `SCHED_EXTERNAL_API_EXEC_LOG`
+  - External API 수집 1회 실행의 전체 성공/실패 관리
+- `SCHED_EXTERNAL_API_CALL_LOG`
+  - 페이지 및 재시도를 포함한 개별 HTTP 호출 결과 관리
+- `SCHED_COLLECT_RAW_DATA`
+  - 각 요청에서 수집한 원본 응답 데이터 저장
+
+예를 들어 10페이지가 필요한 API를 최대 5페이지까지만 호출하도록 설정한 경우,
+1~5페이지의 HTTP 호출 자체는 모두 성공할 수 있지만
+전체 데이터 수집은 완료되지 않았으므로 External API 실행 상태는 실패로 처리합니다.
+
+이를 통해 HTTP 통신 성공 여부와 전체 수집 성공 여부를 분리하여
+실행 상태의 의미를 명확하게 관리할 수 있도록 개선했습니다.
+
+
 ---
 
 ## 5. 주요 구현 과정에서 고민한 부분
@@ -446,13 +476,15 @@ jdbc:postgresql://localhost:5432/scheduler
 ```text
 src/main/resources/db/postgresql/01_quartz.sql
 src/main/resources/db/postgresql/02_scheduler.sql
-src/main/resources/db/postgresql/03_init_data.sql
+src/main/resources/db/postgresql/03_security.sql
+src/main/resources/db/postgresql/04_init_data.sql
 ```
 
 각 파일의 역할은 다음과 같습니다.
 
 - `01_quartz.sql` : Quartz JDBC JobStore에서 사용하는 `QRTZ_*` 테이블 생성
-- `02_scheduler.sql` : Scheduler 애플리케이션 테이블 생성
+- `02_scheduler.sql` : Scheduler 및 외부 API 관련 애플리케이션 테이블 생성
+- `03_security.sql` : 사용자, 권한, 사용자-권한 관계 테이블 생성
 - `03_init_data.sql` : 애플리케이션 기본 권한 및 초기 데이터 생성
 
 Quartz Schema 자동 생성을 사용하지 않기 때문에 최초 실행 전에 SQL을 직접 적용해야 합니다.
@@ -478,9 +510,63 @@ spring.datasource.username=YOUR_USERNAME
 spring.datasource.password=YOUR_PASSWORD
 ```
 
+Local Profile에서는 다음 설정을 통해 해당 파일을 로드합니다.
+`spring.config.import=optional:file:./config/application-postgresql-secret.properties`
+
 실제 DB 계정 정보가 포함된 `application-postgresql-secret.properties` 파일은 Git에 포함되지 않습니다.
 
-### 6.6 애플리케이션 실행
+### 6.6 암호화 키 생성
+
+외부 API의 API Key, Bearer Token, Basic 인증 비밀번호 등
+민감한 인증정보를 암호화하기 위해 AES-256 암호화 키가 필요합니다.
+
+애플리케이션은 Base64로 인코딩된 32바이트 키를 사용합니다.
+
+OpenSSL을 사용할 수 있는 환경에서는 다음 명령으로 키를 생성할 수 있습니다.
+
+```bash
+openssl rand -base64 32
+```
+
+생성된 Base64 문자열을 그대로 `SCHEDULER_ENCRYPTION_KEY` 환경변수에 설정합니다.
+
+암호화 키는 소스 코드, 설정 파일 또는 Git 저장소에 직접 저장하지 않는 것을 권장합니다.
+
+이미 암호화된 외부 API 인증정보가 존재하는 환경에서 암호화 키를 변경하면
+기존 데이터를 복호화할 수 없으므로 동일한 키를 유지해야 합니다.
+
+### 6.7 암호화 키 환경변수 설정
+
+생성한 AES-256 키를 `SCHEDULER_ENCRYPTION_KEY` 환경변수로 설정합니다.
+
+#### Windows CMD
+
+```bat
+set SCHEDULER_ENCRYPTION_KEY=YOUR_BASE64_ENCRYPTION_KEY
+```
+
+#### Windows PowerShell
+
+```powershell
+$env:SCHEDULER_ENCRYPTION_KEY="YOUR_BASE64_ENCRYPTION_KEY"
+```
+
+#### macOS / Linux
+
+```bash
+export SCHEDULER_ENCRYPTION_KEY=YOUR_BASE64_ENCRYPTION_KEY
+```
+
+애플리케이션에서는 다음 설정을 통해 환경변수를 참조합니다.
+
+```properties
+app.security.encryption-key=${SCHEDULER_ENCRYPTION_KEY}
+```
+
+환경변수가 설정되지 않았거나 Base64 디코딩 결과가 32바이트가 아닌 경우
+애플리케이션이 정상적으로 시작되지 않습니다.
+
+### 6.8 애플리케이션 실행
 
 Local Profile을 활성화하여 애플리케이션을 실행합니다.
 
@@ -504,17 +590,41 @@ http://localhost:8080
 
 ---
 
+### 초기 사용자 계정
+
+초기 SQL은 역할 정보만 생성하며 기본 사용자 계정은 생성하지 않습니다.
+
+로컬에서 로그인 기능을 테스트하려면 회원가입을 임시로 활성화할 수 있습니다.
+
+```properties
+app.security.signup-enabled=true
+```
+
+테스트가 끝난 뒤에는 필요에 따라 다시 비활성화할 수 있습니다.
+
+```properties
+app.security.signup-enabled=false
+```
+
+---
+
 ## 7. Repository
 
+####Backend
 `spring-quartz-scheduler`
 
 https://github.com/ideale17/spring-quartz-scheduler
+
+####Frontend
+`scheduler-ui`
+
+https://github.com/ideale17/scheduler-ui
 
 ---
 
 ## 8. Demo
 
-배포 완료 후 Demo URL을 추가할 예정입니다.
+https://scheduler.pomibori.dev/
 
 ---
 
