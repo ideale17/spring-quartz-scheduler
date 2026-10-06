@@ -59,12 +59,9 @@ public class SecurityConfig {
 							"/auth/login",
 							"/auth/logout",
 							"/auth/signup",
-							"/auth/signup-enabled",
-							"/actuator/health",
-							"/h2-console/**").permitAll()
+							"/auth/signup-enabled").permitAll()
 					.anyRequest().authenticated()
 					)
-			.headers(h -> h.frameOptions(f -> f.sameOrigin())) // H2 console용
 			.formLogin(f -> f.disable())   // SPA이므로 폼로그인 비활성화
 			.httpBasic(b -> b.disable())  // 기본 인증 끔
 			.logout(logout -> logout
