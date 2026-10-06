@@ -370,13 +370,12 @@ public class ExternalApiExecutionService {
 			externalApiCallLogService.markFailed(callLog, errorMessage);
 			
 			log.error(
-					"External API 호출 실패. externalApiId: {}, apiName: {}, requestSequence: {}, attemptNo: {}, statusCode: {}, responseBody: {}",
+					"External API 호출 실패. externalApiId: {}, apiName: {}, requestSequence: {}, attemptNo: {}, statusCode: {}",
 					externalApi.getExternalApiId(),
 					externalApi.getApiName(),
 					requestSequence,
 					attemptNo,
 					e.getStatusCode(),
-					e.getResponseBodyAsString(),
 					e
 			);
 			
