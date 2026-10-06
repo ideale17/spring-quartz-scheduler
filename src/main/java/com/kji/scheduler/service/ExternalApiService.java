@@ -1,5 +1,9 @@
 package com.kji.scheduler.service;
 
+import java.net.InetAddress;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.net.UnknownHostException;
 import java.util.List;
 
 import org.quartz.SchedulerException;
@@ -108,32 +112,31 @@ public class ExternalApiService {
 		if (externalApi.getApiName() == null || externalApi.getApiName().isBlank()) {
 			throw new IllegalArgumentException("External API 이름은 필수입니다.");
 		}
-
-		if (externalApi.getApiUrl() == null || externalApi.getApiUrl().isBlank()) {
-			throw new IllegalArgumentException("External API URL은 필수입니다.");
-		}
+		
+		// 2. External API URL을 검증한다.
+		validateExternalApiUrl(externalApi.getApiUrl());
 		
 		if (externalApi.getHttpMethod() == null || externalApi.getHttpMethod().isBlank()) {
 			throw new IllegalArgumentException("HTTP Method는 필수입니다.");
 		}
 		
-		// 2. 사용 여부가 없으면 기본값 Y를 설정한다.
+		// 3. 사용 여부가 없으면 기본값 Y를 설정한다.
 		if (externalApi.getEnabled() == null || externalApi.getEnabled().isBlank()) {
 			externalApi.setEnabled("Y");
 		}
 		
-		// 3. 재시도 설정을 검증하고 기본값을 설정한다.
+		// 4. 재시도 설정을 검증하고 기본값을 설정한다.
 		validateRetryPolicy(externalApi);
 		
-		// 4. External API 기본 정보를 등록한다.
+		// 5. External API 기본 정보를 등록한다.
 		int insertCount = externalApiMapper.insertExternalApi(externalApi);
 
-		// 5. 등록 결과를 확인한다.
+		// 6. 등록 결과를 확인한다.
 		if (insertCount != 1) {
 			throw new IllegalStateException("External API 등록에 실패했습니다.");
 		}
 		
-		// 6. 생성된 External API 식별자를 반환한다.
+		// 7. 생성된 External API 식별자를 반환한다.
 		return externalApi.getExternalApiId();
 	}
 	
@@ -153,26 +156,25 @@ public class ExternalApiService {
 			throw new IllegalArgumentException("External API 이름은 필수입니다.");
 		}
 		
-		if (externalApi.getApiUrl() == null || externalApi.getApiUrl().isBlank()) {
-			throw new IllegalArgumentException("External API URL은 필수입니다.");
-		}
+		// 3. External API URL을 검증한다.
+		validateExternalApiUrl(externalApi.getApiUrl());
 		
 		if (externalApi.getHttpMethod() == null || externalApi.getHttpMethod().isBlank()) {
 			throw new IllegalArgumentException("HTTP Method는 필수입니다.");
 		}
 		
-		// 3. 사용 여부가 없으면 기본값 Y를 설정한다.
+		// 4. 사용 여부가 없으면 기본값 Y를 설정한다.
 		if (externalApi.getEnabled() == null || externalApi.getEnabled().isBlank()) {
 			externalApi.setEnabled("Y");
 		}
 		
-		// 4. 재시도 설정을 검증하고 기본값을 설정한다.
+		// 5. 재시도 설정을 검증하고 기본값을 설정한다.
 		validateRetryPolicy(externalApi);
 		
-		// 5. 인증 설정을 검증하고 기본값을 설정한다.
+		// 6. 인증 설정을 검증하고 기본값을 설정한다.
 		validateAuth(externalApi);
 		
-		// 6. 인증 방식에 따라 인증 정보를 암호화한다.
+		// 7. 인증 방식에 따라 인증 정보를 암호화한다.
 		switch (externalApi.getAuthType()) {
 			case "API_KEY", "BEARER" ->
 				externalApi.setAuthValue(encryptionService.encrypt(externalApi.getAuthValue()));
@@ -181,32 +183,32 @@ public class ExternalApiService {
 				externalApi.setAuthPassword(encryptionService.encrypt(externalApi.getAuthPassword()));
 		}
 		
-		// 7. External API 기본 정보를 등록한다.
+		// 8. External API 기본 정보를 등록한다.
 		int insertCount = externalApiMapper.insertExternalApi(externalApi);
 
 		if (insertCount != 1) {
 			throw new IllegalStateException("External API 등록에 실패했습니다.");
 		}
 		
-		// 8. 생성된 External API 식별자를 확인한다.
+		// 9. 생성된 External API 식별자를 확인한다.
 		Long externalApiId = externalApi.getExternalApiId();
 		
 		if (externalApiId == null) {
 			throw new IllegalStateException("External API 식별자 생성에 실패했습니다.");
 		}
 		
-		// 9. 페이징 설정이 있으면 등록한다.
+		// 10. 페이징 설정이 있으면 등록한다.
 		ExternalApiPagingDto paging = request.getPaging();
 		
 		if (paging != null) {
 			
-			// 9-1. External API 식별자를 설정한다.
+			// 10-1. External API 식별자를 설정한다.
 			paging.setExternalApiId(externalApiId);
 			
-			// 9-2. 페이징 설정을 검증하고 기본값을 설정한다.
+			// 10-2. 페이징 설정을 검증하고 기본값을 설정한다.
 			validatePaging(paging);
 			
-			// 9-3. 페이징 설정을 등록한다.
+			// 10-3. 페이징 설정을 등록한다.
 			int pagingInsertCount = externalApiMapper.insertExternalApiPaging(paging);
 			
 			if (pagingInsertCount != 1) {
@@ -215,15 +217,15 @@ public class ExternalApiService {
 			
 		}
 		
-		// 10. External API 파라미터를 등록한다.
+		// 11. External API 파라미터를 등록한다.
 		if (request.getParams() != null) {
 			
 			for (ExternalApiParamDto param : request.getParams()) {
 				
-				// 10-1. 생성된 External API 식별자를 파라미터에 설정한다.
+				// 11-1. 생성된 External API 식별자를 파라미터에 설정한다.
 				param.setExternalApiId(externalApiId);
 				
-				// 10-2. 파라미터 기본값을 설정한다.
+				// 11-2. 파라미터 기본값을 설정한다.
 				if (param.getRequiredYn() == null || param.getRequiredYn().isBlank()) {
 					param.setRequiredYn("N");
 				}
@@ -232,7 +234,7 @@ public class ExternalApiService {
 					param.setSortOrder(0);
 				}
 				
-				// 10-3. 파라미터를 등록한다.
+				// 11-3. 파라미터를 등록한다.
 				int paramInsertCount = externalApiMapper.insertExternalApiParam(param);
 				
 				if (paramInsertCount != 1) {
@@ -242,7 +244,7 @@ public class ExternalApiService {
 			
 		}
 		
-		// 11. 생성된 External API 식별자를 반환한다.
+		// 12. 생성된 External API 식별자를 반환한다.
 		return externalApiId;
 	}
 	
@@ -265,23 +267,22 @@ public class ExternalApiService {
 			throw new IllegalArgumentException("External API 이름은 필수입니다.");
 		}
 		
-		if (externalApi.getApiUrl() == null || externalApi.getApiUrl().isBlank()) {
-			throw new IllegalArgumentException("External API URL은 필수입니다.");
-		}
+		// 4. External API URL을 검증한다.
+		validateExternalApiUrl(externalApi.getApiUrl());
 		
 		if (externalApi.getHttpMethod() == null || externalApi.getHttpMethod().isBlank()) {
 			throw new IllegalArgumentException("HTTP Method는 필수입니다.");
 		}
 		
-		// 4. 사용 여부가 없으면 기본값 Y를 설정한다.
+		// 5. 사용 여부가 없으면 기본값 Y를 설정한다.
 		if (externalApi.getEnabled() == null || externalApi.getEnabled().isBlank()) {
 			externalApi.setEnabled("Y");
 		}
 		
-		// 5. 재시도 설정을 검증하고 기본값을 설정한다.
+		// 6. 재시도 설정을 검증하고 기본값을 설정한다.
 		validateRetryPolicy(externalApi);
 		
-		// 6. 인증 방식이 동일하고 비밀값을 새로 입력하지 않은 경우 기존 값을 유지한다.
+		// 7. 인증 방식이 동일하고 비밀값을 새로 입력하지 않은 경우 기존 값을 유지한다.
 		if (savedExternalApi.getAuthType() != null && savedExternalApi.getAuthType().equals(externalApi.getAuthType())) {
 		    if ("API_KEY".equals(externalApi.getAuthType())
 		            && (externalApi.getAuthValue() == null
@@ -305,10 +306,10 @@ public class ExternalApiService {
 		    }
 		}
 		
-		// 7. 인증 설정을 검증하고 기본값을 설정한다.
+		// 8. 인증 설정을 검증하고 기본값을 설정한다.
 		validateAuth(externalApi);
 		
-		// 8. 인증 방식에 따라 인증 정보를 암호화한다.
+		// 9. 인증 방식에 따라 인증 정보를 암호화한다.
 		switch (externalApi.getAuthType()) {
 			case "API_KEY", "BEARER" ->
 				externalApi.setAuthValue(encryptionService.encrypt(externalApi.getAuthValue()));
@@ -317,27 +318,27 @@ public class ExternalApiService {
 				externalApi.setAuthPassword(encryptionService.encrypt(externalApi.getAuthPassword()));
 		}
 		
-		// 9. URL의 식별자를 수정 대상에 설정한다.
+		// 10. URL의 식별자를 수정 대상에 설정한다.
 		externalApi.setExternalApiId(externalApiId);
 		
-		// 10. External API 기본 정보를 수정한다.
+		// 11. External API 기본 정보를 수정한다.
 		int updateCount = externalApiMapper.updateExternalApi(externalApi);
 		
 		if (updateCount != 1) {
 			throw new IllegalStateException("External API 수정에 실패했습니다.");
 		}
 		
-		// 11. 기존 파라미터를 모두 삭제한다.
+		// 12. 기존 파라미터를 모두 삭제한다.
 		externalApiMapper.deleteExternalApiParams(externalApiId);
 		
-		// 12. 전달받은 파라미터를 다시 등록한다.
+		// 13. 전달받은 파라미터를 다시 등록한다.
 		if (request.getParams() != null) {
 			for (ExternalApiParamDto param : request.getParams()) {
 				
-				// 13. 수정 대상 External API 식별자를 설정한다.
+				// 13-1. 수정 대상 External API 식별자를 설정한다.
 				param.setExternalApiId(externalApiId);
 				
-				// 14. 기본값을 설정한다.
+				// 13-2. 기본값을 설정한다.
 				if (param.getRequiredYn() == null || param.getRequiredYn().isBlank()) {
 					param.setRequiredYn("N");
 				}
@@ -346,7 +347,7 @@ public class ExternalApiService {
 					param.setSortOrder(0);
 				}
 				
-				// 15. 파라미터를 등록한다.
+				// 13-3. 파라미터를 등록한다.
 				int insertCount = externalApiMapper.insertExternalApiParam(param);
 				
 				if (insertCount != 1) {
@@ -866,6 +867,63 @@ public class ExternalApiService {
 			throw new IllegalArgumentException("최대 요청 횟수는 1 이상이어야 합니다.");
 		}
 		
+	}
+	
+	/**
+	 * 외부 API URL을 검증한다.
+	 *
+	 * @param apiUrl
+	 */
+	public void validateExternalApiUrl(String apiUrl) {
+		
+		// 1. URL 필수값을 확인한다.
+		if (apiUrl == null || apiUrl.isBlank()) {
+			throw new IllegalArgumentException("외부 API URL은 필수입니다.");
+		}
+		
+		URI uri;
+		
+		// 2. URL 형식을 확인한다.
+		try {
+			uri = new URI(apiUrl);
+		} catch (URISyntaxException e) {
+			throw new IllegalArgumentException("외부 API URL 형식이 올바르지 않습니다.", e);
+		}
+		
+		// 3. HTTP 또는 HTTPS 프로토콜만 허용한다.
+		String scheme = uri.getScheme();
+		
+		if (!"http".equalsIgnoreCase(scheme) && !"https".equalsIgnoreCase(scheme)) {
+			throw new IllegalArgumentException("외부 API URL은 HTTP 또는 HTTPS만 사용할 수 있습니다.");
+		}
+		
+		// 4. Host가 존재하는지 확인한다.
+		String host = uri.getHost();
+		
+		if (host == null || host.isBlank()) {
+			throw new IllegalArgumentException("외부 API URL의 Host가 올바르지 않습니다.");
+		}
+		
+		// 5. Host가 내부 또는 로컬 주소를 가리키는지 확인한다.
+		try {
+			InetAddress[] addresses = InetAddress.getAllByName(host);
+			
+			for (InetAddress address : addresses) {
+				if (address.isAnyLocalAddress()
+						|| address.isLoopbackAddress()
+						|| address.isLinkLocalAddress()
+						|| address.isSiteLocalAddress()
+						|| address.isMulticastAddress()) {
+					
+					throw new IllegalArgumentException(
+							"내부 또는 로컬 네트워크 주소는 외부 API URL로 사용할 수 없습니다."
+					);
+				}
+			}
+			
+		} catch (UnknownHostException e) {
+			throw new IllegalArgumentException("외부 API URL의 Host를 확인할 수 없습니다.", e);
+		}
 	}
 	
 }
