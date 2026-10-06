@@ -115,7 +115,7 @@ public class ExternalApiController {
 		try {
 			
 			// 1. External API 기본 정보와 파라미터를 등록한다.
-			Long externalApiId = externalApiService.createExternalApiWithParams(request);
+			Long externalApiId = externalApiService.createExternalApi(request);
 			
 			// 2. 생성된 External API 식별자를 반환한다.
 			return ResponseEntity.ok(externalApiId);

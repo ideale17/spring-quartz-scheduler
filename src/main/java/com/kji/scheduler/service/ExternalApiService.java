@@ -101,48 +101,14 @@ public class ExternalApiService {
 		return externalApiMapper.findExternalApiPaging(externalApiId);
 	}
 	
-	// External API 등록
-	public Long createExternalApi(ExternalApiDto externalApi) {
-		
-		// 1. 필수 입력값을 검증한다.
-		if (externalApi == null) {
-			throw new IllegalArgumentException("External API 등록 정보가 없습니다.");
-		}
-		
-		if (externalApi.getApiName() == null || externalApi.getApiName().isBlank()) {
-			throw new IllegalArgumentException("External API 이름은 필수입니다.");
-		}
-		
-		// 2. External API URL을 검증한다.
-		validateExternalApiUrl(externalApi.getApiUrl());
-		
-		if (externalApi.getHttpMethod() == null || externalApi.getHttpMethod().isBlank()) {
-			throw new IllegalArgumentException("HTTP Method는 필수입니다.");
-		}
-		
-		// 3. 사용 여부가 없으면 기본값 Y를 설정한다.
-		if (externalApi.getEnabled() == null || externalApi.getEnabled().isBlank()) {
-			externalApi.setEnabled("Y");
-		}
-		
-		// 4. 재시도 설정을 검증하고 기본값을 설정한다.
-		validateRetryPolicy(externalApi);
-		
-		// 5. External API 기본 정보를 등록한다.
-		int insertCount = externalApiMapper.insertExternalApi(externalApi);
-
-		// 6. 등록 결과를 확인한다.
-		if (insertCount != 1) {
-			throw new IllegalStateException("External API 등록에 실패했습니다.");
-		}
-		
-		// 7. 생성된 External API 식별자를 반환한다.
-		return externalApi.getExternalApiId();
-	}
-	
-	// External API 및 파라미터 등록
+	/**
+	 * External API 및 파라미터 등록
+	 *
+	 * @param request
+	 * @return
+	 */
 	@Transactional
-	public Long createExternalApiWithParams(ExternalApiRequestDto request) {
+	public Long createExternalApi(ExternalApiRequestDto request) {
 		
 		// 1. 등록 요청 정보를 검증한다.
 		if (request == null || request.getExternalApi() == null) {
