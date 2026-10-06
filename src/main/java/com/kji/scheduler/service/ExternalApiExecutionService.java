@@ -214,11 +214,19 @@ public class ExternalApiExecutionService {
 			
 		} catch (Exception e) {
 			
-			externalApiExecutionLogService.markFailed(
-					executionLog,
-					e.getMessage()
-			);
-
+			// 18. 오류 유형에 따라 안전한 메시지를 저장한다.
+			String errorMessage;
+			
+			if (e instanceof RestClientResponseException httpException) {
+				errorMessage = buildHttpErrorMessage(httpException);
+			} else if (e instanceof ResourceAccessException accessException) {
+				errorMessage = buildResourceAccessErrorMessage(accessException);
+			} else {
+				errorMessage = buildErrorMessage(e);
+			}
+			
+			externalApiExecutionLogService.markFailed(executionLog, errorMessage);
+			
 			throw e;
 			
 		}
@@ -308,7 +316,6 @@ public class ExternalApiExecutionService {
 			Map<String, String> queryParams,
 			Map<String, String> bodyParams) {
 		
-		// 1. External API 호출 시작 이력을 저장한다.
 		ExternalApiCallLogDto callLog = new ExternalApiCallLogDto();
 		callLog.setExternalApiId(externalApi.getExternalApiId());
 		callLog.setExecutionId(executionId);
@@ -316,6 +323,7 @@ public class ExternalApiExecutionService {
 		callLog.setRequestSequence(requestSequence);
 		callLog.setAttemptNo(attemptNo);
 		
+		// 1. External API 호출 시작 이력을 저장한다.
 		externalApiCallLogService.insertStart(callLog);
 		
 		// 2. External API 호출 소요 시간 측정을 시작한다.
@@ -326,7 +334,12 @@ public class ExternalApiExecutionService {
 			// 3. External API를 호출한다.
 			ResponseEntity<String> response = callExternalApi(externalApi, headers, queryParams, bodyParams);
 			
-			// 4. External API 응답 원본 데이터를 구성한다.
+			// 4. 리다이렉트 응답은 허용하지 않는다.
+			if (response.getStatusCode().is3xxRedirection()) {
+				throw new IllegalStateException("외부 API 리다이렉트 응답은 허용하지 않습니다.");
+			}
+			
+			// 5. External API 응답 원본 데이터를 구성한다.
 			CollectRawDataDto rawData = new CollectRawDataDto();
 			rawData.setExecutionId(executionId);
 			rawData.setExternalApiId(externalApi.getExternalApiId());
@@ -337,10 +350,10 @@ public class ExternalApiExecutionService {
 				rawData.setContentType(response.getHeaders().getContentType().toString());
 			}
 			
-			// 5. External API 응답 원본 데이터를 저장한다.
+			// 6. External API 응답 원본 데이터를 저장한다.
 			collectRawDataService.insertCollectRawData(rawData);
 			
-			// 6. External API 호출 성공 정보를 저장한다.
+			// 7. External API 호출 성공 정보를 저장한다.
 			long runMillis = (System.nanoTime() - startTime) / 1_000_000;
 			
 			callLog.setHttpStatus(response.getStatusCode().value());
@@ -348,7 +361,7 @@ public class ExternalApiExecutionService {
 			
 			externalApiCallLogService.markSuccess(callLog);
 			
-			// 7. External API 호출 결과를 기록한다.
+			// 8. External API 호출 결과를 기록한다.
 			log.info(
 					"External API 호출 완료. externalApiId: {}, apiName: {}, requestSequence: {}, attemptNo: {}, statusCode: {}, runMillis: {}",
 					externalApi.getExternalApiId(),
@@ -363,7 +376,7 @@ public class ExternalApiExecutionService {
 			
 		} catch (RestClientResponseException e) {
 			
-			// 8. HTTP 오류 응답 정보를 저장한다.
+			// 9. HTTP 오류 응답 정보를 저장한다.
 			long runMillis = (System.nanoTime() - startTime) / 1_000_000;
 			String errorMessage = buildHttpErrorMessage(e);
 			
@@ -386,7 +399,7 @@ public class ExternalApiExecutionService {
 			
 		} catch (ResourceAccessException e) {
 			
-			// 9. External API 통신 오류 정보를 저장한다.
+			// 10. External API 통신 오류 정보를 저장한다.
 			long runMillis = (System.nanoTime() - startTime) / 1_000_000;
 			String errorMessage = buildResourceAccessErrorMessage(e);
 			
@@ -406,7 +419,7 @@ public class ExternalApiExecutionService {
 			
 		} catch (Exception e) {
 			
-			// 10. External API 호출 중 발생한 오류 정보를 저장한다.
+			// 11. External API 호출 중 발생한 오류 정보를 저장한다.
 			long runMillis = (System.nanoTime() - startTime) / 1_000_000;
 			String errorMessage = buildErrorMessage(e);
 			
@@ -886,13 +899,14 @@ public class ExternalApiExecutionService {
 	 */
 	private String buildErrorMessage(Exception e) {
 		
-		String message = e.getMessage();
-		
-		if (message == null || message.isBlank()) {
-			return e.getClass().getSimpleName();
+		// 1. 리다이렉트 차단 오류를 구분한다.
+		if (e instanceof IllegalStateException
+				&& "외부 API 리다이렉트 응답은 허용하지 않습니다.".equals(e.getMessage())) {
+			return "외부 API 리다이렉트 응답은 허용하지 않습니다.";
 		}
 		
-		return e.getClass().getSimpleName() + " - " + message;
+		// 2. 그 외 예외는 원본 메시지를 저장하지 않는다.
+		return "외부 API 처리 오류 (" + e.getClass().getSimpleName() + ")";
 	}
 	
 	/**
