@@ -125,9 +125,8 @@ public class ExternalApiService {
 		// 3. External API URL을 검증한다.
 		validateExternalApiUrl(externalApi.getApiUrl());
 		
-		if (externalApi.getHttpMethod() == null || externalApi.getHttpMethod().isBlank()) {
-			throw new IllegalArgumentException("HTTP Method는 필수입니다.");
-		}
+		// 4. External API 메소드를 검증한다.
+		validateHttpMethod(externalApi.getHttpMethod());
 		
 		// 4. 사용 여부가 없으면 기본값 Y를 설정한다.
 		if (externalApi.getEnabled() == null || externalApi.getEnabled().isBlank()) {
@@ -214,117 +213,6 @@ public class ExternalApiService {
 		return externalApiId;
 	}
 	
-	// External API 및 파라미터 수정
-	@Transactional
-	public void updateExternalApiWithParams(Long externalApiId, ExternalApiRequestDto request) {
-		
-		// 1. 수정 대상 External API 정보를 조회한다.
-		ExternalApiDto savedExternalApi = getExternalApi(externalApiId);
-		
-		// 2. 수정 요청 정보를 검증한다.
-		if (request == null || request.getExternalApi() == null) {
-			throw new IllegalArgumentException("External API 수정 정보가 없습니다.");
-		}
-		
-		ExternalApiDto externalApi = request.getExternalApi();
-		
-		// 3. 기본 입력값을 검증한다.
-		if (externalApi.getApiName() == null || externalApi.getApiName().isBlank()) {
-			throw new IllegalArgumentException("External API 이름은 필수입니다.");
-		}
-		
-		// 4. External API URL을 검증한다.
-		validateExternalApiUrl(externalApi.getApiUrl());
-		
-		if (externalApi.getHttpMethod() == null || externalApi.getHttpMethod().isBlank()) {
-			throw new IllegalArgumentException("HTTP Method는 필수입니다.");
-		}
-		
-		// 5. 사용 여부가 없으면 기본값 Y를 설정한다.
-		if (externalApi.getEnabled() == null || externalApi.getEnabled().isBlank()) {
-			externalApi.setEnabled("Y");
-		}
-		
-		// 6. 재시도 설정을 검증하고 기본값을 설정한다.
-		validateRetryPolicy(externalApi);
-		
-		// 7. 인증 방식이 동일하고 비밀값을 새로 입력하지 않은 경우 기존 값을 유지한다.
-		if (savedExternalApi.getAuthType() != null && savedExternalApi.getAuthType().equals(externalApi.getAuthType())) {
-		    if ("API_KEY".equals(externalApi.getAuthType())
-		            && (externalApi.getAuthValue() == null
-		            || externalApi.getAuthValue().isBlank())) {
-		    	
-		        externalApi.setAuthValue(savedExternalApi.getAuthValue());
-		    }
-		    
-		    if ("BEARER".equals(externalApi.getAuthType())
-		            && (externalApi.getAuthValue() == null
-		            || externalApi.getAuthValue().isBlank())) {
-		    	
-		        externalApi.setAuthValue(savedExternalApi.getAuthValue());
-		    }
-		    
-		    if ("BASIC".equals(externalApi.getAuthType())
-		            && (externalApi.getAuthPassword() == null
-		            || externalApi.getAuthPassword().isBlank())) {
-		    	
-		        externalApi.setAuthPassword(savedExternalApi.getAuthPassword());
-		    }
-		}
-		
-		// 8. 인증 설정을 검증하고 기본값을 설정한다.
-		validateAuth(externalApi);
-		
-		// 9. 인증 방식에 따라 인증 정보를 암호화한다.
-		switch (externalApi.getAuthType()) {
-			case "API_KEY", "BEARER" ->
-				externalApi.setAuthValue(encryptionService.encrypt(externalApi.getAuthValue()));
-				
-			case "BASIC" ->
-				externalApi.setAuthPassword(encryptionService.encrypt(externalApi.getAuthPassword()));
-		}
-		
-		// 10. URL의 식별자를 수정 대상에 설정한다.
-		externalApi.setExternalApiId(externalApiId);
-		
-		// 11. External API 기본 정보를 수정한다.
-		int updateCount = externalApiMapper.updateExternalApi(externalApi);
-		
-		if (updateCount != 1) {
-			throw new IllegalStateException("External API 수정에 실패했습니다.");
-		}
-		
-		// 12. 기존 파라미터를 모두 삭제한다.
-		externalApiMapper.deleteExternalApiParams(externalApiId);
-		
-		// 13. 전달받은 파라미터를 다시 등록한다.
-		if (request.getParams() != null) {
-			for (ExternalApiParamDto param : request.getParams()) {
-				
-				// 13-1. 수정 대상 External API 식별자를 설정한다.
-				param.setExternalApiId(externalApiId);
-				
-				// 13-2. 기본값을 설정한다.
-				if (param.getRequiredYn() == null || param.getRequiredYn().isBlank()) {
-					param.setRequiredYn("N");
-				}
-				
-				if (param.getSortOrder() == null) {
-					param.setSortOrder(0);
-				}
-				
-				// 13-3. 파라미터를 등록한다.
-				int insertCount = externalApiMapper.insertExternalApiParam(param);
-				
-				if (insertCount != 1) {
-					throw new IllegalStateException("External API 파라미터 수정에 실패했습니다. " + "paramName: " + param.getParamName());
-				}
-				
-			}
-		}
-		
-	}
-	
 	// External API 기본 정보 수정
 	public void updateExternalApiBasic(Long externalApiId, ExternalApiBasicDto basic) {
 		
@@ -340,26 +228,24 @@ public class ExternalApiService {
 			throw new IllegalArgumentException("External API 이름은 필수입니다.");
 		}
 		
-		if (basic.getApiUrl() == null || basic.getApiUrl().isBlank()) {
-			throw new IllegalArgumentException("External API URL은 필수입니다.");
-		}
+		// 3. External API URL을 검증한다.
+		validateExternalApiUrl(basic.getApiUrl());
 		
-		if (basic.getHttpMethod() == null || basic.getHttpMethod().isBlank()) {
-			throw new IllegalArgumentException("HTTP Method는 필수입니다.");
-		}
+		// 4. External API 메소드를 검증한다.
+		validateHttpMethod(basic.getHttpMethod());
 		
-		// 3. 사용 여부가 없으면 기본값 Y를 설정한다.
+		// 5. 사용 여부가 없으면 기본값 Y를 설정한다.
 		if (basic.getEnabled() == null || basic.getEnabled().isBlank()) {
 			basic.setEnabled("Y");
 		}
 		
-		// 4. 재시도 설정을 검증하고 기본값을 설정한다.
+		// 6. 재시도 설정을 검증하고 기본값을 설정한다.
 		validateRetryPolicy(basic);
 		
-		// 5. External API 기본 정보를 수정한다.
+		// 7. External API 기본 정보를 수정한다.
 		int updateCount = externalApiMapper.updateExternalApiBasic(externalApiId, basic);
 		
-		// 6. 수정 결과를 확인한다.
+		// 8. 수정 결과를 확인한다.
 		if (updateCount != 1) {
 			throw new IllegalStateException("External API 기본 정보 수정에 실패했습니다.");
 		}
@@ -890,6 +776,25 @@ public class ExternalApiService {
 		} catch (UnknownHostException e) {
 			throw new IllegalArgumentException("외부 API URL의 Host를 확인할 수 없습니다.", e);
 		}
+	}
+	
+	/**
+	 * External API 메소드를 검증한다.
+	 *
+	 * @param httpMethod
+	 */
+	private void validateHttpMethod(String httpMethod) {
+		
+		// 1. HTTP Method 필수값을 확인한다.
+		if (httpMethod == null || httpMethod.isBlank()) {
+			throw new IllegalArgumentException("HTTP Method는 필수입니다.");
+		}
+		
+		// 2. 지원하는 HTTP Method인지 확인한다.
+		if (!List.of("GET", "POST", "PUT", "PATCH", "DELETE").contains(httpMethod)) {
+			throw new IllegalArgumentException("지원하지 않는 HTTP Method입니다. httpMethod: " + httpMethod);
+		}
+		
 	}
 	
 }
