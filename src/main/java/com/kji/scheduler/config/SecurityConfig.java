@@ -91,20 +91,9 @@ public class SecurityConfig {
 		
 		UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
 		source.registerCorsConfiguration("/**", cfg);
-		//source.registerCorsConfiguration("/jobs/**", cfg);
 		return source;
 		
 	}
-	
-	// 데모용 InMemory; 이후 DB 연동으로 교체
-//	@Bean
-//	public UserDetailsService userDetailsService(PasswordEncoder encoder) {
-//		UserDetails user = User.withUsername("admin")
-//				.password(encoder.encode("***REMOVED***"))
-//				.roles("ADMIN")
-//				.build();
-//		return new InMemoryUserDetailsManager(user);
-//	}
 
 	@Bean
 	PasswordEncoder passwordEncoder() { 
@@ -115,12 +104,5 @@ public class SecurityConfig {
 	AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
 		return config.getAuthenticationManager();
 	}
-	
-//	@Bean
-//	ApplicationRunner initPwd(PasswordEncoder encoder) {
-//	    return args -> {
-//	        System.out.println("ADMIN PW = " + encoder.encode("***REMOVED***"));
-//	    };
-//	}
-	
+		
 }
