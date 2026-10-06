@@ -23,6 +23,11 @@ bin/
 # === 기타 ===
 node_modules/
 
+# === Local environment / secrets ===
+.env
+.env.*
+!.env.example
+
 # Local DB credentials
 config/application-oracle-secret.properties
 config/application-postgresql-secret.properties
