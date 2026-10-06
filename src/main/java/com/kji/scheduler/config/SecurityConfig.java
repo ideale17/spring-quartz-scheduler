@@ -1,7 +1,9 @@
 package com.kji.scheduler.config;
 
+import java.util.Arrays;
 import java.util.List;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpStatus;
@@ -78,10 +80,16 @@ public class SecurityConfig {
 	}
 	
 	@Bean
-	CorsConfigurationSource corsConfigurationSource() {
+	CorsConfigurationSource corsConfigurationSource(@Value("${app.security.cors-allowed-origins:}") String allowedOrigins) {
 		
 		CorsConfiguration cfg = new CorsConfiguration();
-		cfg.setAllowedOrigins(List.of("http://localhost:5173"));
+		
+		List<String> origins = Arrays.stream(allowedOrigins.split(","))
+				.map(String::trim)
+				.filter(origin -> !origin.isBlank())
+				.toList();
+		
+		cfg.setAllowedOrigins(origins);
 		cfg.setAllowedMethods(List.of("GET","POST","PUT","DELETE","PATCH","OPTIONS"));
 		cfg.setAllowedHeaders(List.of("Content-Type","X-XSRF-TOKEN","Authorization"));
 		cfg.setAllowCredentials(true); // 세션 쿠키 전송 허용
