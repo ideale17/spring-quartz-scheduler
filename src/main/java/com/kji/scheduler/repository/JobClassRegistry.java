@@ -8,7 +8,7 @@ import org.quartz.Job;
 import org.springframework.stereotype.Component;
 
 import com.kji.scheduler.job.ExternalApiCallJob;
-import com.kji.scheduler.job.HelloJob;
+
 
 @Component
 public class JobClassRegistry {
@@ -18,7 +18,6 @@ public class JobClassRegistry {
 
     public JobClassRegistry() {
         // 안전하게 등록할 Job만 수동 등록 (화이트리스트 역할)
-        jobClassMap.put("com.kji.scheduler.job.HelloJob", HelloJob.class);
         jobClassMap.put("com.kji.scheduler.job.ExternalApiCallJob", ExternalApiCallJob.class);
         
         // 필요 시 더 추가
