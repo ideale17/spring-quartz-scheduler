@@ -17,13 +17,13 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
-import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.kji.scheduler.security.JsonLoginAuthenticationFilter;
+import com.kji.scheduler.security.SpaCsrfTokenRequestHandler;
 
 @Configuration
 @EnableMethodSecurity
@@ -31,12 +31,6 @@ public class SecurityConfig {
 	
 	@Bean
 	SecurityFilterChain securityFilterChain(HttpSecurity http, AuthenticationManager authenticationManager, ObjectMapper objectMapper) throws Exception {
-		
-		// 추가: SPA 헤더 토큰 인식용 핸들러
-		CsrfTokenRequestAttributeHandler requestHandler = new CsrfTokenRequestAttributeHandler();
-		
-		// (옵션) 요청 속성 이름 지정. 기본 동작으로도 충분하지만 명시해두면 안전.
-		requestHandler.setCsrfRequestAttributeName("_csrf");
 		
 		JsonLoginAuthenticationFilter loginFilter = new JsonLoginAuthenticationFilter(authenticationManager, objectMapper);
 		
@@ -52,7 +46,7 @@ public class SecurityConfig {
 			.cors(c -> {}) // 아래 CorsConfigurationSource 사용
 			.csrf(csrf -> csrf
 					.csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
-					.csrfTokenRequestHandler(requestHandler)  // 추가: 헤더(X-XSRF-TOKEN) 인식
+					.csrfTokenRequestHandler(new SpaCsrfTokenRequestHandler())
 					.ignoringRequestMatchers("/auth/login", "/auth/logout", "/auth/signup")
 					)
 			.sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
