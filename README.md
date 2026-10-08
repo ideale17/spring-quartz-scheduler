@@ -386,19 +386,9 @@ app.security.signup-enabled=false
 
 ---
 
-## 7. Repository
+## 7. Frontend
 
-####Backend
-
-`spring-quartz-scheduler`
-
-https://github.com/ideale17/spring-quartz-scheduler
-
-####Frontend
-
-`scheduler-ui`
-
-https://github.com/ideale17/scheduler-ui
+[scheduler-ui](https://github.com/ideale17/scheduler-ui)
 
 ---
 
