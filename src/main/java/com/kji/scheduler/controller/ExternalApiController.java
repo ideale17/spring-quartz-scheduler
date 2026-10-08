@@ -25,7 +25,7 @@ import com.kji.scheduler.service.ExternalApiExecutionService;
 import com.kji.scheduler.service.ExternalApiService;
 
 @RestController
-@RequestMapping("/externalApi")
+@RequestMapping("/external-api")
 public class ExternalApiController {
 	
 	private final ExternalApiService externalApiService;
@@ -300,7 +300,7 @@ public class ExternalApiController {
 	}
 	
 	// External API 실행 이력 조회
-	@GetMapping("/callHistory")
+	@GetMapping("/call-history")
 	public ResponseEntity<?> getExternalApiCallHistory(ExternalApiCallHistorySearchDto searchDto) {
 		
 		try {
@@ -315,7 +315,7 @@ public class ExternalApiController {
 	}
 	
 	// External API 실행별 호출 시도 이력 조회
-	@GetMapping("/callHistory/detail")
+	@GetMapping("/call-history/detail")
 	public ResponseEntity<?> getExternalApiCallHistoryDetail(@RequestParam(name = "executionId") String executionId) {
 		
 		try {

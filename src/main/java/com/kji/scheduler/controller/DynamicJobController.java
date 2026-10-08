@@ -34,7 +34,7 @@ public class DynamicJobController {
 	
 	private final DynamicJobService dynamicJobService;
 	    
-    @PostMapping("/addJob")
+    @PostMapping("/add")
     public ResponseEntity<String> addJob(@RequestBody CreateJobRequest request) {
     	
     	try {
@@ -55,7 +55,7 @@ public class DynamicJobController {
     }
     
     // Job 추가 실행X 요청
-    @PostMapping("/addJobOnly")
+    @PostMapping("/add-only")
     public String addJobOnly(@RequestParam(name = "jobClassName") String jobClassName,
     	                 @RequestParam(name = "jobName") String jobName,
                          @RequestParam(name = "jobGroup", defaultValue = "default") String jobGroup) throws SchedulerException {
@@ -64,7 +64,7 @@ public class DynamicJobController {
     }
     
     // 트리거 등록 및 실행 요청
-    @PostMapping("/addTriggerToExistingJob")
+    @PostMapping("/add-trigger")
     public String addTriggerToExistingJob(@RequestParam(name = "jobName") String jobName,
                          @RequestParam(name = "jobGroup", defaultValue = "default") String jobGroup,
                          @RequestParam(name = "scheduleType") ScheduleType scheduleType,
@@ -74,7 +74,7 @@ public class DynamicJobController {
     }
     
     // Job 스케줄 수정
-    @PutMapping("/updateJob")
+    @PutMapping("/update")
     public ResponseEntity<String> updateJob(@RequestBody UpdateJobRequest request) {
 
         try {
@@ -99,7 +99,7 @@ public class DynamicJobController {
     
     
     // Job 삭제 요청
-    @DeleteMapping("/deleteJob")
+    @DeleteMapping("/delete")
     public String deleteJob(@RequestParam(name = "jobName") String jobName,
                             @RequestParam(name = "jobGroup", defaultValue = "default") String jobGroup) throws SchedulerException {
         boolean result = dynamicJobService.deleteJob(jobName, jobGroup);
@@ -107,14 +107,14 @@ public class DynamicJobController {
     }
     
     // Job 조회
-    @GetMapping("/listJobs")
+    @GetMapping("/list")
     public List<JobInfoDto> listAllJobs() throws SchedulerException {
         return dynamicJobService.getAllScheduledJobs();
     }
     
     
     // Job 단건 조회
-    @GetMapping("/getJob")
+    @GetMapping("/detail")
     public ResponseEntity<?> getJob(
             @RequestParam(name = "jobName") String jobName,
             @RequestParam(name = "jobGroup", defaultValue = "default") String jobGroup) {
@@ -131,13 +131,13 @@ public class DynamicJobController {
     }
     
     // 등록 가능한 Job 클래스 목록 조회
-    @GetMapping("/jobClasses")
+    @GetMapping("/job-classes")
     public List<String> getAvailableJobTypes() {
         return dynamicJobService.getAvailableJobTypes();
     }
     
     // Job 즉시 실행
-    @PostMapping("/runJob")
+    @PostMapping("/run")
     public ResponseEntity<String> runJob(@RequestParam(name = "jobName") String jobName,
                                         @RequestParam(name = "jobGroup", defaultValue = "default") String jobGroup) {
     	
@@ -154,7 +154,7 @@ public class DynamicJobController {
     }
     
     // Job 일괄 즉시 실행
-    @PostMapping("/runJobs")
+    @PostMapping("/run-batch")
     public ResponseEntity<?> runJobs(@RequestBody JobBatchRequest request) {
     	
     	try {
@@ -170,7 +170,7 @@ public class DynamicJobController {
     }
     
     // Job 재시작
-    @PostMapping("/resumeJob")
+    @PostMapping("/resume")
     public ResponseEntity<String> resumeJob(@RequestParam(name = "jobName") String jobName,
     										@RequestParam(name = "jobGroup", defaultValue = "default") String jobGroup) {
     	
@@ -189,7 +189,7 @@ public class DynamicJobController {
     }
     
     // Job 일괄 재시작
-    @PostMapping("/resumeJobs")
+    @PostMapping("/resume-batch")
     public ResponseEntity<?> resumeJobs(@RequestBody JobBatchRequest request) {
     	
     	try {
@@ -206,7 +206,7 @@ public class DynamicJobController {
     }
     
     // Job 중지
-    @PostMapping("/pauseJob")
+    @PostMapping("/pause")
     public ResponseEntity<String> pauseJob(@RequestParam(name = "jobName") String jobName,
     									@RequestParam(name = "jobGroup", defaultValue = "default") String jobGroup) {
     	
@@ -225,7 +225,7 @@ public class DynamicJobController {
     }
     
     // Job 일괄 중지
-    @PostMapping("/pauseJobs")
+    @PostMapping("/pause-batch")
     public ResponseEntity<?> pauseJobs(@RequestBody JobBatchRequest request) {
     	
     	try {
@@ -241,7 +241,7 @@ public class DynamicJobController {
     	}
     }
     
-    @GetMapping("/historyJobs")
+    @GetMapping("/history")
     public JobHistoryPageDto historyJobs(JobHistorySearchDto searchDto) throws SchedulerException {
         return dynamicJobService.getJobHistory(searchDto);
     }
