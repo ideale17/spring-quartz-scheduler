@@ -45,11 +45,16 @@ public class ExternalApiController {
 		this.externalApiExecutionLogService = externalApiExecutionLogService;
 	}
 	
-	// External API 목록 조회
+	/**
+	 * External API 목록을 조회한다.
+	 *
+	 * @return External API 목록 조회 결과
+	 */
 	@GetMapping("/list")
 	public ResponseEntity<?> getExternalApiList() {
 		
 		try {
+			
 			return ResponseEntity.ok(externalApiService.getExternalApiList());
 			
 		} catch (Exception e) {
@@ -58,11 +63,17 @@ public class ExternalApiController {
 		
 	}
 	
-	// External API 상세 조회
+	/**
+	 * External API 상세 정보를 조회한다.
+	 *
+	 * @param externalApiId External API 식별자
+	 * @return External API 상세 정보 조회 결과
+	 */
 	@GetMapping("/detail")
 	public ResponseEntity<?> getExternalApi(@RequestParam(name = "externalApiId") Long externalApiId) {
 		
 		try {
+			
 			return ResponseEntity.ok(externalApiService.getExternalApiDetail(externalApiId));
 			
 		} catch (IllegalArgumentException e) {
@@ -74,13 +85,17 @@ public class ExternalApiController {
 		
 	}
 	
-	// External API 페이징 설정 조회
+	/**
+	 * External API 페이징 설정을 조회한다.
+	 *
+	 * @param externalApiId External API 식별자
+	 * @return External API 페이징 설정 조회 결과
+	 */
 	@GetMapping("/paging")
 	public ResponseEntity<?> getExternalApiPaging(@RequestParam(name = "externalApiId") Long externalApiId) {
 		
 		try {
 			
-			// 1. External API 페이징 설정을 조회한다.
 			return ResponseEntity.ok(externalApiService.getExternalApiPaging(externalApiId));
 			
 		} catch (IllegalArgumentException e) {
@@ -92,11 +107,17 @@ public class ExternalApiController {
 		
 	}
 	
-	// External API 파라미터 목록 조회
+	/**
+	 * External API 파라미터 목록을 조회한다.
+	 *
+	 * @param externalApiId External API 식별자
+	 * @return External API 파라미터 목록 조회 결과
+	 */
 	@GetMapping("/params")
 	public ResponseEntity<?> getExternalApiParamList(@RequestParam(name = "externalApiId") Long externalApiId) {
 		
 		try {
+			
 			return ResponseEntity.ok(externalApiService.getExternalApiParamList(externalApiId));
 			
 		} catch (IllegalArgumentException e) {
@@ -108,7 +129,12 @@ public class ExternalApiController {
 		
 	}
 	
-	// External API 등록
+	/**
+	 * External API를 등록한다.
+	 *
+	 * @param request External API 등록 요청 정보
+	 * @return 생성된 External API 식별자 또는 등록 실패 결과
+	 */
 	@PostMapping("/add")
 	public ResponseEntity<?> createExternalApi(@RequestBody ExternalApiRequestDto request) {
 		
@@ -128,7 +154,13 @@ public class ExternalApiController {
 		}
 	}
 	
-	// External API 기본 정보 수정
+	/**
+	 * External API 기본 정보를 수정한다.
+	 *
+	 * @param externalApiId External API 식별자
+	 * @param basic External API 기본 정보
+	 * @return External API 기본 정보 수정 처리 결과
+	 */
 	@PutMapping("/basic")
 	public ResponseEntity<?> updateExternalApiBasic(
 			@RequestParam(name = "externalApiId") Long externalApiId,
@@ -154,7 +186,13 @@ public class ExternalApiController {
 		}
 	}
 	
-	// External API 인증 정보 수정
+	/**
+	 * External API 인증 정보를 수정한다.
+	 *
+	 * @param externalApiId External API 식별자
+	 * @param auth External API 인증 정보
+	 * @return External API 인증 정보 수정 처리 결과
+	 */
 	@PutMapping("/auth")
 	public ResponseEntity<?> updateExternalApiAuth(
 			@RequestParam(name = "externalApiId") Long externalApiId,
@@ -180,7 +218,13 @@ public class ExternalApiController {
 		
 	}
 	
-	// External API 페이징 설정 저장
+	/**
+	 * External API 페이징 설정을 저장한다.
+	 *
+	 * @param externalApiId External API 식별자
+	 * @param paging External API 페이징 설정
+	 * @return External API 페이징 설정 저장 처리 결과
+	 */
 	@PutMapping("/paging")
 	public ResponseEntity<?> saveExternalApiPaging(
 			@RequestParam(name = "externalApiId") Long externalApiId,
@@ -206,7 +250,13 @@ public class ExternalApiController {
 		}
 	}
 	
-	// External API 파라미터 수정
+	/**
+	 * External API 파라미터를 수정한다.
+	 *
+	 * @param externalApiId External API 식별자
+	 * @param params External API 파라미터 목록
+	 * @return External API 파라미터 수정 처리 결과
+	 */
 	@PutMapping("/params")
 	public ResponseEntity<?> updateExternalApiParams(@RequestParam(name = "externalApiId") Long externalApiId, @RequestBody List<ExternalApiParamDto> params) {
 		
@@ -229,7 +279,12 @@ public class ExternalApiController {
 		}
 	}
 	
-	// External API 삭제
+	/**
+	 * External API를 삭제한다.
+	 *
+	 * @param externalApiId External API 식별자
+	 * @return External API 삭제 처리 결과
+	 */
 	@DeleteMapping("/delete")
 	public ResponseEntity<?> deleteExternalApi(@RequestParam(name = "externalApiId") Long externalApiId) {
 		
@@ -251,7 +306,12 @@ public class ExternalApiController {
 		}
 	}
 	
-	// External API 페이징 설정 삭제
+	/**
+	 * External API 페이징 설정을 삭제한다.
+	 *
+	 * @param externalApiId External API 식별자
+	 * @return External API 페이징 설정 삭제 처리 결과
+	 */
 	@DeleteMapping("/paging")
 	public ResponseEntity<?> deleteExternalApiPaging(@RequestParam(name = "externalApiId") Long externalApiId) {
 		
@@ -276,7 +336,12 @@ public class ExternalApiController {
 		
 	}
 	
-	// External API 즉시 실행
+	/**
+	 * 등록된 External API를 즉시 실행한다.
+	 *
+	 * @param externalApiId External API 식별자
+	 * @return External API 호출 처리 결과
+	 */
 	@PostMapping("/execute")
 	public ResponseEntity<?> executeExternalApi(@RequestParam(name = "externalApiId") Long externalApiId) {
 		
@@ -299,7 +364,12 @@ public class ExternalApiController {
 		}
 	}
 	
-	// External API 실행 이력 조회
+	/**
+	 * External API 실행 이력을 조회한다.
+	 *
+	 * @param searchDto External API 실행 이력 검색 조건
+	 * @return External API 실행 이력 조회 결과
+	 */
 	@GetMapping("/call-history")
 	public ResponseEntity<?> getExternalApiCallHistory(ExternalApiCallHistorySearchDto searchDto) {
 		
@@ -314,7 +384,12 @@ public class ExternalApiController {
 		}
 	}
 	
-	// External API 실행별 호출 시도 이력 조회
+	/**
+	 * External API 실행별 호출 시도 이력을 조회한다.
+	 *
+	 * @param executionId External API 실행 식별자
+	 * @return External API 호출 시도 이력 조회 결과
+	 */
 	@GetMapping("/call-history/detail")
 	public ResponseEntity<?> getExternalApiCallHistoryDetail(@RequestParam(name = "executionId") String executionId) {
 		

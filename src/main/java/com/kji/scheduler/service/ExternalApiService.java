@@ -36,14 +36,23 @@ public class ExternalApiService {
 		this.encryptionService = encryptionService;
 	}
 	
-	// External API 목록 조회
+	/**
+	 * 등록된 External API 목록을 조회한다.
+	 *
+	 * @return 등록된 External API 목록
+	 */
 	public List<ExternalApiDto> getExternalApiList() {
 		
 		// 1. 등록된 External API 목록을 조회한다.
 		return externalApiMapper.findAllExternalApiList();
 	}
 	
-	// External API 단건 조회
+	/**
+	 * External API 정보를 조회하고 인증 비밀값을 복호화한다.
+	 *
+	 * @param externalApiId External API 식별자
+	 * @return 인증 비밀값이 복호화된 External API 정보
+	 */
 	public ExternalApiDto getExternalApi(Long externalApiId) {
 		
 		// 1. External API 기본 정보를 조회한다.
@@ -67,7 +76,12 @@ public class ExternalApiService {
 		return externalApi;
 	}
 	
-	// External API 화면용 단건 조회
+	/**
+	 * 화면에 표시할 External API 상세 정보를 조회한다.
+	 *
+	 * @param externalApiId External API 식별자
+	 * @return 화면용 External API 상세 정보
+	 */
 	public ExternalApiDto getExternalApiDetail(Long externalApiId) {
 		
 	    // 1. 화면에 표시할 External API 기본 정보를 조회한다.
@@ -81,7 +95,12 @@ public class ExternalApiService {
 	    return externalApi;
 	}
 	
-	// External API 파라미터 목록 조회
+	/**
+	 * External API 파라미터 목록을 조회한다.
+	 *
+	 * @param externalApiId External API 식별자
+	 * @return External API 파라미터 목록
+	 */
 	public List<ExternalApiParamDto> getExternalApiParamList(Long externalApiId) {
 		
 		// 1. External API 존재 여부를 확인한다.
@@ -91,7 +110,12 @@ public class ExternalApiService {
 		return externalApiMapper.findExternalApiParamList(externalApiId);
 	}
 	
-	// External API 페이징 설정 조회
+	/**
+	 * External API 페이징 설정을 조회한다.
+	 *
+	 * @param externalApiId External API 식별자
+	 * @return External API 페이징 설정, 없으면 null
+	 */
 	public ExternalApiPagingDto getExternalApiPaging(Long externalApiId) {
 		
 		// 1. External API 존재 여부를 확인한다.
@@ -102,10 +126,10 @@ public class ExternalApiService {
 	}
 	
 	/**
-	 * External API 및 파라미터 등록
+	 * External API와 페이징 설정, 파라미터를 등록한다.
 	 *
-	 * @param request
-	 * @return
+	 * @param request External API 등록 요청 정보
+	 * @return 생성된 External API 식별자
 	 */
 	@Transactional
 	public Long createExternalApi(ExternalApiRequestDto request) {
@@ -213,7 +237,12 @@ public class ExternalApiService {
 		return externalApiId;
 	}
 	
-	// External API 기본 정보 수정
+	/**
+	 * External API 기본 정보를 수정한다.
+	 *
+	 * @param externalApiId External API 식별자
+	 * @param basic External API 기본 정보
+	 */
 	public void updateExternalApiBasic(Long externalApiId, ExternalApiBasicDto basic) {
 		
 		// 1. 수정 대상 External API 존재 여부를 확인한다.
@@ -252,7 +281,12 @@ public class ExternalApiService {
 		
 	}
 	
-	// External API 인증 정보 수정
+	/**
+	 * External API 인증 정보를 검증하고 비밀값을 암호화하여 수정한다.
+	 *
+	 * @param externalApiId External API 식별자
+	 * @param auth External API 인증 수정 정보
+	 */
 	public void updateExternalApiAuth(Long externalApiId, ExternalApiAuthDto auth) {
 		
 		// 1. 수정 대상 External API 정보를 조회한다.
@@ -302,7 +336,12 @@ public class ExternalApiService {
 		
 	}
 	
-	// External API 페이징 설정 저장
+	/**
+	 * External API 페이징 설정을 등록하거나 수정한다.
+	 *
+	 * @param externalApiId External API 식별자
+	 * @param paging External API 페이징 설정
+	 */
 	@Transactional
 	public void saveExternalApiPaging(Long externalApiId, ExternalApiPagingDto paging) {
 		
@@ -340,7 +379,12 @@ public class ExternalApiService {
 		}
 	}
 	
-	// External API 파라미터 수정
+	/**
+	 * External API의 기존 파라미터를 전달받은 목록으로 교체한다.
+	 *
+	 * @param externalApiId External API 식별자
+	 * @param params 교체할 External API 파라미터 목록
+	 */
 	@Transactional
 	public void updateExternalApiParams(Long externalApiId, List<ExternalApiParamDto> params) {
 		
@@ -382,7 +426,12 @@ public class ExternalApiService {
 		
 	}
 	
-	// External API 삭제
+	/**
+	 * Job 참조 여부를 확인하고 External API와 관련 설정을 삭제한다.
+	 *
+	 * @param externalApiId External API 식별자
+	 * @throws SchedulerException External API를 참조하는 Job 조회 중 Quartz 오류가 발생한 경우
+	 */
 	@Transactional
 	public void deleteExternalApi(Long externalApiId) throws SchedulerException {
 		
@@ -413,7 +462,11 @@ public class ExternalApiService {
 		
 	}
 	
-	// External API 페이징 설정 삭제
+	/**
+	 * External API 페이징 설정을 삭제한다.
+	 *
+	 * @param externalApiId External API 식별자
+	 */
 	@Transactional
 	public void deleteExternalApiPaging(Long externalApiId) {
 		
@@ -438,7 +491,11 @@ public class ExternalApiService {
 		
 	}
 	
-	// External API 재시도 설정을 검증하고 기본값을 설정한다.
+	/**
+	 * External API 재시도 설정을 검증하고 기본값을 설정한다.
+	 *
+	 * @param externalApi 재시도 설정을 검증할 External API 정보
+	 */
 	private void validateRetryPolicy(ExternalApiDto externalApi) {
 		
 		// 1. 재시도 사용 여부가 없으면 기본값 N을 설정한다.
@@ -470,7 +527,11 @@ public class ExternalApiService {
 		
 	}
 	
-	// External API 인증 설정을 검증하고 기본값을 설정한다.
+	/**
+	 * External API 인증 설정을 검증하고 기본값과 미사용 항목을 설정한다.
+	 *
+	 * @param externalApi 인증 설정을 검증할 External API 정보
+	 */
 	private void validateAuth(ExternalApiDto externalApi) {
 	    
 	    // 1. 인증 방식이 없으면 인증 없음으로 설정한다.
@@ -541,7 +602,11 @@ public class ExternalApiService {
 	    }
 	}
 	
-	// External API 기본 정보의 재시도 설정을 검증하고 기본값을 설정한다.
+	/**
+	 * External API 기본 정보의 재시도 설정을 검증하고 기본값을 설정한다.
+	 *
+	 * @param basic External API 기본 정보
+	 */
 	private void validateRetryPolicy(ExternalApiBasicDto basic) {
 		
 		// 1. 재시도 사용 여부가 없으면 기본값 N을 설정한다.
@@ -573,7 +638,11 @@ public class ExternalApiService {
 		
 	}
 	
-	// External API 인증 설정을 검증하고 기본값을 설정한다.
+	/**
+	 * External API 인증 수정 정보를 검증하고 기본값과 미사용 항목을 설정한다.
+	 *
+	 * @param auth External API 인증 수정 정보
+	 */
 	private void validateAuth(ExternalApiAuthDto auth) {
 		
 		// 1. 인증 방식이 없으면 인증 없음으로 설정한다.
@@ -647,7 +716,11 @@ public class ExternalApiService {
 		
 	}
 	
-	// External API 페이징 설정을 검증하고 기본값을 설정한다.
+	/**
+	 * External API 페이징 설정을 검증하고 기본값을 설정한다.
+	 *
+	 * @param paging External API 페이징 설정
+	 */
 	private void validatePaging(ExternalApiPagingDto paging) {
 		
 		// 1. 사용 여부가 없으면 기본값 Y를 설정한다.
@@ -722,9 +795,9 @@ public class ExternalApiService {
 	}
 	
 	/**
-	 * 외부 API URL을 검증한다.
+	 * External API URL의 형식, 프로토콜과 호스트 주소를 검증한다.
 	 *
-	 * @param apiUrl
+	 * @param apiUrl 검증할 External API URL
 	 */
 	public void validateExternalApiUrl(String apiUrl) {
 		
@@ -779,9 +852,9 @@ public class ExternalApiService {
 	}
 	
 	/**
-	 * External API 메소드를 검증한다.
+	 * External API의 HTTP 메서드를 검증한다.
 	 *
-	 * @param httpMethod
+	 * @param httpMethod 검증할 HTTP 메서드
 	 */
 	private void validateHttpMethod(String httpMethod) {
 		

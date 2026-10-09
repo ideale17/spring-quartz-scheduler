@@ -19,7 +19,11 @@ public class DashboardController {
 		this.dashboardService = dashboardService;
 	}
 	
-	// Dashboard 운영 정보 조회
+	/**
+	 * Dashboard 운영 정보를 조회한다.
+	 *
+	 * @return Dashboard 운영 정보 조회 결과
+	 */
 	@GetMapping("/info")
 	public ResponseEntity<?> getDashboardInfo() {
 		

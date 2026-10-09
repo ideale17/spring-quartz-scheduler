@@ -34,6 +34,12 @@ public class DynamicJobController {
 	
 	private final DynamicJobService dynamicJobService;
 	    
+    /**
+     * Quartz Job을 등록한다.
+     *
+     * @param request Job 등록 요청 정보
+     * @return Job 등록 처리 결과
+     */
     @PostMapping("/add")
     public ResponseEntity<String> addJob(@RequestBody CreateJobRequest request) {
     	
@@ -54,7 +60,15 @@ public class DynamicJobController {
     	
     }
     
-    // Job 추가 실행X 요청
+    /**
+     * Quartz Job을 트리거 없이 등록한다.
+     *
+     * @param jobClassName 등록할 Job 클래스 이름
+     * @param jobName Job 이름
+     * @param jobGroup Job 그룹
+     * @return Job 등록 처리 결과
+     * @throws SchedulerException Job 등록 중 Quartz 오류가 발생한 경우
+     */
     @PostMapping("/add-only")
     public String addJobOnly(@RequestParam(name = "jobClassName") String jobClassName,
     	                 @RequestParam(name = "jobName") String jobName,
@@ -63,7 +77,16 @@ public class DynamicJobController {
         return "Job 추가됨: " + jobName;
     }
     
-    // 트리거 등록 및 실행 요청
+	/**
+	 * 등록된 Quartz Job에 트리거를 추가한다.
+	 *
+	 * @param jobName Job 이름
+	 * @param jobGroup Job 그룹
+	 * @param scheduleType 스케줄 유형
+	 * @param scheduleExpr 스케줄 표현식
+	 * @return 트리거 등록 처리 결과
+	 * @throws SchedulerException 트리거 등록 중 Quartz 오류가 발생한 경우
+	 */
     @PostMapping("/add-trigger")
     public String addTriggerToExistingJob(@RequestParam(name = "jobName") String jobName,
                          @RequestParam(name = "jobGroup", defaultValue = "default") String jobGroup,
@@ -73,7 +96,12 @@ public class DynamicJobController {
         return "트리거 추가됨: " + jobName;
     }
     
-    // Job 스케줄 수정
+    /**
+     * 등록된 Quartz Job의 스케줄을 수정한다.
+     *
+     * @param request Job 스케줄 수정 요청 정보
+     * @return Job 스케줄 수정 처리 결과
+     */
     @PutMapping("/update")
     public ResponseEntity<String> updateJob(@RequestBody UpdateJobRequest request) {
 
@@ -98,7 +126,14 @@ public class DynamicJobController {
     }
     
     
-    // Job 삭제 요청
+	/**
+	 * 등록된 Quartz Job을 삭제한다.
+	 *
+	 * @param jobName Job 이름
+	 * @param jobGroup Job 그룹
+	 * @return Job 삭제 처리 결과
+	 * @throws SchedulerException Job 삭제 중 Quartz 오류가 발생한 경우
+	 */
     @DeleteMapping("/delete")
     public String deleteJob(@RequestParam(name = "jobName") String jobName,
                             @RequestParam(name = "jobGroup", defaultValue = "default") String jobGroup) throws SchedulerException {
@@ -106,14 +141,25 @@ public class DynamicJobController {
         return result ? "Job 삭제됨: " + jobName : "삭제 실패 (Job 없음)";
     }
     
-    // Job 조회
+	/**
+	 * 등록된 Quartz Job 목록을 조회한다.
+	 *
+	 * @return 등록된 Job 목록
+	 * @throws SchedulerException Job 목록 조회 중 Quartz 오류가 발생한 경우
+	 */
     @GetMapping("/list")
     public List<JobInfoDto> listAllJobs() throws SchedulerException {
         return dynamicJobService.getAllScheduledJobs();
     }
     
     
-    // Job 단건 조회
+	/**
+	 * 등록된 Quartz Job의 상세 정보를 조회한다.
+	 *
+	 * @param jobName Job 이름
+	 * @param jobGroup Job 그룹
+	 * @return Job 상세 정보 조회 결과
+	 */
     @GetMapping("/detail")
     public ResponseEntity<?> getJob(
             @RequestParam(name = "jobName") String jobName,
@@ -130,13 +176,23 @@ public class DynamicJobController {
         }
     }
     
-    // 등록 가능한 Job 클래스 목록 조회
+	/**
+	 * 등록 가능한 Quartz Job 클래스 목록을 조회한다.
+	 *
+	 * @return 등록 가능한 Job 클래스 이름 목록
+	 */
     @GetMapping("/job-classes")
     public List<String> getAvailableJobTypes() {
         return dynamicJobService.getAvailableJobTypes();
     }
     
-    // Job 즉시 실행
+	/**
+	 * Quartz Job의 즉시 실행을 요청한다.
+	 *
+	 * @param jobName Job 이름
+	 * @param jobGroup Job 그룹
+	 * @return Job 즉시 실행 요청 처리 결과
+	 */
     @PostMapping("/run")
     public ResponseEntity<String> runJob(@RequestParam(name = "jobName") String jobName,
                                         @RequestParam(name = "jobGroup", defaultValue = "default") String jobGroup) {
@@ -153,7 +209,12 @@ public class DynamicJobController {
         }
     }
     
-    // Job 일괄 즉시 실행
+	/**
+	 * 여러 Quartz Job의 즉시 실행을 일괄 요청한다.
+	 *
+	 * @param request Job 일괄 즉시 실행 요청 정보
+	 * @return Job 일괄 즉시 실행 요청 처리 결과
+	 */
     @PostMapping("/run-batch")
     public ResponseEntity<?> runJobs(@RequestBody JobBatchRequest request) {
     	
@@ -169,7 +230,13 @@ public class DynamicJobController {
     	}
     }
     
-    // Job 재시작
+	/**
+	 * 중지된 Quartz Job의 스케줄을 재개한다.
+	 *
+	 * @param jobName Job 이름
+	 * @param jobGroup Job 그룹
+	 * @return Job 스케줄 재개 처리 결과
+	 */
     @PostMapping("/resume")
     public ResponseEntity<String> resumeJob(@RequestParam(name = "jobName") String jobName,
     										@RequestParam(name = "jobGroup", defaultValue = "default") String jobGroup) {
@@ -188,7 +255,12 @@ public class DynamicJobController {
     	
     }
     
-    // Job 일괄 재시작
+	/**
+	 * 여러 Quartz Job의 스케줄을 일괄 재개한다.
+	 *
+	 * @param request Job 스케줄 일괄 재개 요청 정보
+	 * @return Job 스케줄 일괄 재개 처리 결과
+	 */
     @PostMapping("/resume-batch")
     public ResponseEntity<?> resumeJobs(@RequestBody JobBatchRequest request) {
     	
@@ -205,7 +277,13 @@ public class DynamicJobController {
     	}
     }
     
-    // Job 중지
+	/**
+	 * Quartz Job의 스케줄을 중지한다.
+	 *
+	 * @param jobName Job 이름
+	 * @param jobGroup Job 그룹
+	 * @return Job 스케줄 중지 처리 결과
+	 */
     @PostMapping("/pause")
     public ResponseEntity<String> pauseJob(@RequestParam(name = "jobName") String jobName,
     									@RequestParam(name = "jobGroup", defaultValue = "default") String jobGroup) {
@@ -224,7 +302,12 @@ public class DynamicJobController {
     	
     }
     
-    // Job 일괄 중지
+	/**
+	 * 여러 Quartz Job의 스케줄을 일괄 중지한다.
+	 *
+	 * @param request Job 스케줄 일괄 중지 요청 정보
+	 * @return Job 스케줄 일괄 중지 처리 결과
+	 */
     @PostMapping("/pause-batch")
     public ResponseEntity<?> pauseJobs(@RequestBody JobBatchRequest request) {
     	
@@ -241,6 +324,13 @@ public class DynamicJobController {
     	}
     }
     
+	/**
+	 * Quartz Job의 실행 이력을 조회한다.
+	 *
+	 * @param searchDto Job 실행 이력 검색 조건
+	 * @return 페이지 정보를 포함한 Job 실행 이력
+	 * @throws SchedulerException Job 실행 이력 조회 중 Quartz 오류가 발생한 경우
+	 */
     @GetMapping("/history")
     public JobHistoryPageDto historyJobs(JobHistorySearchDto searchDto) throws SchedulerException {
         return dynamicJobService.getJobHistory(searchDto);

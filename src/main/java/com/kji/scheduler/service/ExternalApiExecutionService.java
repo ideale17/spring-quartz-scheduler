@@ -75,10 +75,10 @@ public class ExternalApiExecutionService {
 	}
 	
 	/**
-	 * External API를 호출하고 호출 이력을 저장한다.
+	 * External API를 실행하고 실행 이력과 호출 이력을 저장한다.
 	 *
-	 * @param externalApiId		외부 API 식별자
-	 * @param fireInstanceId 	Quartz 실행 인스턴스 식별자
+	 * @param externalApiId External API 식별자
+	 * @param fireInstanceId Quartz 실행 인스턴스 식별자
 	 */
 	public void execute(Long externalApiId, String fireInstanceId) {
 		
@@ -236,13 +236,14 @@ public class ExternalApiExecutionService {
 	/**
 	 * External API 요청 한 건을 실행하고 실패 시 설정된 정책에 따라 재시도한다.
 	 *
-	 * @param externalApi		호출할 External API 정보
-	 * @param executionId		API 실행 단위 식별자
-	 * @param fireInstanceId	Quartz 실행 인스턴스 식별자
-	 * @param requestSequence	현재 요청 순번
-	 * @param headers			요청에 적용할 HTTP Header 정보
-	 * @param queryParams		요청 URL에 적용할 Query Parameter 정보
-	 * @param bodyParams		요청 Body에 적용할 Parameter 정보
+	 * @param externalApi 호출할 External API 정보
+	 * @param executionId External API 실행 식별자
+	 * @param fireInstanceId Quartz 실행 인스턴스 식별자
+	 * @param requestSequence 현재 요청 순번
+	 * @param headers 요청에 적용할 HTTP 헤더 정보
+	 * @param queryParams 요청 URL에 적용할 쿼리 파라미터 정보
+	 * @param bodyParams 요청 본문에 적용할 파라미터 정보
+	 * @return External API HTTP 응답 정보
 	 */
 	private ResponseEntity<String> executeRequest(
 			ExternalApiDto externalApi,
@@ -295,16 +296,17 @@ public class ExternalApiExecutionService {
 	}
 	
 	/**
-	 * External API를 한 번 호출하고 호출 이력을 저장한다.
+	 * External API를 한 번 호출하고 호출 이력과 응답 원본 데이터를 저장한다.
 	 *
-	 * @param externalApi		호출할 External API 정보
-	 * @param executionId		API 실행 단위 식별자
-	 * @param fireInstanceId	Quartz 실행 인스턴스 식별자
-	 * @param requestSequence	현재 요청 순번
-	 * @param attemptNo			현재 호출 시도 횟수
-	 * @param headers			요청에 적용할 HTTP Header 정보
-	 * @param queryParams		요청 URL에 적용할 Query Parameter 정보
-	 * @param bodyParams		요청 Body에 적용할 Parameter 정보
+	 * @param externalApi 호출할 External API 정보
+	 * @param executionId External API 실행 식별자
+	 * @param fireInstanceId Quartz 실행 인스턴스 식별자
+	 * @param requestSequence 현재 요청 순번
+	 * @param attemptNo 현재 호출 시도 횟수
+	 * @param headers 요청에 적용할 HTTP 헤더 정보
+	 * @param queryParams 요청 URL에 적용할 쿼리 파라미터 정보
+	 * @param bodyParams 요청 본문에 적용할 파라미터 정보
+	 * @return External API HTTP 응답 정보
 	 */
 	private ResponseEntity<String> executeAttempt(
 			ExternalApiDto externalApi,
@@ -442,13 +444,13 @@ public class ExternalApiExecutionService {
 	/**
 	 * PAGE 방식의 External API 페이징 호출을 처리한다.
 	 *
-	 * @param externalApi		호출할 External API 정보
-	 * @param paging			페이징 설정
-	 * @param executionId		API 실행 단위 식별자
-	 * @param fireInstanceId	Quartz 실행 인스턴스 식별자
-	 * @param headers			기본 HTTP Header
-	 * @param queryParams		기본 Query Parameter
-	 * @param bodyParams		기본 Body Parameter
+	 * @param externalApi 호출할 External API 정보
+	 * @param paging External API 페이징 설정
+	 * @param executionId External API 실행 식별자
+	 * @param fireInstanceId Quartz 실행 인스턴스 식별자
+	 * @param headers 요청에 적용할 HTTP 헤더 정보
+	 * @param queryParams 요청 URL에 적용할 쿼리 파라미터 정보
+	 * @param bodyParams 요청 본문에 적용할 파라미터 정보
 	 */
 	private void executePagePagination(
 			ExternalApiDto externalApi,
@@ -515,10 +517,10 @@ public class ExternalApiExecutionService {
 	/**
 	 * 현재 페이지 번호와 페이지 크기를 요청 파라미터에 적용한다.
 	 *
-	 * @param paging
-	 * @param currentPage
-	 * @param queryParams
-	 * @param bodyParams
+	 * @param paging External API 페이징 설정
+	 * @param currentPage 현재 페이지 번호
+	 * @param queryParams 요청 URL에 적용할 쿼리 파라미터 정보
+	 * @param bodyParams 요청 본문에 적용할 파라미터 정보
 	 */
 	private void applyPagingParams(
 			ExternalApiPagingDto paging,
@@ -553,11 +555,11 @@ public class ExternalApiExecutionService {
 	}
 	
 	/**
-	 * External API 응답에서 전체 데이터 건수를 조회한다.
+	 * JSON 또는 XML 응답에서 전체 데이터 건수를 조회한다.
 	 *
-	 * @param responseBody
-	 * @param totalCountPath
-	 * @return
+	 * @param responseBody External API 응답 본문
+	 * @param totalCountPath 점(.)으로 구분된 전체 건수 조회 경로
+	 * @return 전체 데이터 건수
 	 */
 	private long extractTotalCount(String responseBody, String totalCountPath) {
 		
@@ -587,11 +589,11 @@ public class ExternalApiExecutionService {
 	}
 	
 	/**
-	 * TODO
+	 * JSON 응답의 지정된 경로에서 전체 데이터 건수를 조회한다.
 	 *
-	 * @param responseBody
-	 * @param totalCountPath
-	 * @return
+	 * @param responseBody External API 응답 본문
+	 * @param totalCountPath 점(.)으로 구분된 전체 건수 조회 경로
+	 * @return 전체 데이터 건수
 	 */
 	private long extractJsonTotalCount(String responseBody, String totalCountPath) {
 		
@@ -622,11 +624,11 @@ public class ExternalApiExecutionService {
 	}
 	
 	/**
-	 * TODO
+	 * XML 응답의 지정된 경로에서 전체 데이터 건수를 조회한다.
 	 *
-	 * @param responseBody
-	 * @param totalCountPath
-	 * @return
+	 * @param responseBody External API 응답 본문
+	 * @param totalCountPath 점(.)으로 구분된 전체 건수 조회 경로
+	 * @return 전체 데이터 건수
 	 */
 	private long extractXmlTotalCount(String responseBody, String totalCountPath) {
 		
@@ -670,7 +672,7 @@ public class ExternalApiExecutionService {
 	/**
 	 * External API 실행에 필요한 인증 정보를 검증한다.
 	 *
-	 * @param externalApi	인증 설정이 포함된 External API 정보
+	 * @param externalApi 인증 설정이 포함된 External API 정보
 	 */
 	private void validateAuthentication(ExternalApiDto externalApi) {
 		
@@ -746,9 +748,9 @@ public class ExternalApiExecutionService {
 	/**
 	 * External API 인증 방식에 따라 요청에 인증 정보를 적용한다.
 	 *
-	 * @param externalApi	인증 설정이 포함된 External API 정보
-	 * @param headers		요청에 적용할 HTTP Header 정보
-	 * @param queryParams	요청 URL에 적용할 Query Parameter 정보
+	 * @param externalApi 인증 설정이 포함된 External API 정보
+	 * @param headers 요청에 적용할 HTTP 헤더 정보
+	 * @param queryParams 요청 URL에 적용할 쿼리 파라미터 정보
 	 */
 	private void applyAuthentication(ExternalApiDto externalApi, Map<String, String> headers, Map<String, String> queryParams) {
 		
@@ -782,8 +784,8 @@ public class ExternalApiExecutionService {
 	/**
 	 * External API 호출 오류가 재시도 대상인지 확인한다.
 	 *
-	 * @param e	External API 호출 중 발생한 예외
-	 * @return	재시도 가능한 오류이면 true, 아니면 false
+	 * @param e External API 호출 중 발생한 예외
+	 * @return 재시도 가능한 오류이면 true, 아니면 false
 	 */
 	private boolean isRetryable(Exception e) {
 		
@@ -808,8 +810,8 @@ public class ExternalApiExecutionService {
 	/**
 	 * 다음 External API 재시도 전 설정된 시간만큼 대기한다.
 	 *
-	 * @param externalApi	재시도 설정이 포함된 External API 정보
-	 * @param attemptNo		현재 호출 시도 횟수
+	 * @param externalApi 재시도 설정이 포함된 External API 정보
+	 * @param attemptNo 현재 호출 시도 횟수
 	 */
 	private void waitRetryInterval(ExternalApiDto externalApi, int attemptNo) {
 		
@@ -836,8 +838,8 @@ public class ExternalApiExecutionService {
 	/**
 	 * HTTP 오류 응답의 저장용 메시지를 생성한다.
 	 *
-	 * @param e	External API HTTP 오류 응답 예외
-	 * @return	HTTP 상태에 대응하는 저장용 오류 메시지
+	 * @param e External API HTTP 오류 응답 예외
+	 * @return HTTP 상태에 대응하는 저장용 오류 메시지
 	 */
 	private String buildHttpErrorMessage(RestClientResponseException e) {
 		int statusCode = e.getStatusCode().value();
@@ -869,8 +871,8 @@ public class ExternalApiExecutionService {
 	/**
 	 * External API 통신 오류의 저장용 메시지를 생성한다.
 	 *
-	 * @param e	External API 통신 중 발생한 접근 예외
-	 * @return	통신 오류 원인에 대응하는 저장용 오류 메시지
+	 * @param e External API 통신 중 발생한 접근 예외
+	 * @return 통신 오류 원인에 대응하는 저장용 오류 메시지
 	 */
 	private String buildResourceAccessErrorMessage(ResourceAccessException e) {
 		
@@ -894,8 +896,8 @@ public class ExternalApiExecutionService {
 	/**
 	 * 일반 오류의 저장용 메시지를 생성한다.
 	 *
-	 * @param e	External API 호출 중 발생한 일반 예외
-	 * @return	예외 유형과 메시지를 포함한 저장용 오류 메시지
+	 * @param e External API 호출 중 발생한 일반 예외
+	 * @return 리다이렉트 차단 메시지 또는 예외 유형을 포함한 저장용 오류 메시지
 	 */
 	private String buildErrorMessage(Exception e) {
 		
@@ -912,8 +914,8 @@ public class ExternalApiExecutionService {
 	/**
 	 * 필수 External API 파라미터의 값을 검증한다.
 	 *
-	 * @param param				External API 파라미터 정보
-	 * @param resolvedValue		실제 실행 시 사용할 파라미터 값
+	 * @param param External API 파라미터 정보
+	 * @param resolvedValue 실제 실행 시 사용할 파라미터 값
 	 */
 	private void validateRequiredParam(ExternalApiParamDto param, String resolvedValue) {
 		
@@ -929,13 +931,13 @@ public class ExternalApiExecutionService {
 	}
 	
 	/**
-	 * External API를 호출한다.
+	 * 요청 URL, 헤더와 본문을 구성하여 External API를 호출한다.
 	 *
-	 * @param externalApi	호출할 External API 정보
-	 * @param headers		요청에 적용할 HTTP Header 정보
-	 * @param queryParams	요청 URL에 적용할 Query Parameter 정보
-	 * @param bodyParams	요청 Body에 적용할 Parameter 정보
-	 * @return				External API HTTP 응답 정보
+	 * @param externalApi 호출할 External API 정보
+	 * @param headers 요청에 적용할 HTTP 헤더 정보
+	 * @param queryParams 요청 URL에 적용할 쿼리 파라미터 정보
+	 * @param bodyParams 요청 본문에 적용할 파라미터 정보
+	 * @return External API HTTP 응답 정보
 	 */
 	private ResponseEntity<String> callExternalApi(
 			ExternalApiDto externalApi,

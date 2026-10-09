@@ -50,20 +50,10 @@ public class DynamicJobService {
     }
 	
 	/**
-	 * Quartz 스케줄러에 새 Job 및 Trigger를 등록한다.
+	 * Quartz Job과 트리거를 등록한다.
 	 *
-	 * 이미 동일한 JobKey(name + group)가 존재하면 {@link SchedulerException}을
-	 * 발생시켜 중복 등록을 방지한다.
-	 *
-	 * @param jobClassName   등록할 Job 클래스의 단순 이름(예: "EmailJob")
-	 * @param jobName     Quartz JobKey 의 name
-	 * @param jobGroup   Quartz JobKey 의 group
-	 * @param scheduleType   스케줄 방식(CRON, SIMPLE)
-	 * @param scheduleExpr   스케줄 식
-	 *                       ‑ CRON  →  크론 표현식(예: "0 0/10 * * * ?")
-	 *                       ‑ SIMPLE → 반복 간격(초, 예: "5")
-	 * @throws SchedulerException  Job 중복,등록 실패 등 Quartz 예외
-	 * @throws IllegalArgumentException 잘못된 Cron 또는 스케줄 타입
+	 * @param request Job 등록 요청 정보
+	 * @throws SchedulerException Job 등록 중 Quartz 오류가 발생한 경우
 	 */
 	public void addJob(CreateJobRequest request) throws SchedulerException {
 		
@@ -179,6 +169,14 @@ public class DynamicJobService {
         
     }
 	
+	/**
+	 * Quartz Job을 트리거 없이 등록한다.
+	 *
+	 * @param jobClassName 등록할 Job 클래스 이름
+	 * @param jobName Job 이름
+	 * @param jobGroup Job 그룹
+	 * @throws SchedulerException Job 등록 중 Quartz 오류가 발생한 경우
+	 */
 	public void addJobOnly(String jobClassName, String jobName, String jobGroup) throws SchedulerException {
 
 		// 1. Job 클래스 찾기 (등록되어 있어야 함)
@@ -199,6 +197,15 @@ public class DynamicJobService {
 		scheduler.addJob(jobDetail, false);
 	}
 	
+	/**
+	 * 등록된 Quartz Job에 트리거를 추가한다.
+	 *
+	 * @param jobName Job 이름
+	 * @param jobGroup Job 그룹
+	 * @param scheduleType 스케줄 유형
+	 * @param scheduleExpr 스케줄 표현식
+	 * @throws SchedulerException 트리거 등록 중 Quartz 오류가 발생한 경우
+	 */
 	public void addTriggerToExistingJob(String jobName, String jobGroup, ScheduleType scheduleType, String scheduleExpr) throws SchedulerException {
 		
 		JobKey jobKey = new JobKey(jobName, jobGroup);
@@ -240,7 +247,13 @@ public class DynamicJobService {
 			scheduler.scheduleJob(trigger);
 	}
 	
-	// Job 스케줄 수정
+	/**
+	 * Quartz Job의 스케줄과 전달된 파라미터를 수정한다.
+	 *
+	 * @param request Job 스케줄 수정 요청 정보
+	 * @return 스케줄 수정 성공 여부
+	 * @throws SchedulerException Job 스케줄 수정 중 Quartz 오류가 발생한 경우
+	 */
 	public boolean updateSchedule(UpdateJobRequest request) throws SchedulerException {
 		
 		String jobName = request.getJobName();
@@ -380,43 +393,25 @@ public class DynamicJobService {
 	    return updated;
 	}
 	
-	// Job 삭제
+	/**
+	 * 등록된 Quartz Job을 삭제한다.
+	 *
+	 * @param jobName Job 이름
+	 * @param jobGroup Job 그룹
+	 * @return Job 삭제 성공 여부
+	 * @throws SchedulerException Job 삭제 중 Quartz 오류가 발생한 경우
+	 */
     public boolean deleteJob(String jobName, String jobGroup) throws SchedulerException {
         JobKey jobKey = new JobKey(jobName, jobGroup);
         return scheduler.deleteJob(jobKey);
     }
-    
-    // Job 조회
-    public List<JobInfoDto> getAllScheduledJobs_bak() throws SchedulerException {
-    	
-        List<JobInfoDto> jobList = new ArrayList<>();
         
-        for (String jobGroup : scheduler.getJobGroupNames()) {
-            for (JobKey jobKey : scheduler.getJobKeys(GroupMatcher.jobGroupEquals(jobGroup))) {
-            	
-                JobInfoDto JobInfoDto = new JobInfoDto();
-                JobInfoDto.setJobName(jobKey.getName());
-                JobInfoDto.setJobGroup(jobKey.getGroup());
-                
-                List<? extends Trigger> triggers = scheduler.getTriggersOfJob(jobKey);
-                
-                if (!triggers.isEmpty()) {
-                    Trigger trigger = triggers.get(0);
-                    
-                    JobInfoDto.setTriggerType(trigger.getClass().getSimpleName());
-                    //JobInfoDto.setNextFireTime(trigger.getNextFireTime());
-                    //JobInfoDto.setPrevFireTime(trigger.getPreviousFireTime());
-                    JobInfoDto.setState(scheduler.getTriggerState(trigger.getKey()).name());
-                    
-                }
-
-                jobList.add(JobInfoDto);
-            }
-        }
-        return jobList;
-    }
-    
-    // Job 목록 조회
+	/**
+	 * DB에서 Job 목록을 조회한 후 Quartz Scheduler API 기준 Trigger 상태를 조회한다.
+	 *
+	 * @return 트리거 상태를 포함한 Job 목록
+	 * @throws SchedulerException Job 목록 조회 중 Quartz 오류가 발생한 경우
+	 */
     public List<JobInfoDto> getAllScheduledJobs() throws SchedulerException {
     	
     	// 1. DB에 저장된 Job 및 Trigger 정보를 조회한다.
@@ -431,7 +426,11 @@ public class DynamicJobService {
         
     }
     
-    // 등록 가능한 Job 클래스 목록 조회
+	/**
+	 * 등록 가능한 Job 클래스 목록을 이름순으로 조회한다.
+	 *
+	 * @return 등록 가능한 Job 클래스 이름 목록
+	 */
     public List<String> getAvailableJobTypes() {
     	
         // 1. JobClassRegistry에 등록된 Job 클래스 목록을 조회한다.
@@ -442,7 +441,14 @@ public class DynamicJobService {
         
     }
     
-    // Job 단건 조회
+	/**
+	 * Job 상세 정보와 파라미터, Misfire 정책을 조회한다.
+	 *
+	 * @param jobName Job 이름
+	 * @param jobGroup Job 그룹
+	 * @return Job 상세 정보
+	 * @throws SchedulerException Job 상세 정보 조회 중 Quartz 오류가 발생한 경우
+	 */
     public JobInfoDto getScheduledJob(String jobName, String jobGroup) throws SchedulerException {
 
         // 1. DB에서 Job 기본 정보를 조회한다.
@@ -468,7 +474,12 @@ public class DynamicJobService {
         return jobInfo;
     }
     
-    // Quartz Scheduler API 기준 Trigger 상태 설정
+	/**
+	 * Job 정보에 Quartz Scheduler의 트리거 상태를 설정한다.
+	 *
+	 * @param jobInfo 트리거 상태를 설정할 Job 정보
+	 * @throws SchedulerException 트리거 상태 조회 중 Quartz 오류가 발생한 경우
+	 */
     private void setSchedulerTriggerState(JobInfoDto jobInfo) throws SchedulerException {
     	
 		// 1. Trigger가 없는 Job은 NONE 상태로 처리한다.
@@ -483,7 +494,13 @@ public class DynamicJobService {
 		jobInfo.setSchedulerTriggerState(scheduler.getTriggerState(triggerKey).name());
     }
     
-    // Job 즉시 실행
+	/**
+	 * Quartz Job의 즉시 실행을 요청한다.
+	 *
+	 * @param jobName Job 이름
+	 * @param jobGroup Job 그룹
+	 * @throws SchedulerException Job 즉시 실행 요청 중 Quartz 오류가 발생한 경우
+	 */
     public void runJob(String jobName, String jobGroup) throws SchedulerException {
     	
         // 1. Job 이름과 그룹으로 JobKey를 생성한다.
@@ -498,7 +515,12 @@ public class DynamicJobService {
         scheduler.triggerJob(jobKey);
     }
     
-    // Job 일괄 즉시 실행
+	/**
+	 * 여러 Quartz Job의 즉시 실행을 일괄 요청한다.
+	 *
+	 * @param request Job 일괄 즉시 실행 요청 정보
+	 * @return Job별 실행 요청 결과와 성공·실패 건수
+	 */
     public JobBatchResponse runJobs(JobBatchRequest request) {
     	
     	// 1. 실행할 Job 목록이 존재하는지 확인한다.
@@ -554,7 +576,13 @@ public class DynamicJobService {
     	return response;
     }
     
-    // Job 재시작
+	/**
+	 * 중지된 Quartz Job의 스케줄을 재개한다.
+	 *
+	 * @param jobName Job 이름
+	 * @param jobGroup Job 그룹
+	 * @throws SchedulerException Job 스케줄 재개 중 Quartz 오류가 발생한 경우
+	 */
     public void resumeJob(String jobName, String jobGroup) throws SchedulerException {
         JobKey jobKey = JobKey.jobKey(jobName, jobGroup);
 
@@ -565,7 +593,12 @@ public class DynamicJobService {
         }
     }
     
-    // Job 일괄 재시작
+	/**
+	 * 여러 Quartz Job의 스케줄을 일괄 재개한다.
+	 *
+	 * @param request Job 스케줄 일괄 재개 요청 정보
+	 * @return Job별 재개 결과와 성공·실패 건수
+	 */
     public JobBatchResponse resumeJobs(JobBatchRequest request) {
     	
     	// 1. 재시작할 Job 목록이 존재하는지 확인한다.
@@ -621,7 +654,13 @@ public class DynamicJobService {
     	return response;
     }
     
-    // Job 중지
+	/**
+	 * Quartz Job의 스케줄을 중지한다.
+	 *
+	 * @param jobName Job 이름
+	 * @param jobGroup Job 그룹
+	 * @throws SchedulerException Job 스케줄 중지 중 Quartz 오류가 발생한 경우
+	 */
     public void pauseJob(String jobName, String jobGroup) throws SchedulerException {
         JobKey jobKey = JobKey.jobKey(jobName, jobGroup);
         if (scheduler.checkExists(jobKey)) {
@@ -631,7 +670,12 @@ public class DynamicJobService {
         }
     }
     
-    // Job 일괄 중지
+	/**
+	 * 여러 Quartz Job의 스케줄을 일괄 중지한다.
+	 *
+	 * @param request Job 스케줄 일괄 중지 요청 정보
+	 * @return Job별 중지 결과와 성공·실패 건수
+	 */
     public JobBatchResponse pauseJobs(JobBatchRequest request) {
     	
     	// 1. 중지할 Job 목록이 존재하는지 확인한다.
@@ -687,7 +731,12 @@ public class DynamicJobService {
     	return response;
     }
     
-    // Job 이력 목록 조회
+	/**
+	 * 검색 조건에 맞는 Quartz Job 실행 이력을 조회한다.
+	 *
+	 * @param searchDto Job 실행 이력 검색 조건
+	 * @return 페이지 정보를 포함한 Job 실행 이력
+	 */
     public JobHistoryPageDto getJobHistory(JobHistorySearchDto searchDto) {
     	
     	// 1. 종료일이 있으면 조회 종료 시각을 다음 날로 계산한다.
@@ -711,7 +760,13 @@ public class DynamicJobService {
         
     }
     
-    // External API를 사용하는 Job 목록 조회
+	/**
+	 * 지정한 External API를 사용하는 Job 목록을 조회한다.
+	 *
+	 * @param externalApiId External API 식별자
+	 * @return External API를 참조하는 Job 목록
+	 * @throws SchedulerException External API를 사용하는 Job 목록 조회 중 Quartz 오류가 발생한 경우
+	 */
     public List<JobInfoDto> getJobsUsingExternalApi(Long externalApiId) throws SchedulerException {
     	
     	// 1. External API 식별자를 검증한다.
@@ -759,7 +814,11 @@ public class DynamicJobService {
     	return jobList;
     }
     
-    // Quartz 내부 Misfire 값을 관리 화면용 정책으로 변환
+	/**
+	 * Quartz 내부 Misfire 값을 관리 화면용 정책으로 변환하여 설정한다.
+	 *
+	 * @param jobInfo Misfire 정책을 설정할 Job 정보
+	 */
     private void setMisfirePolicy(JobInfoDto jobInfo) {
     	
     	// 1. Trigger가 없는 Job은 Misfire 정책을 설정하지 않는다.

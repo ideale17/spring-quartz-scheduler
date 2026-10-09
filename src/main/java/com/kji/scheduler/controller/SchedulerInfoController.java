@@ -19,7 +19,11 @@ public class SchedulerInfoController {
         this.schedulerInfoService = schedulerInfoService;
     }
 	
-	// Quartz Scheduler 운영 정보 조회
+	/**
+	 * Quartz Scheduler 운영 정보를 조회한다.
+	 *
+	 * @return Quartz Scheduler 운영 정보 조회 결과
+	 */
 	@GetMapping("/info")
 	public ResponseEntity<?> getSchedulerInfo() {
 		
