@@ -19,6 +19,13 @@ public class CustomUserDetailsService implements UserDetailsService {
 
 	private final AppUserRepository userRepo;
 
+	/**
+	 * 사용자 이름으로 사용자와 권한을 조회하여 Spring Security 인증 정보를 생성한다.
+	 *
+	 * @param username 조회할 사용자 이름
+	 * @return 인증에 사용할 사용자 정보
+	 * @throws UsernameNotFoundException 사용자가 존재하지 않는 경우
+	 */
 	@Override
 	public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
 		

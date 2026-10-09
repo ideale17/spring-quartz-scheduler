@@ -4,6 +4,9 @@ import java.time.LocalDateTime;
 
 import lombok.Data;
 
+/**
+ * External API 실행별 호출 집계와 실행 결과 정보를 담는다.
+ */
 @Data
 public class ExternalApiCallHistorySummaryDto {
 	

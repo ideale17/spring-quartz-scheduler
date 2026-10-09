@@ -5,12 +5,6 @@ import org.springframework.stereotype.Service;
 import com.kji.scheduler.dto.CollectRawDataDto;
 import com.kji.scheduler.mapper.CollectRawDataMapper;
 
-/**
- * External API 수집 원본 데이터 저장을 처리한다.
- *
- * @author kji
- * @since 2026. 9. 29.
- */
 @Service
 public class CollectRawDataService {
 	

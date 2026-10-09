@@ -4,6 +4,9 @@ import java.util.Map;
 
 import lombok.Data;
 
+/**
+ * Quartz Job의 기본 정보와 스케줄 설정 정보를 담는다.
+ */
 @Data
 public class JobInfoDto {
 	
@@ -12,8 +15,8 @@ public class JobInfoDto {
     private String jobGroup;
     private String jobClassName;
     private String description;
-    private String isDurable;       // Oracle에서 CHAR 또는 VARCHAR2 타입이면 String으로 받는 게 안전
-    //private Map<String, Object> jobData;         // BLOB 또는 CLOB일 경우 String (필요시 변환)
+    private String isDurable;
+
     private byte[] jobData;
     private Map<String, Object> params;
     private String state;

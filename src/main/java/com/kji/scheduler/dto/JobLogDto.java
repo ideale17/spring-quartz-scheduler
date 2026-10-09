@@ -14,6 +14,9 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+/**
+ * Quartz Job 실행 로그 정보를 담는다.
+ */
 @Getter
 @Setter
 @Builder

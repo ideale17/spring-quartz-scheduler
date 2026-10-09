@@ -20,9 +20,9 @@ public class DashboardController {
 	}
 	
 	/**
-	 * Dashboard 운영 정보를 조회한다.
+	 * Dashboard 운영 정보 조회 요청을 처리한다.
 	 *
-	 * @return Dashboard 운영 정보 조회 결과
+	 * @return Dashboard 운영 정보 또는 오류 메시지를 담은 HTTP 응답
 	 */
 	@GetMapping("/info")
 	public ResponseEntity<?> getDashboardInfo() {

@@ -4,6 +4,9 @@ import java.util.List;
 
 import lombok.Data;
 
+/**
+ * 대시보드에 표시할 Job 상태 및 실행 현황 정보를 담는다.
+ */
 @Data
 public class DashboardDto {
 	

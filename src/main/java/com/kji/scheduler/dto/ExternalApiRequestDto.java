@@ -5,6 +5,9 @@ import java.util.List;
 
 import lombok.Data;
 
+/**
+ * External API 등록 요청에 필요한 정보를 담는다.
+ */
 @Data
 public class ExternalApiRequestDto {
 	

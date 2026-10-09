@@ -4,6 +4,9 @@ import java.time.LocalDate;
 
 import lombok.Data;
 
+/**
+ * Job 실행 이력 조회를 위한 검색 조건과 페이징 정보를 담는다.
+ */
 @Data
 public class JobHistorySearchDto {
 

@@ -30,7 +30,12 @@ public class DashboardService {
 		this.dashboardMapper = dashboardMapper;
 	}
 	
-	// Dashboard 정보 조회
+	/**
+	 * Job 상태별 건수, 오늘 실행 현황과 최근 실패 Job 목록을 조회한다.
+	 *
+	 * @return 대시보드 현황 정보
+	 * @throws SchedulerException Job 트리거 상태 조회 중 Quartz 오류가 발생한 경우
+	 */
 	public DashboardDto getDashboard() throws SchedulerException {
 		
 		// 1. DB에 저장된 Job 및 Trigger 정보를 조회한다.
@@ -78,7 +83,13 @@ public class DashboardService {
 		return dashboard;
 	}
 	
-	// Quartz Scheduler API 기준 Trigger 상태 조회
+	/**
+	 * Quartz Scheduler 기준으로 Job의 트리거 상태를 조회한다.
+	 *
+	 * @param jobInfo 트리거 상태를 조회할 Job 정보
+	 * @return 트리거 상태, 트리거가 없으면 NONE
+	 * @throws SchedulerException 트리거 상태 조회 중 Quartz 오류가 발생한 경우
+	 */
 	private Trigger.TriggerState getSchedulerTriggerState(JobInfoDto jobInfo) throws SchedulerException {
 		
 		// 1. Trigger가 없는 Job은 NONE 상태로 처리한다.

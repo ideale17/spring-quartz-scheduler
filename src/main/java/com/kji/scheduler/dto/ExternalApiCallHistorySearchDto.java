@@ -4,6 +4,9 @@ import java.time.LocalDate;
 
 import lombok.Data;
 
+/**
+ * External API 호출 이력 조회에 필요한 검색 조건과 페이징 정보를 담는다.
+ */
 @Data
 public class ExternalApiCallHistorySearchDto {
 	

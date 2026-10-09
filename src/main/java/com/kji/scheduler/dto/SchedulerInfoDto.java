@@ -2,6 +2,9 @@ package com.kji.scheduler.dto;
 
 import lombok.Data;
 
+/**
+ * Quartz 스케줄러의 상태 및 운영 정보를 담는다.
+ */
 @Data
 public class SchedulerInfoDto {
 	

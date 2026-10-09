@@ -4,6 +4,9 @@ import java.util.Map;
 
 import lombok.Data;
 
+/**
+ * Quartz Job의 스케줄 수정 요청 정보를 담는다.
+ */
 @Data
 public class UpdateJobRequest {
 	

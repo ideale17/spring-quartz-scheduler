@@ -5,10 +5,7 @@ import java.time.LocalDateTime;
 import lombok.Data;
 
 /**
- * ExternalApiPagingDto 클래스.
- *
- * @author kji
- * @since 2026. 9. 30.
+ * External API 페이징 호출에 필요한 설정 정보를 담는다.
  */
 @Data
 public class ExternalApiPagingDto {

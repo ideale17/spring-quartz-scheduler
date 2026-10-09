@@ -16,7 +16,12 @@ public class SchedulerInfoService {
         this.scheduler = scheduler;
     }
     
-    // Quartz Scheduler 운영 정보 조회
+	/**
+	 * Quartz Scheduler의 운영 정보와 현재 상태를 조회한다.
+	 *
+	 * @return Scheduler 운영 정보
+	 * @throws SchedulerException Scheduler 메타 정보 또는 상태 조회 중 Quartz 오류가 발생한 경우
+	 */
     public SchedulerInfoDto getSchedulerInfo() throws SchedulerException {
     	
         // 1. Quartz Scheduler의 메타 정보를 조회한다.
@@ -38,7 +43,12 @@ public class SchedulerInfoService {
         return schedulerInfo;
     }
     
-    // Quartz Scheduler 현재 상태 조회
+	/**
+	 * Quartz Scheduler의 현재 상태를 조회한다.
+	 *
+	 * @return Scheduler 상태(SHUTDOWN, STANDBY, RUNNING, NOT_STARTED)
+	 * @throws SchedulerException Scheduler 상태 조회 중 Quartz 오류가 발생한 경우
+	 */
     private String getSchedulerStatus() throws SchedulerException {
     	
     	// 1. 종료된 Scheduler 상태를 먼저 확인한다.

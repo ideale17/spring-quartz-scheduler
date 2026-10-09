@@ -1,5 +1,8 @@
 package com.kji.scheduler.dto;
 
+/**
+ * Quartz Trigger의 Misfire 처리 정책을 정의한다.
+ */
 public enum MisfirePolicy {
 	SMART_POLICY,
 	FIRE_AND_PROCEED,

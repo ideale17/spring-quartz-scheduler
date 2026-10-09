@@ -2,6 +2,9 @@ package com.kji.scheduler.dto;
 
 import lombok.Data;
 
+/**
+ * External API 요청 파라미터의 설정 정보를 담는다.
+ */
 @Data
 public class ExternalApiParamDto {
 

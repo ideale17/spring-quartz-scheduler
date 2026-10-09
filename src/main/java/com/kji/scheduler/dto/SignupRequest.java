@@ -1,10 +1,11 @@
 package com.kji.scheduler.dto;
 
-import lombok.Getter;
-import lombok.Setter;
+import lombok.Data;
 
-@Getter
-@Setter
+/**
+ * 회원가입 요청 정보를 담는다.
+ */
+@Data
 public class SignupRequest {
 	
     private String username;

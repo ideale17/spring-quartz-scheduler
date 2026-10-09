@@ -34,12 +34,12 @@ public class DynamicJobController {
 	
 	private final DynamicJobService dynamicJobService;
 	    
-    /**
-     * Quartz Job을 등록한다.
-     *
-     * @param request Job 등록 요청 정보
-     * @return Job 등록 처리 결과
-     */
+	/**
+	 * Quartz Job 등록 요청을 처리한다.
+	 *
+	 * @param request Job 등록 요청 정보
+	 * @return Job 등록 처리 결과를 담은 HTTP 응답
+	 */
     @PostMapping("/add")
     public ResponseEntity<String> addJob(@RequestBody CreateJobRequest request) {
     	
@@ -60,15 +60,15 @@ public class DynamicJobController {
     	
     }
     
-    /**
-     * Quartz Job을 트리거 없이 등록한다.
-     *
-     * @param jobClassName 등록할 Job 클래스 이름
-     * @param jobName Job 이름
-     * @param jobGroup Job 그룹
-     * @return Job 등록 처리 결과
-     * @throws SchedulerException Job 등록 중 Quartz 오류가 발생한 경우
-     */
+	/**
+	 * 트리거 없는 Quartz Job 등록 요청을 처리한다.
+	 *
+	 * @param jobClassName 등록할 Job 클래스 이름
+	 * @param jobName Job 이름
+	 * @param jobGroup Job 그룹
+	 * @return Job 등록 결과 메시지
+	 * @throws SchedulerException Job 등록 중 Quartz 오류가 발생한 경우
+	 */
     @PostMapping("/add-only")
     public String addJobOnly(@RequestParam(name = "jobClassName") String jobClassName,
     	                 @RequestParam(name = "jobName") String jobName,
@@ -78,13 +78,13 @@ public class DynamicJobController {
     }
     
 	/**
-	 * 등록된 Quartz Job에 트리거를 추가한다.
+	 * 등록된 Quartz Job의 트리거 추가 요청을 처리한다.
 	 *
 	 * @param jobName Job 이름
 	 * @param jobGroup Job 그룹
 	 * @param scheduleType 스케줄 유형
 	 * @param scheduleExpr 스케줄 표현식
-	 * @return 트리거 등록 처리 결과
+	 * @return 트리거 등록 결과 메시지
 	 * @throws SchedulerException 트리거 등록 중 Quartz 오류가 발생한 경우
 	 */
     @PostMapping("/add-trigger")
@@ -96,12 +96,12 @@ public class DynamicJobController {
         return "트리거 추가됨: " + jobName;
     }
     
-    /**
-     * 등록된 Quartz Job의 스케줄을 수정한다.
-     *
-     * @param request Job 스케줄 수정 요청 정보
-     * @return Job 스케줄 수정 처리 결과
-     */
+	/**
+	 * Quartz Job 스케줄 수정 요청을 처리한다.
+	 *
+	 * @param request Job 스케줄 수정 요청 정보
+	 * @return 스케줄 수정 처리 결과를 담은 HTTP 응답
+	 */
     @PutMapping("/update")
     public ResponseEntity<String> updateJob(@RequestBody UpdateJobRequest request) {
 
@@ -127,11 +127,11 @@ public class DynamicJobController {
     
     
 	/**
-	 * 등록된 Quartz Job을 삭제한다.
+	 * Quartz Job 삭제 요청을 처리한다.
 	 *
 	 * @param jobName Job 이름
 	 * @param jobGroup Job 그룹
-	 * @return Job 삭제 처리 결과
+	 * @return Job 삭제 결과 메시지
 	 * @throws SchedulerException Job 삭제 중 Quartz 오류가 발생한 경우
 	 */
     @DeleteMapping("/delete")
@@ -142,7 +142,7 @@ public class DynamicJobController {
     }
     
 	/**
-	 * 등록된 Quartz Job 목록을 조회한다.
+	 * 등록된 Quartz Job 목록 조회 요청을 처리한다.
 	 *
 	 * @return 등록된 Job 목록
 	 * @throws SchedulerException Job 목록 조회 중 Quartz 오류가 발생한 경우
@@ -154,11 +154,11 @@ public class DynamicJobController {
     
     
 	/**
-	 * 등록된 Quartz Job의 상세 정보를 조회한다.
+	 * Quartz Job 상세 정보 조회 요청을 처리한다.
 	 *
 	 * @param jobName Job 이름
 	 * @param jobGroup Job 그룹
-	 * @return Job 상세 정보 조회 결과
+	 * @return Job 상세 정보 또는 오류 메시지를 담은 HTTP 응답
 	 */
     @GetMapping("/detail")
     public ResponseEntity<?> getJob(
@@ -177,7 +177,7 @@ public class DynamicJobController {
     }
     
 	/**
-	 * 등록 가능한 Quartz Job 클래스 목록을 조회한다.
+	 * 등록 가능한 Quartz Job 클래스 목록 조회 요청을 처리한다.
 	 *
 	 * @return 등록 가능한 Job 클래스 이름 목록
 	 */
@@ -187,11 +187,11 @@ public class DynamicJobController {
     }
     
 	/**
-	 * Quartz Job의 즉시 실행을 요청한다.
+	 * Quartz Job 즉시 실행 요청을 처리한다.
 	 *
 	 * @param jobName Job 이름
 	 * @param jobGroup Job 그룹
-	 * @return Job 즉시 실행 요청 처리 결과
+	 * @return 즉시 실행 요청 처리 결과를 담은 HTTP 응답
 	 */
     @PostMapping("/run")
     public ResponseEntity<String> runJob(@RequestParam(name = "jobName") String jobName,
@@ -210,10 +210,10 @@ public class DynamicJobController {
     }
     
 	/**
-	 * 여러 Quartz Job의 즉시 실행을 일괄 요청한다.
+	 * Quartz Job 일괄 즉시 실행 요청을 처리한다.
 	 *
 	 * @param request Job 일괄 즉시 실행 요청 정보
-	 * @return Job 일괄 즉시 실행 요청 처리 결과
+	 * @return Job별 실행 요청 결과 또는 오류 메시지를 담은 HTTP 응답
 	 */
     @PostMapping("/run-batch")
     public ResponseEntity<?> runJobs(@RequestBody JobBatchRequest request) {
@@ -231,11 +231,11 @@ public class DynamicJobController {
     }
     
 	/**
-	 * 중지된 Quartz Job의 스케줄을 재개한다.
+	 * Quartz Job 스케줄 재개 요청을 처리한다.
 	 *
 	 * @param jobName Job 이름
 	 * @param jobGroup Job 그룹
-	 * @return Job 스케줄 재개 처리 결과
+	 * @return 스케줄 재개 처리 결과를 담은 HTTP 응답
 	 */
     @PostMapping("/resume")
     public ResponseEntity<String> resumeJob(@RequestParam(name = "jobName") String jobName,
@@ -256,10 +256,10 @@ public class DynamicJobController {
     }
     
 	/**
-	 * 여러 Quartz Job의 스케줄을 일괄 재개한다.
+	 * Quartz Job 스케줄 일괄 재개 요청을 처리한다.
 	 *
 	 * @param request Job 스케줄 일괄 재개 요청 정보
-	 * @return Job 스케줄 일괄 재개 처리 결과
+	 * @return Job별 스케줄 재개 결과 또는 오류 메시지를 담은 HTTP 응답
 	 */
     @PostMapping("/resume-batch")
     public ResponseEntity<?> resumeJobs(@RequestBody JobBatchRequest request) {
@@ -278,11 +278,11 @@ public class DynamicJobController {
     }
     
 	/**
-	 * Quartz Job의 스케줄을 중지한다.
+	 * Quartz Job 스케줄 중지 요청을 처리한다.
 	 *
 	 * @param jobName Job 이름
 	 * @param jobGroup Job 그룹
-	 * @return Job 스케줄 중지 처리 결과
+	 * @return 스케줄 중지 처리 결과를 담은 HTTP 응답
 	 */
     @PostMapping("/pause")
     public ResponseEntity<String> pauseJob(@RequestParam(name = "jobName") String jobName,
@@ -303,10 +303,10 @@ public class DynamicJobController {
     }
     
 	/**
-	 * 여러 Quartz Job의 스케줄을 일괄 중지한다.
+	 * Quartz Job 스케줄 일괄 중지 요청을 처리한다.
 	 *
 	 * @param request Job 스케줄 일괄 중지 요청 정보
-	 * @return Job 스케줄 일괄 중지 처리 결과
+	 * @return Job별 스케줄 중지 결과 또는 오류 메시지를 담은 HTTP 응답
 	 */
     @PostMapping("/pause-batch")
     public ResponseEntity<?> pauseJobs(@RequestBody JobBatchRequest request) {
@@ -325,7 +325,7 @@ public class DynamicJobController {
     }
     
 	/**
-	 * Quartz Job의 실행 이력을 조회한다.
+	 * Quartz Job 실행 이력 조회 요청을 처리한다.
 	 *
 	 * @param searchDto Job 실행 이력 검색 조건
 	 * @return 페이지 정보를 포함한 Job 실행 이력

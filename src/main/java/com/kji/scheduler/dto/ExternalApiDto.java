@@ -5,10 +5,7 @@ import java.time.LocalDateTime;
 import lombok.Data;
 
 /**
- * ExternalApiDto 클래스.
- *
- * @author kji
- * @since 2026. 9. 28.
+ * External API 관리와 실행에 필요한 설정 정보를 담는다.
  */
 @Data
 public class ExternalApiDto {

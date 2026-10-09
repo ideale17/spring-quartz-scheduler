@@ -22,12 +22,22 @@ public class ExternalApiCallLogService {
 	
 	private final ExternalApiCallLogMapper mapper;
 	
+	/**
+	 * External API 호출 시작 이력을 저장한다.
+	 *
+	 * @param externalApiCallLogDto External API 호출 이력 정보
+	 */
 	@Transactional(propagation = Propagation.REQUIRES_NEW)
 	public void insertStart(ExternalApiCallLogDto externalApiCallLogDto) {
 		externalApiCallLogDto.setStatus("STARTED");
 		mapper.insertStart(externalApiCallLogDto);
 	}
 	
+	/**
+	 * External API 호출을 성공 상태로 종료하고 이력을 갱신한다.
+	 *
+	 * @param externalApiCallLogDto External API 호출 이력 정보
+	 */
 	@Transactional(propagation = Propagation.REQUIRES_NEW)
 	public void markSuccess(ExternalApiCallLogDto externalApiCallLogDto) {
 		externalApiCallLogDto.setStatus("SUCCESS");
@@ -35,6 +45,12 @@ public class ExternalApiCallLogService {
 		mapper.updateFinish(externalApiCallLogDto);
 	}
 	
+	/**
+	 * External API 호출을 실패 상태로 종료하고 오류 메시지와 이력을 갱신한다.
+	 *
+	 * @param externalApiCallLogDto External API 호출 이력 정보
+	 * @param errorMessage 저장할 오류 메시지
+	 */
 	@Transactional(propagation = Propagation.REQUIRES_NEW)
 	public void markFailed(ExternalApiCallLogDto externalApiCallLogDto, String errorMessage) {
 		
@@ -48,6 +64,12 @@ public class ExternalApiCallLogService {
 		mapper.updateFinish(externalApiCallLogDto);
 	}
 	
+	/**
+	 * 검색 조건에 맞는 External API 실행 단위 호출 이력을 조회한다.
+	 *
+	 * @param searchDto External API 호출 이력 검색 조건
+	 * @return 페이지 정보와 실행별 전체 소요 시간을 포함한 호출 이력
+	 */
 	public ExternalApiCallHistoryPageDto getCallHistory(ExternalApiCallHistorySearchDto searchDto) {
 		
 		// 1. 종료일이 있으면 조회 종료 시각을 다음 날로 계산한다.
@@ -80,7 +102,12 @@ public class ExternalApiCallLogService {
 				searchDto.getSize());
 	}
 	
-	// External API 실행별 호출 시도 이력 조회
+	/**
+	 * External API 실행별 호출 시도 이력을 조회한다.
+	 *
+	 * @param executionId External API 실행 식별자
+	 * @return 해당 실행의 호출 시도 이력 목록
+	 */
 	public List<ExternalApiCallHistoryDto> getCallHistoryDetail(String executionId) {
 		
 		// 1. 실행 식별자를 검증한다.

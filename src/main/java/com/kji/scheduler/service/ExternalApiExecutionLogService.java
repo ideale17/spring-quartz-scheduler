@@ -22,7 +22,11 @@ public class ExternalApiExecutionLogService {
 	
 	private final ExternalApiExecutionLogMapper mapper;
 	
-	// External API 실행 시작 이력을 저장한다.
+	/**
+	 * External API 실행 시작 이력을 저장한다.
+	 *
+	 * @param executionLogDto External API 실행 이력 정보
+	 */
 	@Transactional(propagation = Propagation.REQUIRES_NEW)
 	public void insertStart(ExternalApiExecutionLogDto executionLogDto) {
 		
@@ -34,7 +38,11 @@ public class ExternalApiExecutionLogService {
 		mapper.insertStart(executionLogDto);
 	}
 	
-	// External API 실행을 성공 상태로 종료한다.
+	/**
+	 * External API 실행을 성공 상태로 종료하고 이력을 갱신한다.
+	 *
+	 * @param executionLogDto External API 실행 이력 정보
+	 */
 	@Transactional(propagation = Propagation.REQUIRES_NEW)
 	public void markSuccess(ExternalApiExecutionLogDto executionLogDto) {
 		
@@ -47,7 +55,12 @@ public class ExternalApiExecutionLogService {
 		mapper.updateFinish(executionLogDto);
 	}
 	
-	// External API 실행을 실패 상태로 종료한다.
+	/**
+	 * External API 실행을 실패 상태로 종료하고 오류 메시지와 이력을 갱신한다.
+	 *
+	 * @param executionLogDto External API 실행 이력 정보
+	 * @param errorMessage 저장할 오류 메시지
+	 */
 	@Transactional(propagation = Propagation.REQUIRES_NEW)
 	public void markFailed(ExternalApiExecutionLogDto executionLogDto, String errorMessage) {
 		
@@ -65,7 +78,11 @@ public class ExternalApiExecutionLogService {
 		mapper.updateFinish(executionLogDto);
 	}
 	
-	// External API 실행 종료 시간과 전체 소요 시간을 설정한다.
+	/**
+	 * External API 실행 종료 시간과 전체 소요 시간을 설정한다.
+	 *
+	 * @param executionLogDto 종료 정보를 설정할 External API 실행 이력 정보
+	 */
 	private void setFinishInfo(ExternalApiExecutionLogDto executionLogDto) {
 		
 		// 1. 실행 종료 시간을 설정한다.
@@ -79,7 +96,12 @@ public class ExternalApiExecutionLogService {
 		}
 	}
 	
-	// External API 실행 이력을 조회한다.
+	/**
+	 * 검색 조건에 맞는 External API 실행 이력을 조회한다.
+	 *
+	 * @param searchDto External API 실행 이력 검색 조건
+	 * @return 페이지 정보를 포함한 External API 실행 이력
+	 */
 	public ExternalApiCallHistoryPageDto getExecutionHistory(ExternalApiCallHistorySearchDto searchDto) {
 		
 		// 1. 종료일이 있으면 조회 종료 시각을 다음 날로 계산한다.

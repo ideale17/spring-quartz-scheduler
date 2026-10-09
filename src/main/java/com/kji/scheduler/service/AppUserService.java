@@ -26,6 +26,11 @@ public class AppUserService {
 		this.signupEnabled = signupEnabled;
 	}
 	
+	/**
+	 * 회원가입 요청을 검증하고 비밀번호를 암호화하여 기본 사용자 권한으로 등록한다.
+	 *
+	 * @param request 회원가입 요청 정보
+	 */
 	public void signup(SignupRequest request) {
 		
 		// 1. 회원가입 허용 여부를 확인한다.
@@ -67,6 +72,11 @@ public class AppUserService {
 		
 	}
 	
+	/**
+	 * 회원가입 허용 여부를 조회한다.
+	 *
+	 * @return 회원가입이 허용되면 true, 아니면 false
+	 */
 	public boolean isSignupEnabled() {
 		return signupEnabled;
 	}

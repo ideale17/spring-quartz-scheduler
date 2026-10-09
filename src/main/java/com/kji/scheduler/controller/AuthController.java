@@ -27,10 +27,10 @@ public class AuthController {
 	public record ErrorRes(String message) {}
 	
 	/**
-	 * 현재 사용자 이름을 조회한다.
+	 * 현재 사용자 이름 조회 요청을 처리한다.
 	 *
 	 * @param auth 현재 사용자 인증 정보
-	 * @return 현재 사용자 이름 조회 결과
+	 * @return 현재 사용자 이름을 담은 HTTP 응답
 	 */
 	@GetMapping("/me")
 	public ResponseEntity<?> me(Authentication auth) {
@@ -38,10 +38,10 @@ public class AuthController {
 	}
 		
 	/**
-	 * 회원가입을 처리한다.
+	 * 회원가입 요청을 처리한다.
 	 *
 	 * @param request 회원가입 요청 정보
-	 * @return 회원가입 처리 결과
+	 * @return 회원가입 성공 시 본문 없는 HTTP 응답, 실패 시 오류 메시지를 담은 HTTP 응답
 	 */
 	@PostMapping("/signup")
 	public ResponseEntity<?> signup(@RequestBody SignupRequest request) {
@@ -61,9 +61,9 @@ public class AuthController {
 	}
 	
 	/**
-	 * 회원가입 허용 여부를 조회한다.
+	 * 회원가입 허용 여부 조회 요청을 처리한다.
 	 *
-	 * @return 회원가입 허용 여부
+	 * @return 회원가입 허용 여부를 담은 HTTP 응답
 	 */
 	@GetMapping("/signup-enabled")
 	public ResponseEntity<SignupEnabledRes> signupEnabled() {
