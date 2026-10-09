@@ -283,7 +283,7 @@ jdbc:postgresql://localhost:5432/scheduler
 
 ### 6.4 Database 초기화
 
-다음 SQL 파일을 순서대로 실행합니다.
+scheduler 데이터베이스에 접속한 뒤 아래 SQL을 순서대로 실행합니다.
 
 ```text
 src/main/resources/db/postgresql/01_quartz.sql
@@ -385,13 +385,13 @@ Local Profile을 활성화하여 애플리케이션을 실행합니다.
 #### Windows
 
 ```bash
-gradlew.bat bootRun --args="--spring.profiles.active=local"
+.\gradlew.bat bootRun --args="--spring.profiles.active=local,postgresql"
 ```
 
 #### macOS / Linux
 
 ```bash
-./gradlew bootRun --args="--spring.profiles.active=local"
+./gradlew bootRun --args="--spring.profiles.active=local,postgresql"
 ```
 
 애플리케이션은 기본적으로 다음 주소에서 실행됩니다.
