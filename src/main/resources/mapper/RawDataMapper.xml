@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.kji.scheduler.mapper.RawDataMapper">
+
+	<!-- Raw Data 목록 조회 -->
+	<select id="findRawDataList"
+			resultType="com.kji.scheduler.dto.RawDataListDto">
+		SELECT
+			R.RAW_DATA_ID,
+			R.EXECUTION_ID,
+			R.EXTERNAL_API_ID,
+			A.API_NAME,
+			R.REQUEST_SEQUENCE,
+			R.CONTENT_TYPE,
+			R.COLLECTED_AT
+		FROM SCHED_COLLECT_RAW_DATA R
+		INNER JOIN SCHED_EXTERNAL_API A
+		  ON R.EXTERNAL_API_ID = A.EXTERNAL_API_ID
+		WHERE 1 = 1
+		<if test="searchDto.apiName != null and searchDto.apiName != ''">
+			AND A.API_NAME LIKE '%' || #{searchDto.apiName} || '%'
+		</if>
+		<if test="startAt != null">
+			AND R.COLLECTED_AT <![CDATA[ >= ]]> #{startAt}
+		</if>
+		<if test="endAt != null">
+			AND R.COLLECTED_AT <![CDATA[ < ]]> #{endAt}
+		</if>
+		ORDER BY R.COLLECTED_AT DESC, R.RAW_DATA_ID DESC
+		OFFSET #{searchDto.offset} ROWS
+		FETCH NEXT #{searchDto.size} ROWS ONLY
+	</select>
+	
+	<!-- Raw Data 전체 건수 조회 -->
+	<select id="countRawData"
+			resultType="long">
+		SELECT COUNT(*)
+		FROM SCHED_COLLECT_RAW_DATA R
+		INNER JOIN SCHED_EXTERNAL_API A
+		  ON R.EXTERNAL_API_ID = A.EXTERNAL_API_ID
+		WHERE 1 = 1
+		<if test="searchDto.apiName != null and searchDto.apiName != ''">
+			AND A.API_NAME LIKE '%' || #{searchDto.apiName} || '%'
+		</if>
+		<if test="startAt != null">
+			AND R.COLLECTED_AT <![CDATA[ >= ]]> #{startAt}
+		</if>
+		<if test="endAt != null">
+			AND R.COLLECTED_AT <![CDATA[ < ]]> #{endAt}
+		</if>
+	</select>
+	
+	<!-- Raw Data 상세 조회 -->
+	<select id="findRawDataDetail"
+			resultType="com.kji.scheduler.dto.RawDataDetailDto">
+		SELECT
+			R.RAW_DATA_ID,
+			R.EXECUTION_ID,
+			R.EXTERNAL_API_ID,
+			A.API_NAME,
+			R.REQUEST_SEQUENCE,
+			R.RESPONSE_BODY,
+			R.CONTENT_TYPE,
+			R.COLLECTED_AT
+		FROM SCHED_COLLECT_RAW_DATA R
+		INNER JOIN SCHED_EXTERNAL_API A
+		  ON R.EXTERNAL_API_ID = A.EXTERNAL_API_ID
+		WHERE R.RAW_DATA_ID = #{rawDataId}
+	</select>
+	
+</mapper>
