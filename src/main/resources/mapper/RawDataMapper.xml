@@ -20,6 +20,9 @@
 		INNER JOIN SCHED_EXTERNAL_API A
 		  ON R.EXTERNAL_API_ID = A.EXTERNAL_API_ID
 		WHERE 1 = 1
+		<if test="searchDto.executionId != null and searchDto.executionId != ''">
+            AND R.EXECUTION_ID = #{searchDto.executionId}
+		</if>
 		<if test="searchDto.apiName != null and searchDto.apiName != ''">
 			AND A.API_NAME LIKE '%' || #{searchDto.apiName} || '%'
 		</if>
@@ -42,6 +45,9 @@
 		INNER JOIN SCHED_EXTERNAL_API A
 		  ON R.EXTERNAL_API_ID = A.EXTERNAL_API_ID
 		WHERE 1 = 1
+		<if test="searchDto.executionId != null and searchDto.executionId != ''">
+            AND R.EXECUTION_ID = #{searchDto.executionId}
+		</if>
 		<if test="searchDto.apiName != null and searchDto.apiName != ''">
 			AND A.API_NAME LIKE '%' || #{searchDto.apiName} || '%'
 		</if>

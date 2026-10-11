@@ -8,6 +8,7 @@ import lombok.Data;
 public class RawDataSearchDto {
 	
 	private String apiName;
+	private String executionId;
 	private LocalDate startDate;
 	private LocalDate endDate;
 	
