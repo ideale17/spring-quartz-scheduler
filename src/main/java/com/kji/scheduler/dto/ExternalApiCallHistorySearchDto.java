@@ -12,6 +12,7 @@ public class ExternalApiCallHistorySearchDto {
 	
 	private String apiName;
 	private String status;
+	private String fireInstanceId;
 	private LocalDate startDate;
 	private LocalDate endDate;
 	private LocalDate endDateExclusive;

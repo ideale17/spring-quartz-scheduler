@@ -68,6 +68,9 @@
 		LEFT JOIN CALL_SUMMARY C
 		  ON E.EXECUTION_ID = C.EXECUTION_ID
 		WHERE 1 = 1
+		<if test="fireInstanceId != null and fireInstanceId != ''">
+            AND E.FIRE_INSTANCE_ID = #{fireInstanceId}
+		</if>
 		<if test="apiName != null and apiName != ''">
 			AND A.API_NAME LIKE '%' || #{apiName} || '%'
 		</if>
@@ -94,6 +97,9 @@
 		LEFT JOIN SCHED_EXTERNAL_API A
 		  ON E.EXTERNAL_API_ID = A.EXTERNAL_API_ID
 		WHERE 1 = 1
+		<if test="fireInstanceId != null and fireInstanceId != ''">
+            AND E.FIRE_INSTANCE_ID = #{fireInstanceId}
+		</if>
 		<if test="apiName != null and apiName != ''">
 			AND A.API_NAME LIKE '%' || #{apiName} || '%'
 		</if>
