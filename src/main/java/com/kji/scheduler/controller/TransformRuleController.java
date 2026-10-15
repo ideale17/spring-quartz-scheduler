@@ -11,7 +11,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.kji.scheduler.dto.TransformPreviewRequestDto;
 import com.kji.scheduler.dto.TransformRuleRequestDto;
+import com.kji.scheduler.service.TransformEngineService;
 import com.kji.scheduler.service.TransformRuleService;
 
 @RestController
@@ -19,9 +21,11 @@ import com.kji.scheduler.service.TransformRuleService;
 public class TransformRuleController {
 	
 	private final TransformRuleService transformRuleService;
-	
-	public TransformRuleController(TransformRuleService transformRuleService) {
+	private final TransformEngineService transformEngineService;
+
+	public TransformRuleController(TransformRuleService transformRuleService, TransformEngineService transformEngineService) {
 		this.transformRuleService = transformRuleService;
+		this.transformEngineService = transformEngineService;
 	}
 	
 	/**
@@ -167,6 +171,35 @@ public class TransformRuleController {
 		} catch (Exception e) {
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("가공 규칙 수정 실패: " + e.getMessage());
 		}
+	}
+	
+	/**
+	 * JSON 가공 규칙 미리보기 요청을 처리한다.
+	 *
+	 * @param request 가공 대상 데이터와 가공 규칙 설정
+	 * @return 가공된 JSON 데이터 또는 오류 메시지를 담은 HTTP 응답
+	 */
+	@PostMapping("/preview")
+	public ResponseEntity<?> previewTransformRule(@RequestBody TransformPreviewRequestDto request) {
+		
+		try {
+			
+			// 1. 미리보기 요청 정보를 확인한다.
+			if (request == null) {
+				throw new IllegalArgumentException("가공 미리보기 요청 정보가 없습니다.");
+			}
+			
+			// 2. 전달받은 가공 규칙을 적용한다.
+			return ResponseEntity.ok(transformEngineService.transformJson(
+					request.getRawData(), request.getVersion(), request.getFields()));
+			
+		} catch (IllegalArgumentException e) {
+			return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+			
+		} catch (Exception e) {
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("가공 미리보기 실패: " + e.getMessage());
+		}
+		
 	}
 	
 }
