@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.kji.scheduler.mapper.TransformTaskMapper">
+
+	<!-- Raw Data 가공 작업 등록 -->
+	<insert id="insertTransformTask"
+			parameterType="com.kji.scheduler.dto.TransformTaskDto"
+			useGeneratedKeys="true"
+			keyProperty="transformTaskId"
+			keyColumn="transform_task_id">
+		INSERT INTO SCHED_TRANSFORM_TASK (
+			RAW_DATA_ID,
+			TRANSFORM_RULE_VERSION_ID,
+			REQUEST_TYPE,
+			STATUS,
+			ATTEMPT_COUNT,
+			CREATED_AT,
+			UPDATED_AT
+		)
+		VALUES (
+			#{rawDataId},
+			#{transformRuleVersionId},
+			#{requestType},
+			#{status},
+			0,
+			CURRENT_TIMESTAMP,
+			CURRENT_TIMESTAMP
+		)
+	</insert>
+	
+	<!-- PENDING 작업 한 건을 원자적으로 선점 -->
+	<select id="claimPendingTask" resultType="long">
+	    UPDATE SCHED_TRANSFORM_TASK
+	       SET STATUS = 'RUNNING',
+	           ATTEMPT_COUNT = ATTEMPT_COUNT + 1,
+	           STARTED_AT = CURRENT_TIMESTAMP,
+	           UPDATED_AT = CURRENT_TIMESTAMP
+	     WHERE TRANSFORM_TASK_ID = (
+	           SELECT TRANSFORM_TASK_ID
+	             FROM SCHED_TRANSFORM_TASK
+	            WHERE STATUS = 'PENDING'
+	            ORDER BY CREATED_AT, TRANSFORM_TASK_ID
+	            FOR UPDATE SKIP LOCKED
+	            LIMIT 1
+	     )
+	    RETURNING TRANSFORM_TASK_ID
+	</select>
+	
+	<!-- 가공 작업 정보 조회 -->
+	<select id="findTransformTask" resultType="com.kji.scheduler.dto.TransformTaskDto">
+	    SELECT TRANSFORM_TASK_ID,
+	           RAW_DATA_ID,
+	           TRANSFORM_RULE_VERSION_ID,
+	           REQUEST_TYPE,
+	           STATUS,
+	           ATTEMPT_COUNT,
+	           STARTED_AT,
+	           FINISHED_AT,
+	           ERROR_MESSAGE,
+	           CREATED_AT,
+	           UPDATED_AT
+	      FROM SCHED_TRANSFORM_TASK
+	     WHERE TRANSFORM_TASK_ID = #{transformTaskId}
+	</select>
+	
+	<!-- 가공 작업 성공 -->
+	<update id="markSuccess">
+	    UPDATE SCHED_TRANSFORM_TASK
+	       SET STATUS = 'SUCCESS',
+	           FINISHED_AT = CURRENT_TIMESTAMP,
+	           ERROR_MESSAGE = NULL,
+	           UPDATED_AT = CURRENT_TIMESTAMP
+	     WHERE TRANSFORM_TASK_ID = #{transformTaskId}
+	       AND STATUS = 'RUNNING'
+	</update>
+	
+	<!-- 가공 작업 실패 -->
+	<update id="markFailed">
+	    UPDATE SCHED_TRANSFORM_TASK
+	       SET STATUS = 'FAILED',
+	           FINISHED_AT = CURRENT_TIMESTAMP,
+	           ERROR_MESSAGE = #{errorMessage, jdbcType=VARCHAR},
+	           UPDATED_AT = CURRENT_TIMESTAMP
+	     WHERE TRANSFORM_TASK_ID = #{transformTaskId}
+	       AND STATUS = 'RUNNING'
+	</update>
+
+
+</mapper>
