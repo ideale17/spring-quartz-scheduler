@@ -7,6 +7,7 @@ import lombok.Data;
 @Data
 public class RawDataSearchDto {
 	
+	private Long externalApiId;
 	private String apiName;
 	private String executionId;
 	private LocalDate startDate;

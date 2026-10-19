@@ -48,6 +48,10 @@ public class RawDataService {
 			throw new IllegalArgumentException("시작일은 종료일보다 늦을 수 없습니다.");
 		}
 		
+		if (searchDto.getExternalApiId() != null && searchDto.getExternalApiId() < 1) {
+			throw new IllegalArgumentException("External API 식별자가 올바르지 않습니다.");
+		}
+		
 		// 2. 수집 시작일과 종료일을 조회 일시 범위로 변환한다.
 		LocalDateTime startAt = searchDto.getStartDate() != null
 				? searchDto.getStartDate().atStartOfDay()
