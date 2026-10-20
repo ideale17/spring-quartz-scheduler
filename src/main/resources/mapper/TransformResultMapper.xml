@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.kji.scheduler.mapper.TransformResultMapper">
+
+    <!-- 가공 결과 저장 -->
+    <insert id="insertTransformResult">
+        INSERT INTO SCHED_TRANSFORM_RESULT (
+            TRANSFORM_TASK_ID,
+            RESULT_DATA,
+            CREATED_AT
+        )
+        VALUES (
+            #{transformTaskId},
+            CAST(#{resultData} AS JSONB),
+            CURRENT_TIMESTAMP
+        )
+    </insert>
+    
+</mapper>

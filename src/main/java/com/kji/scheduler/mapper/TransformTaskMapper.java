@@ -1,5 +1,7 @@
 package com.kji.scheduler.mapper;
 
+import java.util.List;
+
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
@@ -21,7 +23,7 @@ public interface TransformTaskMapper {
 	 *
 	 * @return 선점된 가공 작업 ID, 없으면 null
 	 */
-	Long claimPendingTask();
+	List<TransformTaskDto> claimPendingTasks(int batchSize);
 	
 	/**
 	 * 가공 작업 정보를 조회한다.

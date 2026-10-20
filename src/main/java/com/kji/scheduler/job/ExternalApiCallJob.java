@@ -4,16 +4,12 @@ import org.quartz.DisallowConcurrentExecution;
 import org.quartz.JobDataMap;
 import org.quartz.JobExecutionContext;
 import org.quartz.JobExecutionException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.quartz.QuartzJobBean;
 
 import com.kji.scheduler.service.ExternalApiExecutionService;
 
 @DisallowConcurrentExecution
-public class ExternalApiCallJob extends QuartzJobBean {
-	
-	private static final Logger log = LoggerFactory.getLogger(ExternalApiCallJob.class);
+public class ExternalApiCallJob extends QuartzJobBean {	
 	
 	private final ExternalApiExecutionService externalApiExecutionService;
 

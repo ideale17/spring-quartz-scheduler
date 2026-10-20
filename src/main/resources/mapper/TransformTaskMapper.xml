@@ -31,22 +31,35 @@
 		)
 	</insert>
 	
-	<!-- PENDING 작업 한 건을 원자적으로 선점 -->
-	<select id="claimPendingTask" resultType="long">
+	<!-- PENDING 작업을 최대 지정 건수만큼 원자적으로 선점 -->
+	<select id="claimPendingTasks"
+	        resultType="com.kji.scheduler.dto.TransformTaskDto"
+	        affectData="true"
+	        flushCache="true">
 	    UPDATE SCHED_TRANSFORM_TASK
 	       SET STATUS = 'RUNNING',
 	           ATTEMPT_COUNT = ATTEMPT_COUNT + 1,
 	           STARTED_AT = CURRENT_TIMESTAMP,
 	           UPDATED_AT = CURRENT_TIMESTAMP
-	     WHERE TRANSFORM_TASK_ID = (
+	     WHERE TRANSFORM_TASK_ID IN (
 	           SELECT TRANSFORM_TASK_ID
 	             FROM SCHED_TRANSFORM_TASK
 	            WHERE STATUS = 'PENDING'
 	            ORDER BY CREATED_AT, TRANSFORM_TASK_ID
+	            LIMIT #{batchSize}
 	            FOR UPDATE SKIP LOCKED
-	            LIMIT 1
 	     )
-	    RETURNING TRANSFORM_TASK_ID
+	    RETURNING TRANSFORM_TASK_ID,
+	              RAW_DATA_ID,
+	              TRANSFORM_RULE_VERSION_ID,
+	              REQUEST_TYPE,
+	              STATUS,
+	              ATTEMPT_COUNT,
+	              STARTED_AT,
+	              FINISHED_AT,
+	              ERROR_MESSAGE,
+	              CREATED_AT,
+	              UPDATED_AT
 	</select>
 	
 	<!-- 가공 작업 정보 조회 -->
