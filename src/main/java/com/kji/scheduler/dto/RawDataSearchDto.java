@@ -12,6 +12,7 @@ public class RawDataSearchDto {
 	private String executionId;
 	private LocalDate startDate;
 	private LocalDate endDate;
+	private Long transformRuleId;
 	
 	private int page = 1;
 	private int size = 10;

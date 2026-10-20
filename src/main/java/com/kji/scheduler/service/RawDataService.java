@@ -52,6 +52,11 @@ public class RawDataService {
 			throw new IllegalArgumentException("External API 식별자가 올바르지 않습니다.");
 		}
 		
+		// 가공 규칙 식별자를 검증한다.
+		if (searchDto.getTransformRuleId() != null && searchDto.getTransformRuleId() < 1) {
+		    throw new IllegalArgumentException("가공 규칙 식별자가 올바르지 않습니다.");
+		}
+		
 		// 2. 수집 시작일과 종료일을 조회 일시 범위로 변환한다.
 		LocalDateTime startAt = searchDto.getStartDate() != null
 				? searchDto.getStartDate().atStartOfDay()

@@ -5,60 +5,101 @@
 	
 <mapper namespace="com.kji.scheduler.mapper.RawDataMapper">
 
-	<!-- Raw Data 목록 조회 -->
+	
+	<!-- Raw Data 목록 및 선택한 규칙의 최신 가공 상태 조회 -->
 	<select id="findRawDataList" resultType="com.kji.scheduler.dto.RawDataListDto">
-		SELECT
-			R.RAW_DATA_ID,
-			R.EXECUTION_ID,
-			R.EXTERNAL_API_ID,
-			A.API_NAME,
-			R.REQUEST_SEQUENCE,
-			R.CONTENT_TYPE,
-			R.COLLECTED_AT
-		FROM SCHED_COLLECT_RAW_DATA R
-		INNER JOIN SCHED_EXTERNAL_API A
-		  ON R.EXTERNAL_API_ID = A.EXTERNAL_API_ID
-		WHERE 1 = 1
-		<if test="searchDto.externalApiId != null and searchDto.externalApiId != ''">
-            AND R.EXTERNAL_API_ID = #{searchDto.externalApiId}
-		</if>
-		<if test="searchDto.executionId != null and searchDto.executionId != ''">
-            AND R.EXECUTION_ID = #{searchDto.executionId}
-		</if>
-		<if test="searchDto.apiName != null and searchDto.apiName != ''">
-			AND A.API_NAME LIKE '%' || #{searchDto.apiName} || '%'
-		</if>
-		<if test="startAt != null">
-			AND R.COLLECTED_AT <![CDATA[ >= ]]> #{startAt}
-		</if>
-		<if test="endAt != null">
-			AND R.COLLECTED_AT <![CDATA[ < ]]> #{endAt}
-		</if>
-		ORDER BY R.COLLECTED_AT DESC, R.RAW_DATA_ID DESC
-		OFFSET #{searchDto.offset} ROWS
-		FETCH NEXT #{searchDto.size} ROWS ONLY
+	    SELECT
+	        R.RAW_DATA_ID,
+	        R.EXECUTION_ID,
+	        R.EXTERNAL_API_ID,
+	        A.API_NAME,
+	        R.REQUEST_SEQUENCE,
+	        R.CONTENT_TYPE,
+	        R.COLLECTED_AT,
+	        <choose>
+			    <when test="searchDto.transformRuleId != null">
+			        T.TRANSFORM_TASK_ID,
+			        T.STATUS AS TRANSFORM_STATUS
+			    </when>
+			    <otherwise>
+			        NULL AS TRANSFORM_TASK_ID,
+			        NULL AS TRANSFORM_STATUS
+			    </otherwise>
+			</choose>
+	    FROM SCHED_COLLECT_RAW_DATA R
+	    INNER JOIN SCHED_EXTERNAL_API A
+	      ON R.EXTERNAL_API_ID = A.EXTERNAL_API_ID
+	    <if test="searchDto.transformRuleId != null">
+	        LEFT JOIN (
+	            SELECT
+	                X.RAW_DATA_ID,
+	                X.TRANSFORM_TASK_ID,
+	                X.STATUS
+	            FROM (
+	                SELECT
+	                    TT.RAW_DATA_ID,
+	                    TT.TRANSFORM_TASK_ID,
+	                    TT.STATUS,
+	                    ROW_NUMBER() OVER (
+	                        PARTITION BY TT.RAW_DATA_ID
+	                        ORDER BY TT.CREATED_AT DESC,
+	                                 TT.TRANSFORM_TASK_ID DESC
+	                    ) AS RN
+	                FROM SCHED_TRANSFORM_TASK TT
+	                INNER JOIN SCHED_TRANSFORM_RULE_VERSION V
+	                  ON TT.TRANSFORM_RULE_VERSION_ID = V.TRANSFORM_RULE_VERSION_ID
+	                WHERE V.TRANSFORM_RULE_ID = #{searchDto.transformRuleId}
+	            ) X
+	            WHERE X.RN = 1
+	        ) T
+	          ON R.RAW_DATA_ID = T.RAW_DATA_ID
+	    </if>
+	    WHERE 1 = 1
+	    <if test="searchDto.externalApiId != null">
+	        AND R.EXTERNAL_API_ID = #{searchDto.externalApiId}
+	    </if>
+	    <if test="searchDto.executionId != null and searchDto.executionId != ''">
+	        AND R.EXECUTION_ID = #{searchDto.executionId}
+	    </if>
+	    <if test="searchDto.apiName != null and searchDto.apiName != ''">
+	        AND A.API_NAME LIKE '%' || #{searchDto.apiName} || '%'
+	    </if>
+	    <if test="startAt != null">
+	        AND R.COLLECTED_AT <![CDATA[ >= ]]> #{startAt}
+	    </if>
+	    <if test="endAt != null">
+	        AND R.COLLECTED_AT <![CDATA[ < ]]> #{endAt}
+	    </if>
+	    ORDER BY R.COLLECTED_AT DESC, R.RAW_DATA_ID DESC
+	    OFFSET #{searchDto.offset} ROWS
+	    FETCH NEXT #{searchDto.size} ROWS ONLY
+	</select>
+
+	
+	<!-- 검색조건과 수집 기간을 기준으로 Raw Data 전체 건수 조회 -->
+	<select id="countRawData" resultType="long">
+	    SELECT COUNT(*)
+	    FROM SCHED_COLLECT_RAW_DATA R
+	    INNER JOIN SCHED_EXTERNAL_API A
+	      ON R.EXTERNAL_API_ID = A.EXTERNAL_API_ID
+	    WHERE 1 = 1
+	    <if test="searchDto.externalApiId != null">
+	        AND R.EXTERNAL_API_ID = #{searchDto.externalApiId}
+	    </if>
+	    <if test="searchDto.executionId != null and searchDto.executionId != ''">
+	        AND R.EXECUTION_ID = #{searchDto.executionId}
+	    </if>
+	    <if test="searchDto.apiName != null and searchDto.apiName != ''">
+	        AND A.API_NAME LIKE '%' || #{searchDto.apiName} || '%'
+	    </if>
+	    <if test="startAt != null">
+	        AND R.COLLECTED_AT <![CDATA[ >= ]]> #{startAt}
+	    </if>
+	    <if test="endAt != null">
+	        AND R.COLLECTED_AT <![CDATA[ < ]]> #{endAt}
+	    </if>
 	</select>
 	
-	<!-- Raw Data 전체 건수 조회 -->
-	<select id="countRawData" resultType="long">
-		SELECT COUNT(*)
-		FROM SCHED_COLLECT_RAW_DATA R
-		INNER JOIN SCHED_EXTERNAL_API A
-		  ON R.EXTERNAL_API_ID = A.EXTERNAL_API_ID
-		WHERE 1 = 1
-		<if test="searchDto.executionId != null and searchDto.executionId != ''">
-            AND R.EXECUTION_ID = #{searchDto.executionId}
-		</if>
-		<if test="searchDto.apiName != null and searchDto.apiName != ''">
-			AND A.API_NAME LIKE '%' || #{searchDto.apiName} || '%'
-		</if>
-		<if test="startAt != null">
-			AND R.COLLECTED_AT <![CDATA[ >= ]]> #{startAt}
-		</if>
-		<if test="endAt != null">
-			AND R.COLLECTED_AT <![CDATA[ < ]]> #{endAt}
-		</if>
-	</select>
 	
 	<!-- Raw Data 상세 조회 -->
 	<select id="findRawDataDetail" resultType="com.kji.scheduler.dto.RawDataDetailDto">

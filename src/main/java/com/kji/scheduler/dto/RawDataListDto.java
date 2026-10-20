@@ -14,5 +14,7 @@ public class RawDataListDto {
 	private Integer requestSequence;
 	private String contentType;
 	private LocalDateTime collectedAt;
+	private Long transformTaskId;
+	private String transformStatus;
 	
 }
