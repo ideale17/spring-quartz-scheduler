@@ -19,4 +19,70 @@
         )
     </insert>
     
+    <!-- 검색조건과 가공 기간을 기준으로 가공 결과 목록 조회 -->
+	<select id="findTransformResultList" resultType="com.kji.scheduler.dto.TransformResultListDto">
+	    SELECT R.TRANSFORM_RESULT_ID,
+	           R.TRANSFORM_TASK_ID,
+	           T.RAW_DATA_ID,
+	           D.EXTERNAL_API_ID,
+	           A.API_NAME,
+	           V.TRANSFORM_RULE_ID,
+	           U.RULE_NAME,
+	           V.VERSION_NO,
+	           V.DATA_FORMAT,
+	           R.CREATED_AT
+	      FROM SCHED_TRANSFORM_RESULT R
+	     INNER JOIN SCHED_TRANSFORM_TASK T
+	        ON R.TRANSFORM_TASK_ID = T.TRANSFORM_TASK_ID
+	     INNER JOIN SCHED_COLLECT_RAW_DATA D
+	        ON T.RAW_DATA_ID = D.RAW_DATA_ID
+	     INNER JOIN SCHED_EXTERNAL_API A
+	        ON D.EXTERNAL_API_ID = A.EXTERNAL_API_ID
+	     INNER JOIN SCHED_TRANSFORM_RULE_VERSION V
+	        ON T.TRANSFORM_RULE_VERSION_ID = V.TRANSFORM_RULE_VERSION_ID
+	     INNER JOIN SCHED_TRANSFORM_RULE U
+	        ON V.TRANSFORM_RULE_ID = U.TRANSFORM_RULE_ID
+	     WHERE 1 = 1
+	    <if test="searchDto.externalApiId != null">
+	       AND D.EXTERNAL_API_ID = #{searchDto.externalApiId}
+	    </if>
+	    <if test="searchDto.transformRuleId != null">
+	       AND V.TRANSFORM_RULE_ID = #{searchDto.transformRuleId}
+	    </if>
+	    <if test="startAt != null">
+	       AND R.CREATED_AT <![CDATA[ >= ]]> #{startAt}
+	    </if>
+	    <if test="endAt != null">
+	       AND R.CREATED_AT <![CDATA[ < ]]> #{endAt}
+	    </if>
+	     ORDER BY R.TRANSFORM_RESULT_ID DESC
+	     OFFSET #{searchDto.offset} ROWS
+	     FETCH NEXT #{searchDto.size} ROWS ONLY
+	</select>
+	
+	<!-- 검색조건과 가공 기간을 기준으로 전체 가공 결과 건수 조회 -->
+	<select id="countTransformResult" resultType="long">
+	    SELECT COUNT(*)
+	      FROM SCHED_TRANSFORM_RESULT R
+	     INNER JOIN SCHED_TRANSFORM_TASK T
+	        ON R.TRANSFORM_TASK_ID = T.TRANSFORM_TASK_ID
+	     INNER JOIN SCHED_COLLECT_RAW_DATA D
+	        ON T.RAW_DATA_ID = D.RAW_DATA_ID
+	     INNER JOIN SCHED_TRANSFORM_RULE_VERSION V
+	        ON T.TRANSFORM_RULE_VERSION_ID = V.TRANSFORM_RULE_VERSION_ID
+	     WHERE 1 = 1
+	    <if test="searchDto.externalApiId != null">
+	       AND D.EXTERNAL_API_ID = #{searchDto.externalApiId}
+	    </if>
+	    <if test="searchDto.transformRuleId != null">
+	       AND V.TRANSFORM_RULE_ID = #{searchDto.transformRuleId}
+	    </if>
+	    <if test="startAt != null">
+	       AND R.CREATED_AT <![CDATA[ >= ]]> #{startAt}
+	    </if>
+	    <if test="endAt != null">
+	       AND R.CREATED_AT <![CDATA[ < ]]> #{endAt}
+	    </if>
+	</select>
+
 </mapper>
