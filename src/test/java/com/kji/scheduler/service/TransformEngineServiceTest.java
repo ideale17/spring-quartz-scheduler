@@ -97,4 +97,92 @@ class TransformEngineServiceTest {
 		return field;
 	}
 	
+	@Test
+	void XML_아파트거래_반복가공() {
+		
+		// 1. XML 샘플과 반복 경로를 준비한다.
+		version.setDataFormat("XML");
+		version.setRepeatPath("response.body.items.item");
+		
+		String rawData = """
+				<response>
+					<body>
+						<items>
+							<item>
+								<aptNm>동부센트레빌</aptNm>
+								<dealAmount>84,000</dealAmount>
+								<dealYear>2026</dealYear>
+								<excluUseAr>84.96</excluUseAr>
+							</item>
+							<item>
+								<aptNm>염창3우성</aptNm>
+								<dealAmount>108,000</dealAmount>
+								<dealYear>2026</dealYear>
+								<excluUseAr>84.93</excluUseAr>
+							</item>
+						</items>
+					</body>
+				</response>
+				""";
+		
+		List<TransformRuleFieldDto> fields = List.of(
+				createField("aptNm", "apartmentName", "STRING", "Y"),
+				createField("dealAmount", "dealAmount", "STRING", "Y"),
+				createField("dealYear", "dealYear", "INTEGER", "Y"),
+				createField("excluUseAr", "exclusiveArea", "DECIMAL", "Y"));
+		
+		// 2. XML 가공을 실행한다.
+		JsonNode result = service.transformXml(rawData, version, fields);
+		
+		// 3. 반복 건수와 타입 변환 결과를 검증한다.
+		assertEquals(2, result.size());
+		assertEquals("동부센트레빌", result.get(0).get("apartmentName").asText());
+		assertEquals("84,000", result.get(0).get("dealAmount").asText());
+		assertEquals(2026, result.get(0).get("dealYear").intValue());
+		assertEquals(84.96, result.get(0).get("exclusiveArea").doubleValue());
+		assertEquals("염창3우성", result.get(1).get("apartmentName").asText());
+	}
+
+	@Test
+	void XML_필수필드_누락() {
+		
+		version.setDataFormat("XML");
+		version.setRepeatPath("response.body.items.item");
+		
+		String rawData = """
+				<response>
+					<body>
+						<items>
+							<item><aptNm> </aptNm></item>
+						</items>
+					</body>
+				</response>
+				""";
+		
+		List<TransformRuleFieldDto> fields = List.of(
+				createField("aptNm", "apartmentName", "STRING", "Y"));
+		
+		assertThrows(IllegalArgumentException.class,
+				() -> service.transformXml(rawData, version, fields));
+	}
+	
+	@Test
+	void XML_DTD_사용차단() {
+		
+		version.setDataFormat("XML");
+		
+		String rawData = """
+				<!DOCTYPE response [
+					<!ENTITY example SYSTEM "file:///etc/passwd">
+				]>
+				<response><name>&example;</name></response>
+				""";
+		
+		List<TransformRuleFieldDto> fields = List.of(
+				createField("name", "name", "STRING", "Y"));
+		
+		assertThrows(IllegalArgumentException.class,
+				() -> service.transformXml(rawData, version, fields));
+	}
+	
 }

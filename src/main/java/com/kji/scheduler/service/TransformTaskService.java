@@ -73,8 +73,10 @@ public class TransformTaskService {
 			throw new IllegalArgumentException("사용 중지된 가공 규칙은 실행할 수 없습니다.");
 		}
 		
-		if (!"JSON".equals(ruleDetail.getVersion().getDataFormat())) {
-			throw new IllegalArgumentException("현재 가공 작업은 JSON 형식만 지원합니다.");
+		String dataFormat = ruleDetail.getVersion().getDataFormat();
+
+		if (!"JSON".equals(dataFormat) && !"XML".equals(dataFormat)) {
+		    throw new IllegalArgumentException("지원하지 않는 가공 데이터 형식입니다: " + dataFormat);
 		}
 		
 		Long transformRuleVersionId = ruleDetail.getVersion().getTransformRuleVersionId();

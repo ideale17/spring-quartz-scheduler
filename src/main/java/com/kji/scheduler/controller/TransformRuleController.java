@@ -189,9 +189,20 @@ public class TransformRuleController {
 				throw new IllegalArgumentException("가공 미리보기 요청 정보가 없습니다.");
 			}
 			
-			// 2. 전달받은 가공 규칙을 적용한다.
-			return ResponseEntity.ok(transformEngineService.transformJson(
-					request.getRawData(), request.getVersion(), request.getFields()));
+			// 2. 데이터 형식에 따라 가공 규칙을 적용한다.
+			String dataFormat = request.getVersion() == null ? null : request.getVersion().getDataFormat();
+			
+			if ("JSON".equals(dataFormat)) {
+				return ResponseEntity.ok(transformEngineService.transformJson(
+						request.getRawData(), request.getVersion(), request.getFields()));
+			}
+			
+			if ("XML".equals(dataFormat)) {
+				return ResponseEntity.ok(transformEngineService.transformXml(
+						request.getRawData(), request.getVersion(), request.getFields()));
+			}
+			
+			throw new IllegalArgumentException("지원하지 않는 가공 데이터 형식입니다: " + dataFormat);
 			
 		} catch (IllegalArgumentException e) {
 			return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());

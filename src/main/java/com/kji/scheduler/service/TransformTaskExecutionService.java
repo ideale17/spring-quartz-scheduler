@@ -65,8 +65,21 @@ public class TransformTaskExecutionService {
 		// 4. 규칙 버전별 추출 필드를 조회한다.
 		List<TransformRuleFieldDto> fields = ruleMapper.findTransformRuleFieldList(version.getTransformRuleVersionId());
 		
-		// 5. 원본 JSON을 가공한다.
-		JsonNode result = transformEngineService.transformJson(rawData.getResponseBody(), version, fields);
+		// 5. 원본 데이터 형식에 따라 가공 엔진을 실행한다.
+		JsonNode result;
+		
+		switch (version.getDataFormat()) {
+			case "JSON":
+				result = transformEngineService.transformJson(rawData.getResponseBody(), version, fields);
+				break;
+				
+			case "XML":
+				result = transformEngineService.transformXml(rawData.getResponseBody(), version, fields);
+				break;
+				
+			default:
+				throw new IllegalArgumentException("지원하지 않는 가공 데이터 형식입니다: " + version.getDataFormat());
+		}
 		
 		// 6. 가공 결과를 저장한다.
 		if (resultMapper.insertTransformResult(transformTaskId, result.toString()) != 1) {
