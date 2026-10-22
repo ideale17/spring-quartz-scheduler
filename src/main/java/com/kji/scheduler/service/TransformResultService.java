@@ -6,6 +6,7 @@ import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.kji.scheduler.dto.TransformResultDetailDto;
 import com.kji.scheduler.dto.TransformResultListDto;
 import com.kji.scheduler.dto.TransformResultPageDto;
 import com.kji.scheduler.dto.TransformResultSearchDto;
@@ -80,5 +81,33 @@ public class TransformResultService {
 		);
 
 	}
-
+	
+	/**
+	 * 가공 결과 식별자로 상세 정보를 조회한다.
+	 *
+	 * @param transformResultId 가공 결과 식별자
+	 * @return 가공 결과 상세 정보
+	 * @throws IllegalArgumentException 식별자가 올바르지 않거나 조회 대상이 없는 경우
+	 */
+	@Transactional(readOnly = true)
+	public TransformResultDetailDto getTransformResultDetail(Long transformResultId) {
+		
+		// 1. 가공 결과 식별자를 검증한다.
+		if (transformResultId == null || transformResultId < 1) {
+			throw new IllegalArgumentException("가공 결과 식별자가 올바르지 않습니다.");
+		}
+		
+		// 2. 가공 결과 상세 정보를 조회한다.
+		TransformResultDetailDto transformResult = mapper.findTransformResultDetail(transformResultId);
+		
+		// 3. 조회 대상이 존재하는지 확인한다.
+		if (transformResult == null) {
+			throw new IllegalArgumentException("가공 결과 정보를 찾을 수 없습니다. transformResultId: " + transformResultId);
+		}
+		
+		// 4. 가공 결과 상세 정보를 반환한다.
+		return transformResult;
+		
+	}
+	
 }

@@ -4,6 +4,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.kji.scheduler.dto.TransformResultSearchDto;
@@ -39,6 +40,29 @@ public class TransformResultController {
 		} catch (Exception e) {
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
 					.body("가공 결과 목록 조회 실패: " + e.getMessage());
+		}
+	}
+	
+	/**
+	 * 가공 결과 상세 조회 요청을 처리한다.
+	 *
+	 * @param transformResultId 조회 대상 가공 결과 식별자
+	 * @return 가공 결과 상세 정보 또는 오류 메시지를 담은 HTTP 응답
+	 */
+	@GetMapping("/detail")
+	public ResponseEntity<?> getTransformResultDetail(@RequestParam(name = "transformResultId") Long transformResultId) {
+		
+		try {
+			
+			// 1. 가공 결과 식별자로 상세 정보를 조회한다.
+			return ResponseEntity.ok(transformResultService.getTransformResultDetail(transformResultId));
+			
+		} catch (IllegalArgumentException e) {
+			return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
+			
+		} catch (Exception e) {
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+					.body("가공 결과 상세 조회 실패: " + e.getMessage());
 		}
 	}
 	

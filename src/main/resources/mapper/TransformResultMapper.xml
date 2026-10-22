@@ -84,5 +84,32 @@
 	       AND R.CREATED_AT <![CDATA[ < ]]> #{endAt}
 	    </if>
 	</select>
+	
+	<!-- 가공 결과 상세 조회 -->
+	<select id="findTransformResultDetail" resultType="com.kji.scheduler.dto.TransformResultDetailDto">
+	    SELECT R.TRANSFORM_RESULT_ID,
+	           R.TRANSFORM_TASK_ID,
+	           T.RAW_DATA_ID,
+	           D.EXTERNAL_API_ID,
+	           A.API_NAME,
+	           V.TRANSFORM_RULE_ID,
+	           U.RULE_NAME,
+	           V.VERSION_NO,
+	           V.DATA_FORMAT,
+	           CAST(R.RESULT_DATA AS VARCHAR) AS RESULT_DATA,
+	           R.CREATED_AT
+	      FROM SCHED_TRANSFORM_RESULT R
+	     INNER JOIN SCHED_TRANSFORM_TASK T
+	        ON R.TRANSFORM_TASK_ID = T.TRANSFORM_TASK_ID
+	     INNER JOIN SCHED_COLLECT_RAW_DATA D
+	        ON T.RAW_DATA_ID = D.RAW_DATA_ID
+	     INNER JOIN SCHED_EXTERNAL_API A
+	        ON D.EXTERNAL_API_ID = A.EXTERNAL_API_ID
+	     INNER JOIN SCHED_TRANSFORM_RULE_VERSION V
+	        ON T.TRANSFORM_RULE_VERSION_ID = V.TRANSFORM_RULE_VERSION_ID
+	     INNER JOIN SCHED_TRANSFORM_RULE U
+	        ON V.TRANSFORM_RULE_ID = U.TRANSFORM_RULE_ID
+	     WHERE R.TRANSFORM_RESULT_ID = #{transformResultId}
+	</select>
 
 </mapper>

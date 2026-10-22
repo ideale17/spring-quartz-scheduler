@@ -6,6 +6,7 @@ import java.util.List;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
+import com.kji.scheduler.dto.TransformResultDetailDto;
 import com.kji.scheduler.dto.TransformResultListDto;
 import com.kji.scheduler.dto.TransformResultSearchDto;
 
@@ -46,5 +47,13 @@ public interface TransformResultMapper {
 			@Param("searchDto") TransformResultSearchDto searchDto,
 			@Param("startAt") LocalDateTime startAt,
 			@Param("endAt") LocalDateTime endAt);
+	
+	/**
+	 * 가공 결과 식별자로 상세 정보를 조회한다.
+	 *
+	 * @param transformResultId 가공 결과 식별자
+	 * @return 가공 결과 상세 정보, 없으면 null
+	 */
+	TransformResultDetailDto findTransformResultDetail(@Param("transformResultId") Long transformResultId);
 	
 }
