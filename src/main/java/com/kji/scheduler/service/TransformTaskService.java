@@ -12,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.kji.scheduler.dto.RawDataDetailDto;
 import com.kji.scheduler.dto.TransformRuleRequestDto;
 import com.kji.scheduler.dto.TransformTaskDto;
+import com.kji.scheduler.dto.TransformTaskHistoryDto;
 import com.kji.scheduler.dto.TransformTaskRequestDto;
 import com.kji.scheduler.mapper.TransformTaskMapper;
 
@@ -99,7 +100,18 @@ public class TransformTaskService {
 			}
 		}
 		
-		// 5. 선택한 Raw Data별로 수동 가공 작업을 등록한다.
+		// 5. 동일 Raw Data와 현재 규칙 버전의 중복 가공 여부를 확인한다.
+		for (Long rawDataId : request.getRawDataIds()) {
+			
+			long duplicateCount = mapper.countDuplicateTransformTask(rawDataId, transformRuleVersionId);
+			
+			if (duplicateCount > 0) {
+				throw new IllegalArgumentException(
+						"현재 가공 규칙 버전으로 이미 등록되었거나 가공 완료된 데이터입니다. rawDataId: " + rawDataId);
+			}
+		}
+		
+		// 6. 선택한 Raw Data별로 수동 가공 작업을 등록한다.
 		List<Long> transformTaskIds = new ArrayList<>();
 		
 		for (Long rawDataId : request.getRawDataIds()) {
@@ -117,8 +129,27 @@ public class TransformTaskService {
 			transformTaskIds.add(task.getTransformTaskId());
 		}
 		
-		// 6. 등록된 작업 식별자 목록을 반환한다.
+		// 7. 등록된 작업 식별자 목록을 반환한다.
 		return transformTaskIds;
+	}
+	
+	/**
+	 * Raw Data의 전체 가공 작업 이력을 조회한다.
+	 *
+	 * @param rawDataId Raw Data 식별자
+	 * @return 가공 작업 이력 목록
+	 * @throws IllegalArgumentException Raw Data 식별자가 올바르지 않은 경우
+	 */
+	@Transactional(readOnly = true)
+	public List<TransformTaskHistoryDto> getTransformTaskHistory(Long rawDataId) {
+		
+		// 1. Raw Data 식별자를 검증한다.
+		if (rawDataId == null || rawDataId < 1) {
+			throw new IllegalArgumentException("Raw Data 식별자가 올바르지 않습니다.");
+		}
+		
+		// 2. Raw Data의 가공 작업 이력을 조회한다.
+		return mapper.findTransformTaskHistory(rawDataId);
 	}
 	
 }

@@ -16,16 +16,45 @@
 	        R.REQUEST_SEQUENCE,
 	        R.CONTENT_TYPE,
 	        R.COLLECTED_AT,
-	        <choose>
+	        <!-- Raw Data의 전체 가공 작업 건수 -->
+			(
+			    SELECT COUNT(*)
+			      FROM SCHED_TRANSFORM_TASK H
+			     WHERE H.RAW_DATA_ID = R.RAW_DATA_ID
+			) AS TRANSFORM_HISTORY_COUNT,
+			<!-- 현재 가공 규칙 버전으로 등록 가능한지 확인 -->
+			<choose>
 			    <when test="searchDto.transformRuleId != null">
-			        T.TRANSFORM_TASK_ID,
-			        T.STATUS AS TRANSFORM_STATUS
+			        CASE
+			            WHEN EXISTS (
+			                SELECT 1
+			                  FROM SCHED_TRANSFORM_TASK H
+			                 INNER JOIN SCHED_TRANSFORM_RULE_VERSION V
+			                    ON H.TRANSFORM_RULE_VERSION_ID = V.TRANSFORM_RULE_VERSION_ID
+			                 INNER JOIN SCHED_TRANSFORM_RULE U
+			                    ON V.TRANSFORM_RULE_ID = U.TRANSFORM_RULE_ID
+			                 WHERE H.RAW_DATA_ID = R.RAW_DATA_ID
+			                   AND V.TRANSFORM_RULE_ID = #{searchDto.transformRuleId}
+			                   AND V.VERSION_NO = U.CURRENT_VERSION
+			                   AND H.STATUS IN ('PENDING', 'RUNNING', 'SUCCESS')
+			            ) THEN 1
+			            ELSE 0
+			        END AS TRANSFORM_BLOCKED,
 			    </when>
 			    <otherwise>
-			        NULL AS TRANSFORM_TASK_ID,
-			        NULL AS TRANSFORM_STATUS
+			        0 AS TRANSFORM_BLOCKED,
 			    </otherwise>
 			</choose>
+			<choose>
+		        <when test="searchDto.transformRuleId != null">
+		            T.TRANSFORM_TASK_ID,
+		            T.STATUS AS TRANSFORM_STATUS
+		        </when>
+		        <otherwise>
+		            NULL AS TRANSFORM_TASK_ID,
+		            NULL AS TRANSFORM_STATUS
+		        </otherwise>
+		    </choose>
 	    FROM SCHED_COLLECT_RAW_DATA R
 	    INNER JOIN SCHED_EXTERNAL_API A
 	      ON R.EXTERNAL_API_ID = A.EXTERNAL_API_ID

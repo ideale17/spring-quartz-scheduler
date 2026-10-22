@@ -79,6 +79,41 @@
 	     WHERE TRANSFORM_TASK_ID = #{transformTaskId}
 	</select>
 	
+	<!-- Raw Data별 전체 가공 작업 이력 조회 -->
+	<select id="findTransformTaskHistory" resultType="com.kji.scheduler.dto.TransformTaskHistoryDto">
+	    SELECT T.TRANSFORM_TASK_ID,
+	           T.RAW_DATA_ID,
+	           V.TRANSFORM_RULE_ID,
+	           U.RULE_NAME,
+	           V.VERSION_NO,
+	           T.STATUS,
+	           T.ATTEMPT_COUNT,
+	           T.ERROR_MESSAGE,
+	           R.TRANSFORM_RESULT_ID,
+	           T.CREATED_AT,
+	           T.STARTED_AT,
+	           T.FINISHED_AT
+	      FROM SCHED_TRANSFORM_TASK T
+	     INNER JOIN SCHED_TRANSFORM_RULE_VERSION V
+	        ON T.TRANSFORM_RULE_VERSION_ID = V.TRANSFORM_RULE_VERSION_ID
+	     INNER JOIN SCHED_TRANSFORM_RULE U
+	        ON V.TRANSFORM_RULE_ID = U.TRANSFORM_RULE_ID
+	      LEFT JOIN SCHED_TRANSFORM_RESULT R
+	        ON T.TRANSFORM_TASK_ID = R.TRANSFORM_TASK_ID
+	     WHERE T.RAW_DATA_ID = #{rawDataId}
+	     ORDER BY T.CREATED_AT DESC,
+	              T.TRANSFORM_TASK_ID DESC
+	</select>
+	
+	<!-- 동일 Raw Data와 현재 규칙 버전의 중복 가공 작업 검사 -->
+	<select id="countDuplicateTransformTask" resultType="long">
+	    SELECT COUNT(*)
+	      FROM SCHED_TRANSFORM_TASK
+	     WHERE RAW_DATA_ID = #{rawDataId}
+	       AND TRANSFORM_RULE_VERSION_ID = #{transformRuleVersionId}
+	       AND STATUS IN ('PENDING', 'RUNNING', 'SUCCESS')
+	</select>
+	
 	<!-- 가공 작업 성공 -->
 	<update id="markSuccess">
 	    UPDATE SCHED_TRANSFORM_TASK

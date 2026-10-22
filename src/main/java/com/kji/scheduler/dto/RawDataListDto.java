@@ -16,5 +16,7 @@ public class RawDataListDto {
 	private LocalDateTime collectedAt;
 	private Long transformTaskId;
 	private String transformStatus;
+	private Long transformHistoryCount;
+	private Integer transformBlocked;
 	
 }
