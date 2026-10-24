@@ -19,6 +19,7 @@ import com.kji.scheduler.dto.ExternalApiCallHistorySearchDto;
 import com.kji.scheduler.dto.ExternalApiPagingDto;
 import com.kji.scheduler.dto.ExternalApiParamDto;
 import com.kji.scheduler.dto.ExternalApiRequestDto;
+import com.kji.scheduler.dto.ExternalApiSearchDto;
 import com.kji.scheduler.service.ExternalApiCallLogService;
 import com.kji.scheduler.service.ExternalApiExecutionLogService;
 import com.kji.scheduler.service.ExternalApiExecutionService;
@@ -51,16 +52,18 @@ public class ExternalApiController {
 	 * @return External API 목록 또는 오류 메시지를 담은 HTTP 응답
 	 */
 	@GetMapping("/list")
-	public ResponseEntity<?> getExternalApiList() {
+	public ResponseEntity<?> getExternalApiList(ExternalApiSearchDto searchDto) {
 		
 		try {
 			
-			return ResponseEntity.ok(externalApiService.getExternalApiList());
+			return ResponseEntity.ok(externalApiService.getExternalApiList(searchDto));
+			
+		} catch (IllegalArgumentException e) {
+			return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
 			
 		} catch (Exception e) {
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("External API 목록 조회 실패: " + e.getMessage());
 		}
-		
 	}
 	
 	/**

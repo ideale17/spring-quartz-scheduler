@@ -10,17 +10,19 @@ import com.kji.scheduler.dto.ExternalApiBasicDto;
 import com.kji.scheduler.dto.ExternalApiDto;
 import com.kji.scheduler.dto.ExternalApiPagingDto;
 import com.kji.scheduler.dto.ExternalApiParamDto;
+import com.kji.scheduler.dto.ExternalApiSearchDto;
 
 @Mapper
 public interface ExternalApiMapper {
-
+	
 	/**
-	 * External API 목록을 식별자 내림차순으로 조회한다.
+	 * 검색조건을 기준으로 External API 목록을 조회한다.
 	 *
-	 * @return External API 목록
+	 * @param searchDto External API 검색조건
+	 * @return 검색조건에 해당하는 External API 목록
 	 */
-	List<ExternalApiDto> findAllExternalApiList();
-
+	List<ExternalApiDto> findExternalApiList(@Param("searchDto") ExternalApiSearchDto searchDto);
+	
 	/**
 	 * External API 식별자를 조건으로 External API 정보를 조회한다.
 	 *

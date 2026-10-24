@@ -5,27 +5,28 @@
 
 <mapper namespace="com.kji.scheduler.mapper.ExternalApiMapper">
 
-	<!-- External API 목록 조회 -->
-	<select id="findAllExternalApiList" resultType="com.kji.scheduler.dto.ExternalApiDto">
-        SELECT EXTERNAL_API_ID,
-               API_NAME,
-               API_URL,
-               HTTP_METHOD,
-               ENABLED,
-               RETRY_ENABLED,
-               MAX_RETRY_COUNT,
-               RETRY_INTERVAL_SEC,
-               AUTH_TYPE,
-               AUTH_LOCATION,
-               AUTH_KEY,
-               AUTH_VALUE,
-               AUTH_USERNAME,
-               AUTH_PASSWORD,
-               DESCRIPTION,
-               CREATED_AT,
-               UPDATED_AT
-          FROM SCHED_EXTERNAL_API
-         ORDER BY EXTERNAL_API_ID DESC
+	<!-- 검색조건을 기준으로 External API 목록 조회 -->
+	<select id="findExternalApiList" resultType="com.kji.scheduler.dto.ExternalApiDto">
+	    SELECT EXTERNAL_API_ID,
+	           API_NAME,
+	           API_URL,
+	           HTTP_METHOD,
+	           ENABLED,
+	           DESCRIPTION,
+	           CREATED_AT,
+	           UPDATED_AT
+	      FROM SCHED_EXTERNAL_API
+	     WHERE 1 = 1
+	    <if test="searchDto.apiName != null and searchDto.apiName != ''">
+	       AND API_NAME LIKE '%' || #{searchDto.apiName} || '%'
+	    </if>
+	    <if test="searchDto.httpMethod != null and searchDto.httpMethod != ''">
+	       AND HTTP_METHOD = #{searchDto.httpMethod}
+	    </if>
+	    <if test="searchDto.enabled != null and searchDto.enabled != ''">
+	       AND ENABLED = #{searchDto.enabled}
+	    </if>
+	     ORDER BY EXTERNAL_API_ID DESC
 	</select>
 	
 	<!-- External API 단건 조회 -->

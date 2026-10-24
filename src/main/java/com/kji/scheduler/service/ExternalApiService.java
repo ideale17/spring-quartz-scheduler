@@ -17,6 +17,7 @@ import com.kji.scheduler.dto.ExternalApiDto;
 import com.kji.scheduler.dto.ExternalApiPagingDto;
 import com.kji.scheduler.dto.ExternalApiParamDto;
 import com.kji.scheduler.dto.ExternalApiRequestDto;
+import com.kji.scheduler.dto.ExternalApiSearchDto;
 import com.kji.scheduler.dto.JobInfoDto;
 import com.kji.scheduler.mapper.ExternalApiMapper;
 
@@ -37,14 +38,45 @@ public class ExternalApiService {
 	}
 	
 	/**
-	 * 등록된 External API 목록을 조회한다.
+	 * 검색조건을 기준으로 External API 목록을 조회한다.
 	 *
-	 * @return 등록된 External API 목록
+	 * @param searchDto External API 검색조건
+	 * @return External API 목록
+	 * @throws IllegalArgumentException 검색조건이 올바르지 않은 경우
 	 */
-	public List<ExternalApiDto> getExternalApiList() {
+	public List<ExternalApiDto> getExternalApiList(ExternalApiSearchDto searchDto) {
 		
-		// 1. 등록된 External API 목록을 조회한다.
-		return externalApiMapper.findAllExternalApiList();
+		// 1. API 이름 검색조건을 정리하고 검증한다.
+		String apiName = searchDto.getApiName();
+		
+		if (apiName != null) {
+			apiName = apiName.trim();
+			
+			if (apiName.length() > 100) {
+				throw new IllegalArgumentException("API 이름 검색조건은 100자 이하여야 합니다.");
+			}
+			
+			searchDto.setApiName(apiName);
+		}
+		
+		// 2. HTTP Method 검색조건을 검증한다.
+		String httpMethod = searchDto.getHttpMethod();
+		
+		if (httpMethod != null && !httpMethod.isEmpty()
+				&& !List.of("GET", "POST", "PUT", "PATCH", "DELETE").contains(httpMethod)) {
+			throw new IllegalArgumentException("올바르지 않은 HTTP Method 검색조건입니다.");
+		}
+		
+		// 3. 사용 여부 검색조건을 검증한다.
+		String enabled = searchDto.getEnabled();
+		
+		if (enabled != null && !enabled.isEmpty()
+				&& !"Y".equals(enabled) && !"N".equals(enabled)) {
+			throw new IllegalArgumentException("올바르지 않은 사용 여부 검색조건입니다.");
+		}
+		
+		// 4. 검색조건에 해당하는 External API 목록을 조회한다.
+		return externalApiMapper.findExternalApiList(searchDto);
 	}
 	
 	/**
