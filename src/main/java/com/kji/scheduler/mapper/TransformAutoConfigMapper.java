@@ -35,4 +35,12 @@ public interface TransformAutoConfigMapper {
 	 */
 	int insertTransformAutoConfig(TransformAutoConfigDto config);
 	
+	/**
+	 * External API의 활성 자동 가공 규칙과 현재 버전 목록을 조회한다.
+	 *
+	 * @param externalApiId External API 식별자
+	 * @return 활성 자동 가공 규칙의 현재 버전 목록
+	 */
+	List<TransformAutoConfigDto> findEnabledAutoTransformRules(@Param("externalApiId") Long externalApiId);
+	
 }

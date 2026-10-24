@@ -14,6 +14,7 @@ public class TransformAutoConfigDto {
 	private Long autoConfigId;
 	private Long externalApiId;
 	private Long transformRuleId;
+	private Long transformRuleVersionId;
 	private String ruleName;
 	private Integer currentVersion;
 	private String ruleEnabled;

@@ -5,8 +5,13 @@
 
 <mapper namespace="com.kji.scheduler.mapper.CollectRawDataMapper">
 
+	
 	<!-- 수집 원본 데이터 저장 -->
-	<insert id="insertCollectRawData" parameterType="com.kji.scheduler.dto.CollectRawDataDto">
+	<insert id="insertCollectRawData"
+	        parameterType="com.kji.scheduler.dto.CollectRawDataDto"
+	        useGeneratedKeys="true"
+	        keyProperty="rawDataId"
+	        keyColumn="raw_data_id">	
 		INSERT INTO sched_collect_raw_data (
 			execution_id,
 			external_api_id,

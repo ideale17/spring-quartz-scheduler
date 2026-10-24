@@ -47,4 +47,21 @@
 		)
 	</insert>
 	
+	<!-- 활성 자동 가공 규칙 및 현재 버전 조회 -->
+	<select id="findEnabledAutoTransformRules" resultType="com.kji.scheduler.dto.TransformAutoConfigDto">
+	    SELECT C.EXTERNAL_API_ID,
+	           C.TRANSFORM_RULE_ID,
+	           V.TRANSFORM_RULE_VERSION_ID
+	      FROM SCHED_TRANSFORM_AUTO_CONFIG C
+	     INNER JOIN SCHED_TRANSFORM_RULE R
+	        ON C.TRANSFORM_RULE_ID = R.TRANSFORM_RULE_ID
+	     INNER JOIN SCHED_TRANSFORM_RULE_VERSION V
+	        ON V.TRANSFORM_RULE_ID = R.TRANSFORM_RULE_ID
+	       AND V.VERSION_NO = R.CURRENT_VERSION
+	     WHERE C.EXTERNAL_API_ID = #{externalApiId}
+	       AND C.ENABLED = 'Y'
+	       AND R.ENABLED = 'Y'
+	     ORDER BY C.AUTO_CONFIG_ID
+	</select>
+	
 </mapper>
