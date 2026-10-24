@@ -5,6 +5,7 @@ import java.io.StringReader;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.time.Instant;
+import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
@@ -251,8 +252,11 @@ public class TransformEngineService {
 							throw new IllegalArgumentException("날짜 변환 대상이 아닙니다.");
 						}
 						
-						DateTimeFormatter.ISO_DATE_TIME.parse(value.asText());
-						return objectMapper.getNodeFactory().textNode(value.asText());
+						// 1. 시간대 정보가 포함된 ISO 날짜를 파싱한다.
+						OffsetDateTime dateTime = OffsetDateTime.parse(value.asText(), DateTimeFormatter.ISO_OFFSET_DATE_TIME);
+						
+						// 2. UTC 기준 시각으로 변환하여 반환한다.
+						return objectMapper.getNodeFactory().textNode(dateTime.toInstant().toString());
 					}
 					
 					throw new IllegalArgumentException("날짜 입력 형식이 올바르지 않습니다.");

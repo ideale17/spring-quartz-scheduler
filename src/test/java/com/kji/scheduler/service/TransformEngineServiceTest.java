@@ -185,4 +185,104 @@ class TransformEngineServiceTest {
 				() -> service.transformXml(rawData, version, fields));
 	}
 	
+	@Test
+	void ISO_DATETIME_한국시간을_UTC로_변환() {
+		
+		// 1. 한국 시간대가 포함된 날짜 데이터를 준비한다.
+		String rawData = """
+				{
+				  "eventTime": "2026-10-24T12:30:00+09:00"
+				}
+				""";
+		
+		TransformRuleFieldDto field = createField("eventTime", "occurredAt", "DATETIME", "Y");
+		field.setValueFormat("ISO_DATETIME");
+		
+		// 2. 가공 규칙을 적용한다.
+		JsonNode result = service.transformJson(rawData, version, List.of(field));
+		
+		// 3. UTC 기준으로 변환되었는지 확인한다.
+		assertEquals("2026-10-24T03:30:00Z", result.get("occurredAt").asText());
+	}
+	
+	@Test
+	void ISO_DATETIME_UTC시간을_그대로_유지() {
+		
+		// 1. UTC 기준 날짜 데이터를 준비한다.
+		String rawData = """
+				{
+				  "eventTime": "2026-10-24T03:30:00Z"
+				}
+				""";
+		
+		TransformRuleFieldDto field = createField("eventTime", "occurredAt", "DATETIME", "Y");
+		field.setValueFormat("ISO_DATETIME");
+		
+		// 2. 가공 규칙을 적용한다.
+		JsonNode result = service.transformJson(rawData, version, List.of(field));
+		
+		// 3. 동일한 UTC 시각을 유지하는지 확인한다.
+		assertEquals("2026-10-24T03:30:00Z", result.get("occurredAt").asText());
+	}
+	
+	@Test
+	void ISO_DATETIME_시간대정보_누락시_예외발생() {
+		
+		// 1. 시간대 정보가 없는 날짜 데이터를 준비한다.
+		String rawData = """
+				{
+				  "eventTime": "2026-10-24T12:30:00"
+				}
+				""";
+		
+		TransformRuleFieldDto field = createField("eventTime", "occurredAt", "DATETIME", "Y");
+		field.setValueFormat("ISO_DATETIME");
+		
+		// 2. 시간대가 없는 날짜는 변환을 거부하는지 확인한다.
+		assertThrows(IllegalArgumentException.class,
+				() -> service.transformJson(rawData, version, List.of(field)));
+	}
+	
+	@Test
+	void EPOCH_MILLIS_기존변환_유지() {
+		
+		// 1. Unix 타임스탬프(밀리초)를 준비한다.
+		String rawData = """
+				{
+				  "eventTime": 1792812600000
+				}
+				""";
+		
+		TransformRuleFieldDto field = createField("eventTime", "occurredAt", "DATETIME", "Y");
+		field.setValueFormat("EPOCH_MILLIS");
+		
+		// 2. 가공 규칙을 적용한다.
+		JsonNode result = service.transformJson(rawData, version, List.of(field));
+		
+		// 3. 기존 밀리초 변환 결과가 유지되는지 확인한다.
+		assertEquals("2026-10-24T03:30:00Z", result.get("occurredAt").asText());
+	}
+	
+	@Test
+	void XML_ISO_DATETIME_한국시간을_UTC로_변환() {
+		
+		// 1. 날짜를 포함한 XML 데이터를 준비한다.
+		version.setDataFormat("XML");
+		
+		String rawData = """
+				<response>
+					<eventTime>2026-10-24T12:30:00+09:00</eventTime>
+				</response>
+				""";
+		
+		TransformRuleFieldDto field = createField("eventTime", "occurredAt", "DATETIME", "Y");
+		field.setValueFormat("ISO_DATETIME");
+		
+		// 2. XML 가공 규칙을 적용한다.
+		JsonNode result = service.transformXml(rawData, version, List.of(field));
+		
+		// 3. UTC 기준으로 변환되었는지 확인한다.
+		assertEquals("2026-10-24T03:30:00Z", result.get(0).get("occurredAt").asText());
+	}
+	
 }
