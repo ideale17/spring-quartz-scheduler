@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.kji.scheduler.dto.TransformPreviewRequestDto;
 import com.kji.scheduler.dto.TransformRuleRequestDto;
+import com.kji.scheduler.dto.TransformRuleSearchDto;
 import com.kji.scheduler.service.TransformEngineService;
 import com.kji.scheduler.service.TransformRuleService;
 
@@ -31,18 +32,24 @@ public class TransformRuleController {
 	/**
 	 * 가공 규칙 목록 조회 요청을 처리한다.
 	 *
+	 * @param searchDto 가공 규칙 검색조건
 	 * @return 가공 규칙 목록 또는 오류 메시지를 담은 HTTP 응답
 	 */
 	@GetMapping("/list")
-	public ResponseEntity<?> getTransformRuleList() {
+	public ResponseEntity<?> getTransformRuleList(TransformRuleSearchDto searchDto) {
 		
 		try {
 			
-			return ResponseEntity.ok(transformRuleService.getTransformRuleList());
+			// 1. 검색조건에 해당하는 가공 규칙 목록을 조회한다.
+			return ResponseEntity.ok(transformRuleService.getTransformRuleList(searchDto));
+			
+		} catch (IllegalArgumentException e) {
+			return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
 			
 		} catch (Exception e) {
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("가공 규칙 목록 조회 실패: " + e.getMessage());
 		}
+		
 	}
 	
 	/**

@@ -11,6 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.kji.scheduler.dto.TransformRuleDto;
 import com.kji.scheduler.dto.TransformRuleFieldDto;
 import com.kji.scheduler.dto.TransformRuleRequestDto;
+import com.kji.scheduler.dto.TransformRuleSearchDto;
 import com.kji.scheduler.dto.TransformRuleVersionDto;
 import com.kji.scheduler.mapper.TransformRuleMapper;
 
@@ -24,15 +25,38 @@ public class TransformRuleService {
 	}
 	
 	/**
-	 * 등록된 가공 규칙 목록을 조회한다.
+	 * 검색조건에 해당하는 가공 규칙 목록을 조회한다.
 	 *
+	 * @param searchDto 가공 규칙 검색조건
 	 * @return 가공 규칙 목록
+	 * @throws IllegalArgumentException 검색조건이 올바르지 않은 경우
 	 */
 	@Transactional(readOnly = true)
-	public List<TransformRuleDto> getTransformRuleList() {
-
-		// 1. 가공 규칙 목록을 조회한다.
-		return mapper.findAllTransformRuleList();
+	public List<TransformRuleDto> getTransformRuleList(TransformRuleSearchDto searchDto) {
+		
+		// 1. 규칙명 검색조건을 정리하고 검증한다.
+		String ruleName = searchDto.getRuleName();
+		
+		if (ruleName != null) {
+			ruleName = ruleName.trim();
+			
+			if (ruleName.length() > 100) {
+				throw new IllegalArgumentException("규칙명 검색조건은 100자 이하여야 합니다.");
+			}
+			
+			searchDto.setRuleName(ruleName);
+		}
+		
+		// 2. 사용 여부 검색조건을 검증한다.
+		String enabled = searchDto.getEnabled();
+		
+		if (enabled != null && !enabled.isEmpty()
+				&& !"Y".equals(enabled) && !"N".equals(enabled)) {
+			throw new IllegalArgumentException("올바르지 않은 사용 여부 검색조건입니다.");
+		}
+		
+		// 3. 검색조건에 해당하는 가공 규칙 목록을 조회한다.
+		return mapper.findTransformRuleList(searchDto);
 	}
 	
 	/**

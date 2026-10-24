@@ -7,17 +7,19 @@ import org.apache.ibatis.annotations.Param;
 
 import com.kji.scheduler.dto.TransformRuleDto;
 import com.kji.scheduler.dto.TransformRuleFieldDto;
+import com.kji.scheduler.dto.TransformRuleSearchDto;
 import com.kji.scheduler.dto.TransformRuleVersionDto;
 
 @Mapper
 public interface TransformRuleMapper {
 	
 	/**
-	 * 등록된 가공 규칙 목록을 식별자 내림차순으로 조회한다.
+	 * 검색조건에 해당하는 가공 규칙 목록을 식별자 내림차순으로 조회한다.
 	 *
+	 * @param searchDto 가공 규칙 검색조건
 	 * @return 가공 규칙 목록
 	 */
-	List<TransformRuleDto> findAllTransformRuleList();
+	List<TransformRuleDto> findTransformRuleList(@Param("searchDto") TransformRuleSearchDto searchDto);
 	
 	/**
 	 * 가공 규칙 식별자를 조건으로 기본 정보를 조회한다.
