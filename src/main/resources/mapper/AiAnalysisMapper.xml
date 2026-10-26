@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.kji.scheduler.mapper.AiAnalysisMapper">
+
+	<!-- AI 분석 대상 가공 결과 조회 -->
+	<select id="findAnalysisData" resultType="com.kji.scheduler.dto.AiAnalysisDataDto">
+	    SELECT R.TRANSFORM_RESULT_ID,
+	           R.TRANSFORM_TASK_ID,
+	           T.RAW_DATA_ID,
+	           D.EXTERNAL_API_ID,
+	           A.API_NAME,
+	           V.TRANSFORM_RULE_ID,
+	           U.RULE_NAME,
+	           V.VERSION_NO,
+	           V.DATA_FORMAT,
+	           CAST(R.RESULT_DATA AS VARCHAR) AS RESULT_DATA,
+	           R.CREATED_AT
+	      FROM SCHED_TRANSFORM_RESULT R
+	     INNER JOIN SCHED_TRANSFORM_TASK T
+	        ON R.TRANSFORM_TASK_ID = T.TRANSFORM_TASK_ID
+	     INNER JOIN SCHED_COLLECT_RAW_DATA D
+	        ON T.RAW_DATA_ID = D.RAW_DATA_ID
+	     INNER JOIN SCHED_EXTERNAL_API A
+	        ON D.EXTERNAL_API_ID = A.EXTERNAL_API_ID
+	     INNER JOIN SCHED_TRANSFORM_RULE_VERSION V
+	        ON T.TRANSFORM_RULE_VERSION_ID = V.TRANSFORM_RULE_VERSION_ID
+	     INNER JOIN SCHED_TRANSFORM_RULE U
+	        ON V.TRANSFORM_RULE_ID = U.TRANSFORM_RULE_ID
+	     WHERE D.EXTERNAL_API_ID = #{externalApiId}
+	       AND V.TRANSFORM_RULE_ID = #{transformRuleId}
+	       AND V.VERSION_NO = #{versionNo}
+	       AND R.CREATED_AT <![CDATA[ >= ]]> #{startAt}
+	       AND R.CREATED_AT <![CDATA[ < ]]> #{endAt}
+	     ORDER BY R.CREATED_AT ASC, R.TRANSFORM_RESULT_ID ASC
+	     FETCH FIRST #{limit} ROWS ONLY
+	</select>
+	
+	<!-- AI 분석 조건에 해당하는 전체 가공 결과 건수 조회 -->
+	<select id="countAnalysisData" resultType="long">
+	    SELECT COUNT(*)
+	      FROM SCHED_TRANSFORM_RESULT R
+	     INNER JOIN SCHED_TRANSFORM_TASK T
+	        ON R.TRANSFORM_TASK_ID = T.TRANSFORM_TASK_ID
+	     INNER JOIN SCHED_COLLECT_RAW_DATA D
+	        ON T.RAW_DATA_ID = D.RAW_DATA_ID
+	     INNER JOIN SCHED_TRANSFORM_RULE_VERSION V
+	        ON T.TRANSFORM_RULE_VERSION_ID = V.TRANSFORM_RULE_VERSION_ID
+	     WHERE D.EXTERNAL_API_ID = #{externalApiId}
+	       AND V.TRANSFORM_RULE_ID = #{transformRuleId}
+	       AND V.VERSION_NO = #{versionNo}
+	       AND R.CREATED_AT <![CDATA[ >= ]]> #{startAt}
+	       AND R.CREATED_AT <![CDATA[ < ]]> #{endAt}
+	</select>
+	
+</mapper>
