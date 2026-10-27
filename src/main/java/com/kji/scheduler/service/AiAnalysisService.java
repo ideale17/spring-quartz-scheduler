@@ -15,10 +15,14 @@ import org.springframework.transaction.annotation.Transactional;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.kji.scheduler.dto.AiAnalysisDataDto;
 import com.kji.scheduler.dto.AiAnalysisDatasetDto;
 import com.kji.scheduler.dto.AiAnalysisFieldDto;
 import com.kji.scheduler.dto.AiAnalysisPreviewDto;
+import com.kji.scheduler.dto.AiAnalysisRequestDto;
+import com.kji.scheduler.dto.AiAnalysisResponseDto;
 import com.kji.scheduler.dto.AiAnalysisSearchDto;
 import com.kji.scheduler.mapper.AiAnalysisMapper;
 
@@ -30,13 +34,18 @@ public class AiAnalysisService {
 	private static final int MAX_TOTAL_LENGTH = 500000;
 	private static final int MAX_RECORD_COUNT = 5000;
 	private static final int MAX_PERIOD_DAYS = 31;
+	private static final int MAX_AI_DATA_LENGTH = 100000;
 	
 	private final AiAnalysisMapper mapper;
 	private final ObjectMapper objectMapper;
+	private final OpenAiAnalysisClient openAiAnalysisClient;
 	
-	public AiAnalysisService(AiAnalysisMapper mapper, ObjectMapper objectMapper) {
+	public AiAnalysisService(AiAnalysisMapper mapper, ObjectMapper objectMapper,
+			OpenAiAnalysisClient openAiAnalysisClient) {
+		
 		this.mapper = mapper;
 		this.objectMapper = objectMapper;
+		this.openAiAnalysisClient = openAiAnalysisClient;
 	}
 	
 	/**
@@ -74,8 +83,7 @@ public class AiAnalysisService {
 			throw new IllegalArgumentException("분석 시작일은 종료일보다 늦을 수 없습니다.");
 		}
 		
-		long periodDays = ChronoUnit.DAYS.between(
-				searchDto.getStartDate(), searchDto.getEndDate()) + 1;
+		long periodDays = ChronoUnit.DAYS.between(searchDto.getStartDate(), searchDto.getEndDate()) + 1;
 		
 		if (periodDays > MAX_PERIOD_DAYS) {
 			throw new IllegalArgumentException("분석 기간은 최대 31일까지 지정할 수 있습니다.");
@@ -241,6 +249,142 @@ public class AiAnalysisService {
 		dataset.setFields(new ArrayList<>(fieldMap.values()));
 		
 		return dataset;
+	}
+	
+	/**
+	 * AI 분석 실행 요청을 검증하고 AI 분석 결과를 반환한다.
+	 *
+	 * @param request AI 분석 실행 요청
+	 * @return AI 분석 결과
+	 * @throws IllegalArgumentException 분석 요청 또는 데이터셋이 올바르지 않은 경우
+	 * @throws IllegalStateException AI 분석 실행에 실패한 경우
+	 */
+	public AiAnalysisResponseDto executeAnalysis(AiAnalysisRequestDto request) {
+		
+		// 1. 분석 요청 정보를 검증한다.
+		if (request == null) {
+			throw new IllegalArgumentException("AI 분석 요청 정보가 없습니다.");
+		}
+		
+		if (request.getPrompt() == null || request.getPrompt().isBlank()) {
+			throw new IllegalArgumentException("AI 분석 질문을 입력해주세요.");
+		}
+		
+		if (request.getPrompt().length() > 2000) {
+			throw new IllegalArgumentException("AI 분석 질문은 최대 2000자까지 입력할 수 있습니다.");
+		}
+		
+		// 2. AI API 연결 설정을 확인한다.
+		openAiAnalysisClient.validateConfiguration();
+		
+		// 3. 요청 조건을 기존 검색 DTO로 변환한다.
+		AiAnalysisSearchDto searchDto = new AiAnalysisSearchDto();
+		searchDto.setExternalApiId(request.getExternalApiId());
+		searchDto.setTransformRuleId(request.getTransformRuleId());
+		searchDto.setVersionNo(request.getVersionNo());
+		searchDto.setStartDate(request.getStartDate());
+		searchDto.setEndDate(request.getEndDate());
+		
+		// 4. 기존 데이터셋 조회 기능으로 분석 가능 여부를 확인한다.
+		AiAnalysisDatasetDto dataset = getAnalysisDataset(searchDto);
+		
+		if (dataset.getTotalSourceCount() == 0 || dataset.getRecordCount() == 0) {
+			throw new IllegalArgumentException("분석할 데이터가 없습니다.");
+		}
+		
+		if (dataset.isHasMore()) {
+			throw new IllegalArgumentException(
+					"분석 대상에 일부 처리되지 않은 데이터가 있습니다. 분석 기간을 줄여주세요.");
+		}
+		
+		// 5. AI가 요청한 경우에만 실제 분석 데이터를 조회하도록 한다.
+		String answer = openAiAnalysisClient.analyze(
+				request.getPrompt(),
+				dataset,
+				() -> getAnalysisData(searchDto)
+		);
+		
+		// 6. 분석 결과를 반환한다.
+		AiAnalysisResponseDto response = new AiAnalysisResponseDto();
+		response.setAnswer(answer);
+		response.setModel(openAiAnalysisClient.getModel());
+		response.setTotalSourceCount(dataset.getTotalSourceCount());
+		response.setSourceCount(dataset.getSourceCount());
+		response.setRecordCount(dataset.getRecordCount());
+		
+		return response;
+	}
+	
+	/**
+	 * AI 분석에 필요한 실제 가공 데이터를 조회한다.
+	 *
+	 * @param searchDto AI 분석 대상 검색조건
+	 * @return AI에 전달할 JSON 데이터
+	 * @throws IllegalArgumentException 조회 범위나 전송 데이터 크기가 올바르지 않은 경우
+	 */
+	public String getAnalysisData(AiAnalysisSearchDto searchDto) {
+		
+		// 1. 기존 검증 및 조회 로직을 재사용한다.
+		AiAnalysisPreviewDto preview = getAnalysisPreview(searchDto);
+		
+		// 2. 전체 가공 결과 건수를 확인한다.
+		long totalSourceCount = mapper.countAnalysisData(searchDto);
+		
+		if (totalSourceCount > preview.getResultCount()) {
+			throw new IllegalArgumentException(
+					"전체 데이터를 조회할 수 없습니다. 분석 기간을 줄여주세요.");
+		}
+		
+		if (totalSourceCount == 0) {
+			throw new IllegalArgumentException("분석할 데이터가 없습니다.");
+		}
+		
+		// 3. AI에 전달할 데이터 구조를 생성한다.
+		ObjectNode data = objectMapper.createObjectNode();
+		
+		data.put("externalApiId", searchDto.getExternalApiId());
+		data.put("transformRuleId", searchDto.getTransformRuleId());
+		data.put("versionNo", searchDto.getVersionNo());
+		data.put("startDate", searchDto.getStartDate().toString());
+		data.put("endDate", searchDto.getEndDate().toString());
+		data.put("sourceCount", preview.getResultCount());
+		data.put("complete", true);
+		
+		ArrayNode results = data.putArray("results");
+		
+		// 4. 실제 가공 결과 JSON을 데이터에 포함한다.
+		for (AiAnalysisDataDto result : preview.getResults()) {
+			
+			JsonNode resultJson;
+			
+			try {
+				resultJson = objectMapper.readTree(result.getResultData());
+			} catch (JsonProcessingException e) {
+				throw new IllegalArgumentException(
+						"가공 결과 JSON 형식이 올바르지 않습니다. ID: "
+						+ result.getTransformResultId(), e);
+			}
+			
+			if (resultJson == null || (!resultJson.isObject() && !resultJson.isArray())) {
+				throw new IllegalArgumentException(
+						"가공 결과는 JSON 객체 또는 배열이어야 합니다. ID: "
+						+ result.getTransformResultId());
+			}
+			
+			ObjectNode item = results.addObject();
+			item.put("transformResultId", result.getTransformResultId());
+			item.put("createdAt", String.valueOf(result.getCreatedAt()));
+			item.set("data", resultJson);
+			
+			// 5. AI 전송용 JSON 크기를 제한한다.
+			if (data.toString().length() > MAX_AI_DATA_LENGTH) {
+				throw new IllegalArgumentException(
+						"AI에 전달할 데이터 크기가 제한을 초과했습니다. 분석 기간을 줄여주세요.");
+			}
+		}
+		
+		// 6. 검증된 JSON 데이터를 반환한다.
+		return data.toString();
 	}
 	
 	/**
