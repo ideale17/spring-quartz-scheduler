@@ -12,6 +12,9 @@ import com.kji.scheduler.dto.AiAnalysisRequestDto;
 import com.kji.scheduler.dto.AiAnalysisSearchDto;
 import com.kji.scheduler.service.AiAnalysisService;
 
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
 @RestController
 @RequestMapping("/ai-analysis")
 public class AiAnalysisController {
@@ -75,7 +78,7 @@ public class AiAnalysisController {
 	 * @return AI 분석 결과 또는 오류 메시지를 담은 HTTP 응답
 	 */
 	@PostMapping("/execute")
-	public ResponseEntity<?> executeAnalysis(@RequestBody(required = false) AiAnalysisRequestDto request) {
+	public ResponseEntity<?> executeAnalysis(@RequestBody AiAnalysisRequestDto request) {
 		
 		try {
 			
@@ -89,6 +92,9 @@ public class AiAnalysisController {
 			return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(e.getMessage());
 			
 		} catch (Exception e) {
+			
+			log.error("AI 분석 실행 중 예상하지 못한 오류가 발생했다.", e);
+			
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
 					.body("AI 분석 실행 중 오류가 발생했습니다.");
 		}

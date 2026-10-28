@@ -58,7 +58,6 @@ public class AiAnalysisService {
 	 * @return 분석 대상 가공 결과 및 조회 제한 정보
 	 * @throws IllegalArgumentException 검색조건 또는 데이터 크기가 올바르지 않은 경우
 	 */
-	@Transactional(readOnly = true)
 	public AiAnalysisPreviewDto getAnalysisPreview(AiAnalysisSearchDto searchDto) {
 		
 		// 1. 검색조건을 검증한다.
@@ -150,7 +149,6 @@ public class AiAnalysisService {
 	 * @return 데이터셋의 레코드, 필드 및 중복 후보 정보
 	 * @throws IllegalArgumentException 검색조건 또는 가공 데이터가 올바르지 않은 경우
 	 */
-	@Transactional(readOnly = true)
 	public AiAnalysisDatasetDto getAnalysisDataset(AiAnalysisSearchDto searchDto) {
 		
 		// 1. 기존 미리보기 조회를 통해 검색조건과 데이터 크기를 검증한다.
@@ -265,10 +263,6 @@ public class AiAnalysisService {
 	public AiAnalysisResponseDto executeAnalysis(AiAnalysisRequestDto request) {
 		
 		// 1. 분석 요청 정보를 검증한다.
-		if (request == null) {
-			throw new IllegalArgumentException("AI 분석 요청 정보가 없습니다.");
-		}
-		
 		if (request.getPrompt() == null || request.getPrompt().isBlank()) {
 			throw new IllegalArgumentException("AI 분석 질문을 입력해주세요.");
 		}
@@ -399,7 +393,6 @@ public class AiAnalysisService {
 	 * @return 숫자 필드 통계 결과
 	 * @throws IllegalArgumentException 검색조건이나 숫자 필드가 올바르지 않은 경우
 	 */
-	@Transactional(readOnly = true)
 	public AiFieldStatisticsDto calculateFieldStatistics(AiAnalysisSearchDto searchDto, String fieldName) {
 		
 		// 1. 분석할 필드명을 검증한다.
