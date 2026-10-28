@@ -1,5 +1,7 @@
 package com.kji.scheduler.service;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
@@ -24,6 +26,7 @@ import com.kji.scheduler.dto.AiAnalysisPreviewDto;
 import com.kji.scheduler.dto.AiAnalysisRequestDto;
 import com.kji.scheduler.dto.AiAnalysisResponseDto;
 import com.kji.scheduler.dto.AiAnalysisSearchDto;
+import com.kji.scheduler.dto.AiFieldStatisticsDto;
 import com.kji.scheduler.mapper.AiAnalysisMapper;
 
 @Service
@@ -297,11 +300,12 @@ public class AiAnalysisService {
 					"분석 대상에 일부 처리되지 않은 데이터가 있습니다. 분석 기간을 줄여주세요.");
 		}
 		
-		// 5. AI가 요청한 경우에만 실제 분석 데이터를 조회하도록 한다.
+		// 5. AI가 요청한 도구에 따라 데이터 조회 또는 통계 계산을 수행한다.
 		String answer = openAiAnalysisClient.analyze(
 				request.getPrompt(),
 				dataset,
-				() -> getAnalysisData(searchDto)
+				() -> getAnalysisData(searchDto),
+				fieldName -> calculateFieldStatistics(searchDto, fieldName)
 		);
 		
 		// 6. 분석 결과를 반환한다.
@@ -385,6 +389,174 @@ public class AiAnalysisService {
 		
 		// 6. 검증된 JSON 데이터를 반환한다.
 		return data.toString();
+	}
+	
+	/**
+	 * 선택한 숫자 필드의 통계 정보를 계산한다.
+	 *
+	 * @param searchDto AI 분석 대상 검색조건
+	 * @param fieldName 분석할 숫자 필드명
+	 * @return 숫자 필드 통계 결과
+	 * @throws IllegalArgumentException 검색조건이나 숫자 필드가 올바르지 않은 경우
+	 */
+	@Transactional(readOnly = true)
+	public AiFieldStatisticsDto calculateFieldStatistics(AiAnalysisSearchDto searchDto, String fieldName) {
+		
+		// 1. 분석할 필드명을 검증한다.
+		if (fieldName == null || fieldName.isBlank()) {
+			throw new IllegalArgumentException("통계를 계산할 필드명이 없습니다.");
+		}
+		
+		if (fieldName.length() > 100) {
+			throw new IllegalArgumentException("통계 필드명은 최대 100자까지 지정할 수 있습니다.");
+		}
+		
+		// 2. 기존 검색조건 검증 및 가공 결과 조회 기능을 재사용한다.
+		AiAnalysisPreviewDto preview = getAnalysisPreview(searchDto);
+		long totalSourceCount = mapper.countAnalysisData(searchDto);
+
+		if (totalSourceCount == 0) {
+			throw new IllegalArgumentException("분석할 데이터가 없습니다.");
+		}
+
+		if (preview.isHasMore() || totalSourceCount > preview.getResultCount()) {
+			throw new IllegalArgumentException("전체 데이터를 조회할 수 없습니다. 분석 기간을 줄여주세요.");
+		}
+
+		// 3. 통계 계산 변수를 초기화한다.
+		BigDecimal sum = BigDecimal.ZERO;
+		BigDecimal min = null;
+		BigDecimal max = null;
+
+		int totalRecordCount = 0;
+		int validCount = 0;
+		int nullCount = 0;
+		int missingCount = 0;
+		int invalidCount = 0;
+		int presentCount = 0;
+
+		// 4. 가공 결과에 포함된 JSON 레코드를 순회한다.
+		for (AiAnalysisDataDto result : preview.getResults()) {
+
+			JsonNode root;
+
+			try {
+				root = objectMapper.readTree(result.getResultData());
+			} catch (JsonProcessingException e) {
+				throw new IllegalArgumentException(
+						"가공 결과 JSON 형식이 올바르지 않습니다. ID: "
+						+ result.getTransformResultId(), e);
+			}
+
+			if (root == null || (!root.isObject() && !root.isArray())) {
+				throw new IllegalArgumentException(
+						"가공 결과는 JSON 객체 또는 배열이어야 합니다. ID: "
+						+ result.getTransformResultId());
+			}
+
+			// 5. JSON 객체와 배열을 동일한 방식으로 처리한다.
+			List<JsonNode> records = new ArrayList<>();
+
+			if (root.isArray()) {
+				root.forEach(records::add);
+			} else {
+				records.add(root);
+			}
+
+			for (JsonNode record : records) {
+
+				if (!record.isObject()) {
+					throw new IllegalArgumentException(
+							"분석 대상 레코드는 JSON 객체여야 합니다. ID: "
+							+ result.getTransformResultId());
+				}
+
+				totalRecordCount++;
+
+				if (totalRecordCount > MAX_RECORD_COUNT) {
+					throw new IllegalArgumentException(
+							"분석 데이터셋은 최대 5000개 레코드까지 처리할 수 있습니다.");
+				}
+
+				// 6. 필드 존재 여부와 NULL을 구분한다.
+				JsonNode value = record.get(fieldName);
+
+				if (value == null) {
+					missingCount++;
+					continue;
+				}
+
+				presentCount++;
+
+				if (value.isNull()) {
+					nullCount++;
+					continue;
+				}
+
+				// 7. 숫자 또는 쉼표가 포함된 숫자 문자열을 변환한다.
+				if (!value.isNumber() && !value.isTextual()) {
+					invalidCount++;
+					continue;
+				}
+
+				String numericValue = value.asText().replace(",", "").trim();
+
+				try {
+
+					BigDecimal number = new BigDecimal(numericValue);
+
+					// 8. 합계, 최솟값, 최댓값을 계산한다.
+					sum = sum.add(number);
+
+					if (min == null || number.compareTo(min) < 0) {
+						min = number;
+					}
+
+					if (max == null || number.compareTo(max) > 0) {
+						max = number;
+					}
+
+					validCount++;
+
+				} catch (NumberFormatException e) {
+					invalidCount++;
+				}
+			}
+		}
+
+		// 9. 필드가 모든 레코드에서 누락되었다면 오류로 처리한다.
+		if (presentCount == 0) {
+			throw new IllegalArgumentException("분석 데이터에 존재하지 않는 필드입니다: " + fieldName);
+		}
+
+		// 10. 유효한 숫자가 있는 경우 평균을 계산한다.
+		BigDecimal average = null;
+
+		if (validCount > 0) {
+			average = sum.divide(BigDecimal.valueOf(validCount), 4, RoundingMode.HALF_UP);
+		}
+
+		// 11. 통계 계산 결과를 반환한다.
+		AiFieldStatisticsDto statistics = new AiFieldStatisticsDto();
+
+		statistics.setFieldName(fieldName);
+		statistics.setTotalSourceCount(totalSourceCount);
+		statistics.setSourceCount(preview.getResultCount());
+		statistics.setTotalRecordCount(totalRecordCount);
+
+		statistics.setValidCount(validCount);
+		statistics.setNullCount(nullCount);
+		statistics.setMissingCount(missingCount);
+		statistics.setInvalidCount(invalidCount);
+
+		statistics.setSum(validCount > 0 ? sum : null);
+		statistics.setMin(min);
+		statistics.setMax(max);
+		statistics.setAverage(average);
+
+		statistics.setComplete(true);
+
+		return statistics;
 	}
 	
 	/**
