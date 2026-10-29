@@ -15,6 +15,8 @@ public class ExternalApiParamDto {
     private String valueType;
     private String paramValue;
     private String valueFormat;
+    private String offsetUnit;
+    private Integer offsetValue;
     private String requiredYn;
     private Integer sortOrder;
     private String description;

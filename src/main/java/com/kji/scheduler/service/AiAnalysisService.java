@@ -290,7 +290,7 @@ public class AiAnalysisService {
 		
 		if (dataset.isHasMore()) {
 			throw new IllegalArgumentException(
-					"분석 대상에 일부 처리되지 않은 데이터가 있습니다. 분석 기간을 줄여주세요.");
+					"분석 대상 데이터가 최대 조회 건수를 초과했습니다. 분석 기간을 줄여주세요.");
 		}
 		
 		// 5. AI가 요청한 도구에 따라 데이터 조회 또는 통계 계산을 수행한다.

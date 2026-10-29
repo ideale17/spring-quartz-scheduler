@@ -255,7 +255,10 @@ public class ExternalApiService {
 					param.setSortOrder(0);
 				}
 				
-				// 11-3. 파라미터를 등록한다.
+				// 11-3. 날짜·시간 오프셋 설정을 검증한다.
+				validateExternalApiParamOffset(param);
+				
+				// 11-4. 파라미터를 등록한다.
 				int paramInsertCount = externalApiMapper.insertExternalApiParam(param);
 				
 				if (paramInsertCount != 1) {
@@ -447,13 +450,17 @@ public class ExternalApiService {
 				param.setSortOrder(0);
 			}
 			
-			// 4-4. External API 파라미터를 등록한다.
+			// 4-4. 날짜·시간 오프셋 설정을 검증한다.
+			validateExternalApiParamOffset(param);
+			
+			// 4-5. External API 파라미터를 등록한다.
 			int insertCount = externalApiMapper.insertExternalApiParam(param);
 			
-			// 4-5. 등록 결과를 확인한다.
+			// 4-6. 등록 결과를 확인한다.
 			if (insertCount != 1) {
 				throw new IllegalStateException("External API 파라미터 수정에 실패했습니다. paramName: " + param.getParamName());
 			}
+			
 		}
 		
 	}
@@ -746,6 +753,82 @@ public class ExternalApiService {
 				
 		}
 		
+	}
+	
+	/**
+	 * External API 파라미터의 날짜·시간 오프셋 설정을 검증한다.
+	 *
+	 * @param param 검증할 External API 파라미터
+	 * @throws IllegalArgumentException 오프셋 설정이 올바르지 않은 경우
+	 */
+	private void validateExternalApiParamOffset(ExternalApiParamDto param) {
+		
+		// 1. 파라미터 정보가 없으면 예외를 발생시킨다.
+		if (param == null) {
+			throw new IllegalArgumentException("External API 파라미터 정보가 없습니다.");
+		}
+		
+		// 2. 고정값 유형은 오프셋 설정을 사용하지 않는다.
+		String valueType = param.getValueType();
+		
+		if ("STATIC".equals(valueType)) {
+			param.setOffsetUnit(null);
+			param.setOffsetValue(0);
+			return;
+		}
+		
+		// 3. 지원하는 동적 파라미터 유형인지 확인한다.
+		if (!List.of("CURRENT_DATE", "CURRENT_TIME", "CURRENT_DATETIME").contains(valueType)) {
+			throw new IllegalArgumentException("지원하지 않는 External API 파라미터 값 유형입니다. "
+					+ "paramName: " + param.getParamName() + ", valueType: " + valueType);
+		}
+		
+		// 4. 오프셋 단위가 없으면 이동 값을 확인하고 기본값을 설정한다.
+		String offsetUnit = param.getOffsetUnit();
+		Integer offsetValue = param.getOffsetValue();
+		
+		if (offsetUnit == null || offsetUnit.isBlank()) {
+			
+			if (offsetValue != null && offsetValue != 0) {
+				throw new IllegalArgumentException("날짜·시간 이동 값이 설정된 경우 이동 단위도 필요합니다. "
+						+ "paramName: " + param.getParamName());
+			}
+			
+			param.setOffsetUnit(null);
+			param.setOffsetValue(0);
+			return;
+		}
+		
+		// 5. 이동 값이 설정되어 있는지 확인한다.
+		if (offsetValue == null) {
+			throw new IllegalArgumentException("날짜·시간 이동 값을 입력해주세요. "
+					+ "paramName: " + param.getParamName());
+		}
+		
+		// 6. 이동 값의 허용 범위를 확인한다.
+		if (offsetValue < -10000 || offsetValue > 10000) {
+			throw new IllegalArgumentException("날짜·시간 이동 값은 -10000부터 10000까지 입력할 수 있습니다. "
+					+ "paramName: " + param.getParamName());
+		}
+		
+		// 7. 값 유형에 따라 허용하는 이동 단위를 검증한다.
+		boolean validUnit = switch (valueType) {
+		
+			case "CURRENT_DATE" -> List.of("DAY", "MONTH", "YEAR").contains(offsetUnit);
+			
+			case "CURRENT_TIME" -> List.of("MINUTE", "HOUR").contains(offsetUnit);
+			
+			case "CURRENT_DATETIME" -> List.of("MINUTE", "HOUR", "DAY", "MONTH", "YEAR").contains(offsetUnit);
+			
+			default -> false;
+		};
+		
+		if (!validUnit) {
+			throw new IllegalArgumentException("파라미터 값 유형에 사용할 수 없는 날짜·시간 이동 단위입니다. "
+					+ "paramName: " + param.getParamName()
+					+ ", valueType: " + valueType
+					+ ", offsetUnit: " + offsetUnit);
+		}
 	}
 	
 	/**

@@ -244,6 +244,19 @@ COMMENT ON COLUMN sched_external_api_param.description
 IS '파라미터 설명';
 
 
+-- 1. External API 파라미터의 날짜·시간 오프셋 설정 컬럼을 추가한다.
+ALTER TABLE SCHED_EXTERNAL_API_PARAM
+    ADD COLUMN OFFSET_UNIT VARCHAR(10),
+    ADD COLUMN OFFSET_VALUE INTEGER DEFAULT 0;
+
+-- 2. 날짜·시간 오프셋 단위에 대한 설명을 등록한다.
+COMMENT ON COLUMN SCHED_EXTERNAL_API_PARAM.OFFSET_UNIT
+    IS '날짜·시간 이동 단위(MINUTE, HOUR, DAY, MONTH, YEAR). NULL이면 이동하지 않음';
+
+-- 3. 날짜·시간 오프셋 값에 대한 설명을 등록한다.
+COMMENT ON COLUMN SCHED_EXTERNAL_API_PARAM.OFFSET_VALUE
+    IS '날짜·시간 이동 값. 음수는 과거, 양수는 미래, 0은 현재를 의미함';
+
 -- =========================================================
 -- External API 실행 단위 이력
 -- =========================================================

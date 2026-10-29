@@ -94,6 +94,8 @@
                VALUE_TYPE,
                PARAM_VALUE,
                VALUE_FORMAT,
+               OFFSET_UNIT,
+               OFFSET_VALUE,
                REQUIRED_YN,
                SORT_ORDER,
                DESCRIPTION
@@ -155,6 +157,8 @@
 	    	VALUE_TYPE,
 	    	PARAM_VALUE,
 	    	VALUE_FORMAT,
+	    	OFFSET_UNIT,
+            OFFSET_VALUE,
 	    	REQUIRED_YN,
 	    	SORT_ORDER,
 	    	DESCRIPTION
@@ -166,6 +170,8 @@
 	    	#{valueType},
 	    	#{paramValue, jdbcType=VARCHAR},
 	    	#{valueFormat, jdbcType=VARCHAR},
+	    	#{offsetUnit, jdbcType=VARCHAR},
+	    	#{offsetValue, jdbcType=INTEGER},
 	    	#{requiredYn},
 	    	#{sortOrder},
 	    	#{description, jdbcType=VARCHAR}

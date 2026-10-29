@@ -89,6 +89,8 @@ public class AiAnalysisController {
 			return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
 			
 		} catch (IllegalStateException e) {
+			log.error("AI 분석 실행 중 처리할 수 없는 상태가 발생했다.", e);
+			
 			return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(e.getMessage());
 			
 		} catch (Exception e) {
