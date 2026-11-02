@@ -6,6 +6,7 @@ import java.util.List;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
@@ -52,11 +53,34 @@ public class SecurityConfig {
 					)
 			.sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
 			.authorizeHttpRequests(auth -> auth
+					// 1. 로그인 및 회원가입 관련 공개 API는 인증 없이 접근을 허용한다.
 					.requestMatchers(
 							"/auth/login",
 							"/auth/logout",
 							"/auth/signup",
 							"/auth/signup-enabled").permitAll()
+					
+					// 2. Job 등록, 수정, 삭제 및 실행 API는 관리자만 접근을 허용한다.
+					.requestMatchers(HttpMethod.POST, "/jobs/**").hasRole("ADMIN")
+					.requestMatchers(HttpMethod.PUT, "/jobs/**").hasRole("ADMIN")
+					.requestMatchers(HttpMethod.DELETE, "/jobs/**").hasRole("ADMIN")
+					
+					// 3. External API 등록, 수정, 삭제 및 실행은 관리자만 허용한다.
+					.requestMatchers(HttpMethod.POST, "/external-api/**").hasRole("ADMIN")
+					.requestMatchers(HttpMethod.PUT, "/external-api/**").hasRole("ADMIN")
+					.requestMatchers(HttpMethod.DELETE, "/external-api/**").hasRole("ADMIN")
+					
+					// 4. 가공 규칙 등록 및 수정은 관리자만 허용한다.
+					.requestMatchers(HttpMethod.POST, "/transform-rule/add").hasRole("ADMIN")
+					.requestMatchers(HttpMethod.PUT, "/transform-rule/update").hasRole("ADMIN")
+					
+					// 5. 가공 대상 등록은 관리자만 허용한다.
+					.requestMatchers(HttpMethod.POST, "/transform-task/add").hasRole("ADMIN")
+					
+					// 6. AI 분석 실행은 관리자만 허용한다.
+					.requestMatchers(HttpMethod.POST, "/ai-analysis/execute").hasRole("ADMIN")
+					
+					// 7. 나머지 API는 기존과 동일하게 인증된 사용자에게 허용한다.
 					.anyRequest().authenticated()
 					)
 			.formLogin(f -> f.disable())   // SPA이므로 폼로그인 비활성화
