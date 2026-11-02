@@ -1,13 +1,17 @@
 package com.kji.scheduler.controller;
 
+import java.util.List;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.kji.scheduler.dto.AuthMeResponseDto;
 import com.kji.scheduler.dto.SignupRequest;
 import com.kji.scheduler.service.AppUserService;
 
@@ -22,19 +26,32 @@ public class AuthController {
 	}
 	
 	public record LoginReq(String username, String password) {}
-	public record MeRes(String username) {}
 	public record SignupEnabledRes(boolean signupEnabled) {}
 	public record ErrorRes(String message) {}
 	
 	/**
-	 * 현재 사용자 이름 조회 요청을 처리한다.
+	 * 현재 사용자 이름과 권한 목록 조회 요청을 처리한다.
 	 *
 	 * @param auth 현재 사용자 인증 정보
-	 * @return 현재 사용자 이름을 담은 HTTP 응답
+	 * @return 현재 사용자 이름과 권한 목록
 	 */
 	@GetMapping("/me")
-	public ResponseEntity<?> me(Authentication auth) {
-		return ResponseEntity.ok(new MeRes(auth != null ? auth.getName() : null));
+	public ResponseEntity<AuthMeResponseDto> me(Authentication auth) {
+		
+	    // 1. 인증된 사용자의 권한 목록을 조회한다.
+	    List<String> roles = auth.getAuthorities().stream()
+	            .map(GrantedAuthority::getAuthority)
+	            .sorted()
+	            .toList();
+	    
+	    // 2. 응답 정보를 생성한다.
+	    AuthMeResponseDto response = new AuthMeResponseDto();
+	    response.setUsername(auth.getName());
+	    response.setRoles(roles);
+	    
+	    // 3. 사용자 정보와 권한 목록을 반환한다.
+	    return ResponseEntity.ok(response);
+	    
 	}
 		
 	/**
