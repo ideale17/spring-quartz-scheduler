@@ -15,6 +15,7 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.web.cors.CorsConfiguration;
@@ -60,6 +61,10 @@ public class SecurityConfig {
 					)
 			.formLogin(f -> f.disable())   // SPA이므로 폼로그인 비활성화
 			.httpBasic(b -> b.disable())  // 기본 인증 끔
+			.exceptionHandling(ex -> ex
+			        // 인증되지 않은 사용자는 401을 반환한다.
+			        .authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED))
+			        )
 			.logout(logout -> logout
 					.logoutUrl("/auth/logout")
 					.invalidateHttpSession(true)
