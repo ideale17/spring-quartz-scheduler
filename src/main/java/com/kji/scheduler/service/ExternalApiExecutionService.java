@@ -54,6 +54,7 @@ public class ExternalApiExecutionService {
 	private final DynamicParameterResolver dynamicParameterResolver;
 	private final ExternalApiCallLogService externalApiCallLogService;
 	private final ExternalApiExecutionLogService externalApiExecutionLogService;
+	private final ExternalApiRequestLogService externalApiRequestLogService;
 	private final CollectRawDataService collectRawDataService;
 	
 	private final ObjectMapper objectMapper;
@@ -63,6 +64,7 @@ public class ExternalApiExecutionService {
 			RestTemplate restTemplate,
 			ExternalApiCallLogService externalApiCallLogService,
 			ExternalApiExecutionLogService externalApiExecutionLogService,
+			ExternalApiRequestLogService externalApiRequestLogService,
 			CollectRawDataService collectRawDataService,
 			ObjectMapper objectMapper) {
 		this.externalApiService = externalApiService;
@@ -70,6 +72,7 @@ public class ExternalApiExecutionService {
 		this.restTemplate = restTemplate;
 		this.externalApiCallLogService = externalApiCallLogService;
 		this.externalApiExecutionLogService = externalApiExecutionLogService;
+		this.externalApiRequestLogService = externalApiRequestLogService;
 		this.collectRawDataService = collectRawDataService;
 		this.objectMapper = objectMapper;
 	}
@@ -257,14 +260,24 @@ public class ExternalApiExecutionService {
 			Map<String, String> queryParams,
 			Map<String, String> bodyParams) {
 		
-		// 1. External API 최대 호출 시도 횟수를 계산한다.
+		// 1. 재시도 전에 실제 HTTP 요청 정보를 한 번만 저장한다.
+		externalApiRequestLogService.saveRequest(
+				externalApi,
+				executionId,
+				requestSequence,
+				pageNo,
+				queryParams,
+				bodyParams
+		);
+		
+		// 2. External API 최대 호출 시도 횟수를 계산한다.
 		int maxAttempts = 1;
 		
 		if ("Y".equals(externalApi.getRetryEnabled())) {
 			maxAttempts += externalApi.getMaxRetryCount();
 		}
 		
-		// 2. External API를 호출하고 실패 시 설정된 정책에 따라 재시도한다.
+		// 3. External API를 호출하고 실패 시 설정된 정책에 따라 재시도한다.
 		for (int attemptNo = 1; attemptNo <= maxAttempts; attemptNo++) {
 			try {
 				
@@ -282,7 +295,7 @@ public class ExternalApiExecutionService {
 				
 			} catch (RestClientResponseException | ResourceAccessException e) {
 				
-				// 3. 재시도 가능한 오류인지 확인한다.
+				// 4. 재시도 가능한 오류인지 확인한다.
 				boolean retryable = isRetryable(e);
 				boolean hasNextAttempt = attemptNo < maxAttempts;
 				
@@ -290,7 +303,7 @@ public class ExternalApiExecutionService {
 					throw e;
 				}
 				
-				// 4. 다음 호출 전 재시도 간격만큼 대기한다.
+				// 5. 다음 호출 전 재시도 간격만큼 대기한다.
 				waitRetryInterval(externalApi, attemptNo);
 			}
 		}

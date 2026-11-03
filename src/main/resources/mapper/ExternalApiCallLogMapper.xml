@@ -18,6 +18,9 @@
 			REQUEST_SEQUENCE,
 			PAGE_NO,
 			ATTEMPT_NO,
+			REQUEST_METHOD,
+            REQUEST_URL,
+            REQUEST_PARAMS,
 			STARTED_AT,
 			STATUS,
 			CREATED_AT
@@ -29,6 +32,9 @@
 			#{requestSequence},
 			#{pageNo, jdbcType=INTEGER},
 			#{attemptNo},
+			#{requestMethod, jdbcType=VARCHAR},
+            #{requestUrl, jdbcType=VARCHAR},
+            CAST(#{requestParams, jdbcType=VARCHAR} AS JSONB),
 			CURRENT_TIMESTAMP,
 			#{status},
 			CURRENT_TIMESTAMP
