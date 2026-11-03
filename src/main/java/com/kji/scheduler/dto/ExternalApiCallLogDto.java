@@ -15,6 +15,7 @@ public class ExternalApiCallLogDto {
 	private String executionId;
 	private String fireInstanceId;
 	private Integer requestSequence = 1;
+	private Integer pageNo;
 	private Integer attemptNo;
 	private Integer httpStatus;
 	private LocalDateTime startedAt;

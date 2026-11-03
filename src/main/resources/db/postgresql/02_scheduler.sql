@@ -350,7 +350,7 @@ COMMENT ON COLUMN sched_external_api_call_log.execution_id
 IS 'External API 1회 실행 단위를 식별하는 ID';
 
 COMMENT ON COLUMN sched_external_api_call_log.request_sequence
-IS 'External API 실행 내 요청 순번(페이징 요청 단위)';
+IS 'External API 실행 내 논리적 HTTP 요청 순번. 재시도 시 동일 순번 유지';
 
 COMMENT ON COLUMN sched_external_api_call_log.attempt_no
 IS 'External API 호출 시도 번호(1: 최초 호출, 2 이상: 재시도)';
@@ -376,6 +376,11 @@ IS 'API 호출 실패 시 오류 메시지';
 COMMENT ON COLUMN sched_external_api_call_log.created_at
 IS '로그 생성 일시';
 
+ALTER TABLE sched_external_api_call_log
+ADD COLUMN page_no INTEGER;
+
+COMMENT ON COLUMN sched_external_api_call_log.page_no
+IS '실제 External API 요청에 사용한 페이지 번호. 페이징 미사용 시 NULL';
 
 -- =========================================================
 -- External API 호출을 통해 수집한 원본 응답 데이터
@@ -408,7 +413,7 @@ COMMENT ON COLUMN sched_collect_raw_data.external_api_id
 IS '호출한 External API 식별자';
 
 COMMENT ON COLUMN sched_collect_raw_data.request_sequence
-IS 'External API 실행 내 원본 응답 요청 순번';
+IS 'External API 실행 내 논리적 HTTP 요청 순번. 호출 이력과 원본 데이터 연결에 사용';
 
 COMMENT ON COLUMN sched_collect_raw_data.response_body
 IS 'External API에서 수신한 원본 응답 데이터';

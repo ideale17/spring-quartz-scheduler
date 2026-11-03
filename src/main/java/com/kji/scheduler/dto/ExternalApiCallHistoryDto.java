@@ -15,6 +15,7 @@ public class ExternalApiCallHistoryDto {
 	private String apiName;
 	private String fireInstanceId;
 	private Integer requestSequence;
+	private Integer pageNo;
 	private Integer attemptNo;
 	private Integer httpStatus;
 	private LocalDateTime startedAt;

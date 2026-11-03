@@ -178,6 +178,7 @@ public class ExternalApiExecutionService {
 						executionId,
 						fireInstanceId,
 						1,
+						null,
 						headers,
 						queryParams,
 						bodyParams
@@ -240,6 +241,7 @@ public class ExternalApiExecutionService {
 	 * @param executionId External API 실행 식별자
 	 * @param fireInstanceId Quartz 실행 인스턴스 식별자
 	 * @param requestSequence 현재 요청 순번
+	 * @param pageNo 실제 요청 페이지 번호, 페이징 미사용 시 null
 	 * @param headers 요청에 적용할 HTTP 헤더 정보
 	 * @param queryParams 요청 URL에 적용할 쿼리 파라미터 정보
 	 * @param bodyParams 요청 본문에 적용할 파라미터 정보
@@ -250,6 +252,7 @@ public class ExternalApiExecutionService {
 			String executionId,
 			String fireInstanceId,
 			int requestSequence,
+			Integer pageNo,
 			Map<String, String> headers,
 			Map<String, String> queryParams,
 			Map<String, String> bodyParams) {
@@ -270,6 +273,7 @@ public class ExternalApiExecutionService {
 						executionId,
 						fireInstanceId,
 						requestSequence,
+						pageNo,
 						attemptNo,
 						headers,
 						queryParams,
@@ -302,6 +306,7 @@ public class ExternalApiExecutionService {
 	 * @param executionId External API 실행 식별자
 	 * @param fireInstanceId Quartz 실행 인스턴스 식별자
 	 * @param requestSequence 현재 요청 순번
+	 * @param pageNo 실제 요청 페이지 번호, 페이징 미사용 시 null
 	 * @param attemptNo 현재 호출 시도 횟수
 	 * @param headers 요청에 적용할 HTTP 헤더 정보
 	 * @param queryParams 요청 URL에 적용할 쿼리 파라미터 정보
@@ -313,6 +318,7 @@ public class ExternalApiExecutionService {
 			String executionId,
 			String fireInstanceId,
 			int requestSequence,
+			Integer pageNo,
 			int attemptNo,
 			Map<String, String> headers,
 			Map<String, String> queryParams,
@@ -323,6 +329,7 @@ public class ExternalApiExecutionService {
 		callLog.setExecutionId(executionId);
 		callLog.setFireInstanceId(fireInstanceId);
 		callLog.setRequestSequence(requestSequence);
+		callLog.setPageNo(pageNo);
 		callLog.setAttemptNo(attemptNo);
 		
 		// 1. External API 호출 시작 이력을 저장한다.
@@ -480,6 +487,7 @@ public class ExternalApiExecutionService {
 					executionId,
 					fireInstanceId,
 					requestSequence,
+					currentPage,
 					headers,
 					pageQueryParams,
 					pageBodyParams
