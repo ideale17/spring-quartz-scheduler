@@ -12,6 +12,7 @@
 			keyProperty="apiCallLogId"
 			keyColumn="api_call_log_id">
 		INSERT INTO SCHED_EXTERNAL_API_CALL_LOG (
+			REQUEST_ID,
 			EXTERNAL_API_ID,
 			EXECUTION_ID,
 			FIRE_INSTANCE_ID,
@@ -26,6 +27,7 @@
 			CREATED_AT
 		)
 		VALUES (
+			#{requestId, jdbcType=BIGINT},
 			#{externalApiId},
 			#{executionId},
 			#{fireInstanceId, jdbcType=VARCHAR},

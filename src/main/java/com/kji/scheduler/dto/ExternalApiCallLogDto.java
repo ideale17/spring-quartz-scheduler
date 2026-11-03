@@ -11,6 +11,7 @@ import lombok.Data;
 public class ExternalApiCallLogDto {
 	
 	private Long apiCallLogId;
+	private Long requestId;
 	private Long externalApiId;
 	private String executionId;
 	private String fireInstanceId;

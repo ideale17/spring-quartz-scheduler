@@ -13,6 +13,7 @@
 	        keyProperty="rawDataId"
 	        keyColumn="raw_data_id">	
 		INSERT INTO sched_collect_raw_data (
+			request_id,
 			execution_id,
 			external_api_id,
 			request_sequence,
@@ -20,6 +21,7 @@
 			content_type
 		)
 		VALUES (
+			#{requestId, jdbcType=BIGINT},
 			#{executionId},
 			#{externalApiId},
 			#{requestSequence},

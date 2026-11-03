@@ -11,6 +11,7 @@ import lombok.Data;
 public class CollectRawDataDto {
 	
 	private Long rawDataId;
+	private Long requestId;
 	private String executionId;
 	private Long externalApiId;
 	private Integer requestSequence = 1;

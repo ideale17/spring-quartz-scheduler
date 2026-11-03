@@ -261,7 +261,7 @@ public class ExternalApiExecutionService {
 			Map<String, String> bodyParams) {
 		
 		// 1. 재시도 전에 실제 HTTP 요청 정보를 한 번만 저장한다.
-		externalApiRequestLogService.saveRequest(
+		Long requestId = externalApiRequestLogService.saveRequest(
 				externalApi,
 				executionId,
 				requestSequence,
@@ -285,6 +285,7 @@ public class ExternalApiExecutionService {
 						externalApi,
 						executionId,
 						fireInstanceId,
+						requestId,
 						requestSequence,
 						pageNo,
 						attemptNo,
@@ -318,6 +319,7 @@ public class ExternalApiExecutionService {
 	 * @param externalApi 호출할 External API 정보
 	 * @param executionId External API 실행 식별자
 	 * @param fireInstanceId Quartz 실행 인스턴스 식별자
+	 * @param requestId 논리적 HTTP 요청 식별자
 	 * @param requestSequence 현재 요청 순번
 	 * @param pageNo 실제 요청 페이지 번호, 페이징 미사용 시 null
 	 * @param attemptNo 현재 호출 시도 횟수
@@ -330,6 +332,7 @@ public class ExternalApiExecutionService {
 			ExternalApiDto externalApi,
 			String executionId,
 			String fireInstanceId,
+			Long requestId,
 			int requestSequence,
 			Integer pageNo,
 			int attemptNo,
@@ -338,6 +341,7 @@ public class ExternalApiExecutionService {
 			Map<String, String> bodyParams) {
 		
 		ExternalApiCallLogDto callLog = new ExternalApiCallLogDto();
+		callLog.setRequestId(requestId);
 		callLog.setExternalApiId(externalApi.getExternalApiId());
 		callLog.setExecutionId(executionId);
 		callLog.setFireInstanceId(fireInstanceId);
@@ -363,6 +367,7 @@ public class ExternalApiExecutionService {
 			
 			// 5. External API 응답 원본 데이터를 구성한다.
 			CollectRawDataDto rawData = new CollectRawDataDto();
+			rawData.setRequestId(requestId);
 			rawData.setExecutionId(executionId);
 			rawData.setExternalApiId(externalApi.getExternalApiId());
 			rawData.setRequestSequence(requestSequence);
