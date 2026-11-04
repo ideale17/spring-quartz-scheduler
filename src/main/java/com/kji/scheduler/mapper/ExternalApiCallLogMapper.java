@@ -5,6 +5,7 @@ import java.util.List;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
+import com.kji.scheduler.dto.ExternalApiCallAttemptDetailDto;
 import com.kji.scheduler.dto.ExternalApiCallHistoryDto;
 import com.kji.scheduler.dto.ExternalApiCallHistorySearchDto;
 import com.kji.scheduler.dto.ExternalApiCallHistorySummaryDto;
@@ -68,5 +69,13 @@ public interface ExternalApiCallLogMapper {
 	 * @return 해당 실행의 호출 시도 이력 목록
 	 */
 	List<ExternalApiCallHistoryDto> findCallHistoryDetail(@Param("executionId") String executionId);
+	
+	/**
+	 * 호출 시도 식별자로 HTTP 호출 결과와 실제 요청 정보를 조회한다.
+	 *
+	 * @param apiCallLogId HTTP 호출 시도 식별자
+	 * @return HTTP 호출 시도 상세 정보
+	 */
+	ExternalApiCallAttemptDetailDto findCallAttemptDetail(@Param("apiCallLogId") Long apiCallLogId);
 	
 }

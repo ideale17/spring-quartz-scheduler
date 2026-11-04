@@ -272,4 +272,34 @@
 		         L.ATTEMPT_NO
 	</select>
 	
+	<!-- External API 호출 시도 상세 정보 조회 -->
+	<select id="findCallAttemptDetail"
+	        resultType="com.kji.scheduler.dto.ExternalApiCallAttemptDetailDto">
+	    SELECT
+	        L.API_CALL_LOG_ID,
+	        L.REQUEST_ID,
+	        L.EXECUTION_ID,
+	        L.REQUEST_SEQUENCE,
+	        L.PAGE_NO,
+	        L.ATTEMPT_NO,
+	        R.REQUEST_METHOD,
+	        R.REQUEST_URL,
+	        L.HTTP_STATUS,
+	        L.STATUS,
+	        L.STARTED_AT,
+	        L.FINISHED_AT,
+	        L.RUN_MILLIS,
+	        L.ERROR_MESSAGE,
+	        (
+	           SELECT MAX(D.RAW_DATA_ID)
+	             FROM SCHED_COLLECT_RAW_DATA D
+	            WHERE D.REQUEST_ID = L.REQUEST_ID
+	              AND L.STATUS = 'SUCCESS'
+	        ) AS RAW_DATA_ID
+	    FROM SCHED_EXTERNAL_API_CALL_LOG L
+	    LEFT JOIN SCHED_EXTERNAL_API_REQUEST R
+	      ON L.REQUEST_ID = R.REQUEST_ID
+	    WHERE L.API_CALL_LOG_ID = #{apiCallLogId}
+	</select>
+	
 </mapper>

@@ -409,4 +409,30 @@ public class ExternalApiController {
 		}
 	}
 	
+	/**
+	 * External API 호출 시도 상세 정보 조회 요청을 처리한다.
+	 *
+	 * @param apiCallLogId HTTP 호출 시도 식별자
+	 * @return HTTP 호출 시도 상세 정보 또는 오류 메시지를 담은 HTTP 응답
+	 */
+	@GetMapping("/call-history/attempt-detail")
+	public ResponseEntity<?> getExternalApiCallAttemptDetail(@RequestParam(name = "apiCallLogId") Long apiCallLogId) {
+		
+		try {
+			
+			// 1. 호출 시도 식별자로 실제 요청 정보와 HTTP 호출 결과를 조회한다.
+			return ResponseEntity.ok(externalApiCallLogService.getCallAttemptDetail(apiCallLogId));
+			
+		} catch (IllegalArgumentException e) {
+			return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+			
+		} catch (IllegalStateException e) {
+			return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
+			
+		} catch (Exception e) {
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+					.body("External API 호출 시도 상세 정보 조회 실패: " + e.getMessage());
+		}
+	}
+	
 }

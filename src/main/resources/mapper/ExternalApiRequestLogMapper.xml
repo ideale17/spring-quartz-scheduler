@@ -30,8 +30,7 @@
 	</insert>
 	
 	<!-- External API 실제 요청 파라미터 정보 저장 -->
-	<insert id="insertRequestParam"
-			parameterType="com.kji.scheduler.dto.ExternalApiRequestParamLogDto">
+	<insert id="insertRequestParam" parameterType="com.kji.scheduler.dto.ExternalApiRequestParamLogDto">
 		INSERT INTO SCHED_EXTERNAL_API_REQUEST_PARAM (
 			REQUEST_ID,
 			PARAM_LOCATION,
@@ -47,5 +46,19 @@
 			CURRENT_TIMESTAMP
 		)
 	</insert>
-
+	
+	<!-- External API 실제 요청 파라미터 목록 조회 -->
+	<select id="findRequestParams" resultType="com.kji.scheduler.dto.ExternalApiRequestParamLogDto">
+	    SELECT
+	        REQUEST_PARAM_ID,
+	        REQUEST_ID,
+	        PARAM_LOCATION,
+	        PARAM_NAME,
+	        PARAM_VALUE,
+	        CREATED_AT
+	     FROM SCHED_EXTERNAL_API_REQUEST_PARAM
+	    WHERE REQUEST_ID = #{requestId}
+	    ORDER BY REQUEST_PARAM_ID
+	</select>
+	
 </mapper>
