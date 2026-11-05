@@ -4,7 +4,10 @@ import java.net.InetAddress;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.UnknownHostException;
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import org.quartz.SchedulerException;
 import org.springframework.stereotype.Service;
@@ -16,6 +19,7 @@ import com.kji.scheduler.dto.ExternalApiBasicDto;
 import com.kji.scheduler.dto.ExternalApiDto;
 import com.kji.scheduler.dto.ExternalApiPagingDto;
 import com.kji.scheduler.dto.ExternalApiParamDto;
+import com.kji.scheduler.dto.ExternalApiParamRepeatValueDto;
 import com.kji.scheduler.dto.ExternalApiRequestDto;
 import com.kji.scheduler.dto.ExternalApiSearchDto;
 import com.kji.scheduler.dto.JobInfoDto;
@@ -139,7 +143,20 @@ public class ExternalApiService {
 		getExternalApi(externalApiId);
 		
 		// 2. External API에 등록된 파라미터 목록을 조회한다.
-		return externalApiMapper.findExternalApiParamList(externalApiId);
+		List<ExternalApiParamDto> params = externalApiMapper.findExternalApiParamList(externalApiId);
+		
+		// 3. LIST 유형인 파라미터의 반복 목록을 조회한다.
+		for (ExternalApiParamDto param : params) {
+			
+			if ("LIST".equals(param.getRepeatType())) {
+				param.setRepeatValues(externalApiMapper.findExternalApiParamRepeatValues(param.getParamId()));
+			} else {
+				param.setRepeatValues(new ArrayList<>());
+			}
+		}
+		
+		// 4. 반복 목록이 포함된 파라미터 목록을 반환한다.
+		return params;
 	}
 	
 	/**
@@ -238,32 +255,13 @@ public class ExternalApiService {
 			
 		}
 		
-		// 11. External API 파라미터를 등록한다.
+		// 11. External API 파라미터와 반복 목록을 등록한다.
 		if (request.getParams() != null) {
 			
 			for (ExternalApiParamDto param : request.getParams()) {
 				
-				// 11-1. 생성된 External API 식별자를 파라미터에 설정한다.
-				param.setExternalApiId(externalApiId);
-				
-				// 11-2. 파라미터 기본값을 설정한다.
-				if (param.getRequiredYn() == null || param.getRequiredYn().isBlank()) {
-					param.setRequiredYn("N");
-				}
-				
-				if (param.getSortOrder() == null) {
-					param.setSortOrder(0);
-				}
-				
-				// 11-3. 날짜·시간 오프셋 설정을 검증한다.
-				validateExternalApiParamOffset(param);
-				
-				// 11-4. 파라미터를 등록한다.
-				int paramInsertCount = externalApiMapper.insertExternalApiParam(param);
-				
-				if (paramInsertCount != 1) {
-					throw new IllegalStateException("External API 파라미터 등록에 실패했습니다. " + "paramName: " + param.getParamName());
-				}
+				// 11-1. 파라미터와 반복 목록 값을 함께 저장한다.
+				saveExternalApiParam(externalApiId, param);
 			}
 			
 		}
@@ -427,6 +425,7 @@ public class ExternalApiService {
 		getExternalApi(externalApiId);
 		
 		// 2. 기존 External API 파라미터를 모두 삭제한다.
+		// 연결된 반복 목록 값은 외래키 설정에 따라 함께 삭제된다.
 		externalApiMapper.deleteExternalApiParams(externalApiId);
 		
 		// 3. 수정할 파라미터가 없으면 삭제 상태로 종료한다.
@@ -434,35 +433,61 @@ public class ExternalApiService {
 			return;
 		}
 		
-		// 4. 전달받은 파라미터를 다시 등록한다.
+		// 4. 전달받은 파라미터와 반복 목록을 다시 등록한다.
 		for (ExternalApiParamDto param : params) {
-			
-			// 4-1. External API 식별자를 설정한다.
-			param.setExternalApiId(externalApiId);
-			
-			// 4-2. 필수 여부가 없으면 기본값 N을 설정한다.
-			if (param.getRequiredYn() == null || param.getRequiredYn().isBlank()) {
-				param.setRequiredYn("N");
-			}
-			
-			// 4-3. 정렬 순서가 없으면 기본값 0을 설정한다.
-			if (param.getSortOrder() == null) {
-				param.setSortOrder(0);
-			}
-			
-			// 4-4. 날짜·시간 오프셋 설정을 검증한다.
-			validateExternalApiParamOffset(param);
-			
-			// 4-5. External API 파라미터를 등록한다.
-			int insertCount = externalApiMapper.insertExternalApiParam(param);
-			
-			// 4-6. 등록 결과를 확인한다.
-			if (insertCount != 1) {
-				throw new IllegalStateException("External API 파라미터 수정에 실패했습니다. paramName: " + param.getParamName());
-			}
-			
+			saveExternalApiParam(externalApiId, param);
+		}
+	}
+	
+	/**
+	 * External API 파라미터와 반복 목록 값을 저장한다.
+	 *
+	 * @param externalApiId External API 식별자
+	 * @param param 저장할 파라미터 설정
+	 */
+	private void saveExternalApiParam(Long externalApiId, ExternalApiParamDto param) {
+		
+		// 1. External API 식별자를 설정한다.
+		param.setExternalApiId(externalApiId);
+		
+		// 2. 파라미터 기본값을 설정한다.
+		if (param.getRequiredYn() == null || param.getRequiredYn().isBlank()) {
+			param.setRequiredYn("N");
 		}
 		
+		if (param.getSortOrder() == null) {
+			param.setSortOrder(0);
+		}
+		
+		// 3. 기존 날짜·시간 오프셋 설정을 검증한다.
+		validateExternalApiParamOffset(param);
+		
+		// 4. 반복 설정을 검증하고 기본값을 설정한다.
+		validateExternalApiParamRepeat(param);
+		
+		// 5. External API 파라미터를 저장한다.
+		int insertCount = externalApiMapper.insertExternalApiParam(param);
+		
+		if (insertCount != 1 || param.getParamId() == null) {
+			throw new IllegalStateException("External API 파라미터 저장에 실패했습니다. paramName: " + param.getParamName());
+		}
+		
+		// 6. LIST 방식이 아니면 반복 목록 저장을 종료한다.
+		if (!"LIST".equals(param.getRepeatType())) {
+			return;
+		}
+		
+		// 7. 반복 목록 값을 저장한다.
+		for (ExternalApiParamRepeatValueDto repeatValue : param.getRepeatValues()) {
+			
+			repeatValue.setParamId(param.getParamId());
+			
+			int repeatInsertCount = externalApiMapper.insertExternalApiParamRepeatValue(repeatValue);
+			
+			if (repeatInsertCount != 1) {
+				throw new IllegalStateException("External API 반복 목록 저장에 실패했습니다. paramName: " + param.getParamName());
+			}
+		}
 	}
 	
 	/**
@@ -983,6 +1008,135 @@ public class ExternalApiService {
 			throw new IllegalArgumentException("지원하지 않는 HTTP Method입니다. httpMethod: " + httpMethod);
 		}
 		
+	}
+	
+	/**
+	 * External API 파라미터의 반복 설정을 검증한다.
+	 *
+	 * @param param 검증할 파라미터
+	 * @throws IllegalArgumentException 반복 설정이 올바르지 않은 경우
+	 */
+	private void validateExternalApiParamRepeat(ExternalApiParamDto param) {
+		
+		// 1. 반복 방식이 없으면 기존 단일 값 방식으로 설정한다.
+		String repeatType = param.getRepeatType();
+		
+		if (repeatType == null || repeatType.isBlank()) {
+			repeatType = "NONE";
+			param.setRepeatType(repeatType);
+		}
+		
+		// 2. 반복 간격의 기본값을 설정한다.
+		if (param.getRepeatStep() == null) {
+			param.setRepeatStep(1);
+		}
+		
+		// 3. 반복 방식별 설정을 검증한다.
+		switch (repeatType) {
+		
+			case "NONE" -> {
+				param.setRepeatUnit(null);
+				param.setRepeatStart(null);
+				param.setRepeatEnd(null);
+				param.setRepeatStep(1);
+				param.setRepeatValues(new ArrayList<>());
+			}
+			
+			case "LIST" -> {
+				
+				if (!"STATIC".equals(param.getValueType())) {
+					throw new IllegalArgumentException("목록 반복은 STATIC 값 유형에서만 사용할 수 있습니다.");
+				}
+				
+				// 파라미터 위치 검증
+				if (!"QUERY".equals(param.getParamLocation()) && !"BODY".equals(param.getParamLocation())) {
+					throw new IllegalArgumentException("반복 파라미터 위치는 QUERY 또는 BODY여야 합니다.");
+				}
+				
+				if (param.getRepeatValues() == null || param.getRepeatValues().isEmpty()) {
+					throw new IllegalArgumentException("반복 목록에 값을 하나 이상 등록해주세요.");
+				}
+				
+				if (param.getRepeatValues().size() > 100) {
+					throw new IllegalArgumentException("반복 목록은 최대 100개까지 등록할 수 있습니다.");
+				}
+				
+				Set<String> values = new HashSet<>();
+				
+				for (int i = 0; i < param.getRepeatValues().size(); i++) {
+					
+					ExternalApiParamRepeatValueDto repeatValue = param.getRepeatValues().get(i);
+					
+					if (repeatValue == null || repeatValue.getParamValue() == null
+							|| repeatValue.getParamValue().isBlank()) {
+						throw new IllegalArgumentException("반복 목록에 빈 값이 있습니다.");
+					}
+					
+					String value = repeatValue.getParamValue().trim();
+					
+					if (value.length() > 2000) {
+						throw new IllegalArgumentException("반복 목록 값은 최대 2000자까지 입력할 수 있습니다.");
+					}
+					
+					if (!values.add(value)) {
+						throw new IllegalArgumentException("반복 목록에 중복된 값이 있습니다. value: " + value);
+					}
+					
+					repeatValue.setParamValue(value);
+					repeatValue.setSortOrder(i + 1);
+				}
+				
+				param.setRepeatUnit(null);
+				param.setRepeatStart(null);
+				param.setRepeatEnd(null);
+				param.setRepeatStep(1);
+			}
+			
+			case "RANGE" -> {
+				
+				if (!"CURRENT_DATE".equals(param.getValueType())) {
+					throw new IllegalArgumentException("기간 반복은 CURRENT_DATE 값 유형에서만 사용할 수 있습니다.");
+				}
+				
+				// 파라미터 위치 검증
+				if (!"QUERY".equals(param.getParamLocation()) && !"BODY".equals(param.getParamLocation())) {
+					throw new IllegalArgumentException("반복 파라미터 위치는 QUERY 또는 BODY여야 합니다.");
+				}
+				
+				// 반복 단위 검증
+				if (!"DAY".equals(param.getRepeatUnit())
+						&& !"MONTH".equals(param.getRepeatUnit())
+						&& !"YEAR".equals(param.getRepeatUnit())) {
+					throw new IllegalArgumentException("기간 반복 단위는 DAY, MONTH, YEAR 중 하나여야 합니다.");
+				}
+				
+				if (param.getRepeatStart() == null || param.getRepeatEnd() == null) {
+					throw new IllegalArgumentException("기간 반복의 시작값과 종료값을 입력해주세요.");
+				}
+				
+				// 시작, 종료 범위 검증
+				if (param.getRepeatStart() < -10000 || param.getRepeatStart() > 10000
+						|| param.getRepeatEnd() < -10000 || param.getRepeatEnd() > 10000
+						|| param.getRepeatStart() > param.getRepeatEnd()) {
+					throw new IllegalArgumentException("기간 반복의 시작값과 종료값이 올바르지 않습니다.");
+				}
+				
+				if (param.getRepeatStep() <= 0) {
+					throw new IllegalArgumentException("기간 반복 간격은 1 이상이어야 합니다.");
+				}
+				
+				long count = ((long) param.getRepeatEnd() - param.getRepeatStart())
+						/ param.getRepeatStep() + 1;
+				
+				if (count > 100) {
+					throw new IllegalArgumentException("기간 반복은 최대 100개까지 생성할 수 있습니다.");
+				}
+				
+				param.setRepeatValues(new ArrayList<>());
+			}
+			
+			default -> throw new IllegalArgumentException("지원하지 않는 반복 방식입니다. repeatType: " + repeatType);
+		}
 	}
 	
 }

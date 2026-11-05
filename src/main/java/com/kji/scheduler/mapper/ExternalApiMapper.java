@@ -10,6 +10,7 @@ import com.kji.scheduler.dto.ExternalApiBasicDto;
 import com.kji.scheduler.dto.ExternalApiDto;
 import com.kji.scheduler.dto.ExternalApiPagingDto;
 import com.kji.scheduler.dto.ExternalApiParamDto;
+import com.kji.scheduler.dto.ExternalApiParamRepeatValueDto;
 import com.kji.scheduler.dto.ExternalApiSearchDto;
 
 @Mapper
@@ -136,5 +137,21 @@ public interface ExternalApiMapper {
 	 * @return 삭제된 행 수
 	 */
 	int deleteExternalApiPaging(@Param("externalApiId") Long externalApiId);
+	
+	/**
+	 * External API 파라미터의 반복 목록 값을 조회한다.
+	 *
+	 * @param paramId External API 파라미터 식별자
+	 * @return 반복 목록 값
+	 */
+	List<ExternalApiParamRepeatValueDto> findExternalApiParamRepeatValues(@Param("paramId") Long paramId);
+	
+	/**
+	 * External API 파라미터의 반복 목록 값을 저장한다.
+	 *
+	 * @param repeatValue 저장할 반복 목록 값
+	 * @return 저장된 행 수
+	 */
+	int insertExternalApiParamRepeatValue(ExternalApiParamRepeatValueDto repeatValue);
 	
 }

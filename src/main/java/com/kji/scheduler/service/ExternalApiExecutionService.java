@@ -37,21 +37,20 @@ import com.kji.scheduler.dto.ExternalApiDto;
 import com.kji.scheduler.dto.ExternalApiExecutionLogDto;
 import com.kji.scheduler.dto.ExternalApiPagingDto;
 import com.kji.scheduler.dto.ExternalApiParamDto;
+import com.kji.scheduler.dto.ExternalApiParameterCombinationDto;
 
-/**
- * External API 요청 생성, 인증 적용 및 호출을 처리한다.
- *
- * @author kji
- * @since 2026. 9. 28.
- */
+
 @Service
 public class ExternalApiExecutionService {
 	
 	private static final Logger log = LoggerFactory.getLogger(ExternalApiExecutionService.class);
 	
+	private static final int MAX_TOTAL_REQUEST_COUNT = 1000;
+	
 	private final RestTemplate restTemplate;
+	
+	private final ExternalApiParameterCombinationService parameterCombinationService;
 	private final ExternalApiService externalApiService;
-	private final DynamicParameterResolver dynamicParameterResolver;
 	private final ExternalApiCallLogService externalApiCallLogService;
 	private final ExternalApiExecutionLogService externalApiExecutionLogService;
 	private final ExternalApiRequestLogService externalApiRequestLogService;
@@ -60,7 +59,7 @@ public class ExternalApiExecutionService {
 	private final ObjectMapper objectMapper;
 	
 	public ExternalApiExecutionService(ExternalApiService externalApiService,
-			DynamicParameterResolver dynamicParameterResolver,
+			ExternalApiParameterCombinationService parameterCombinationService,
 			RestTemplate restTemplate,
 			ExternalApiCallLogService externalApiCallLogService,
 			ExternalApiExecutionLogService externalApiExecutionLogService,
@@ -68,7 +67,7 @@ public class ExternalApiExecutionService {
 			CollectRawDataService collectRawDataService,
 			ObjectMapper objectMapper) {
 		this.externalApiService = externalApiService;
-		this.dynamicParameterResolver = dynamicParameterResolver;
+		this.parameterCombinationService = parameterCombinationService;
 		this.restTemplate = restTemplate;
 		this.externalApiCallLogService = externalApiCallLogService;
 		this.externalApiExecutionLogService = externalApiExecutionLogService;
@@ -119,101 +118,85 @@ public class ExternalApiExecutionService {
 			// 9. External API 페이징 설정을 조회한다.
 			ExternalApiPagingDto paging = externalApiService.getExternalApiPaging(externalApiId);
 			
-			// 10. 요청 위치별 파라미터를 저장할 Map을 생성한다.
-			Map<String, String> headers = new LinkedHashMap<>();
-			Map<String, String> queryParams = new LinkedHashMap<>();
-			Map<String, String> bodyParams = new LinkedHashMap<>();
+			// 10. 실제 실행에 사용할 파라미터 조합을 생성한다.
+			List<ExternalApiParameterCombinationDto> combinations =
+					parameterCombinationService.createCombinations(params, executionTime);
 			
-			// 11. 각 파라미터의 실제 실행 값을 생성한다.
-			for (ExternalApiParamDto param : params) {
+			// 11. 페이징 설정이 활성화된 경우 지원 방식을 검증한다.
+			boolean pagingEnabled = paging != null && "Y".equals(paging.getEnabled());
+			
+			if (pagingEnabled) {
 				
-				String resolvedValue = dynamicParameterResolver.resolve(param, executionTime);
-				
-				// 11-1. 필수 파라미터의 값 존재 여부를 확인한다.
-				validateRequiredParam(param, resolvedValue);
-				
-				// 11-2. 값이 없는 선택 파라미터는 요청에서 제외한다.
-				if (resolvedValue == null) {
-					continue;
+				if (!"PAGE".equals(paging.getPaginationType())) {
+					throw new IllegalStateException("지원하지 않는 페이징 방식입니다. paginationType: " + paging.getPaginationType());
 				}
 				
-				// 11-3. 파라미터 전달 위치에 따라 요청 정보를 분리한다.
-				switch (param.getParamLocation()) {
-				
-					case "HEADER" ->
-						headers.put(param.getParamName(), resolvedValue);
-					
-					case "QUERY" ->
-						queryParams.put(param.getParamName(), resolvedValue);
-					
-					case "BODY" ->
-						bodyParams.put(param.getParamName(), resolvedValue);
-					
-					default ->
-						throw new IllegalArgumentException(
-								"지원하지 않는 External API 파라미터 위치입니다. "
-										+ "paramName: " + param.getParamName()
-										+ ", paramLocation: " + param.getParamLocation()
-						);
+				if (!"TOTAL_COUNT".equals(paging.getTerminationType())) {
+					throw new IllegalStateException("지원하지 않는 페이징 종료 방식입니다. terminationType: " + paging.getTerminationType());
 				}
 			}
 			
-			// 12. External API 인증 정보를 요청에 적용한다.
-			applyAuthentication(externalApi, headers, queryParams);
+			// 12. 전체 실행에서 사용할 요청 순번을 초기화한다.
+			int requestSequence = 1;
 			
-			// 13. External API 요청 정보 생성 결과를 기록한다.
-			log.info(
-					"External API 요청 정보 생성 완료. "
-							+ "externalApiId: {}, apiName: {}, method: {}, "
-							+ "headerParams: {}, queryParams: {}, bodyParams: {}",
-					externalApiId,
-					externalApi.getApiName(),
-					externalApi.getHttpMethod(),
-					headers.keySet(),
-					queryParams.keySet(),
-					bodyParams.keySet()
-			);
-			
-			// 14. 페이징 설정이 없거나 사용하지 않으면 External API를 한 번 호출한다.
-			if (paging == null || !"Y".equals(paging.getEnabled())) {
-				executeRequest(
+			// 13. 생성된 파라미터 조합을 순서대로 실행한다.
+			for (int combinationNo = 0; combinationNo < combinations.size(); combinationNo++) {
+				
+				// 13-1. 현재 조합의 요청 파라미터를 복사한다.
+				ExternalApiParameterCombinationDto combination = combinations.get(combinationNo);
+				
+				Map<String, String> headers = new LinkedHashMap<>(combination.getHeaders());
+				Map<String, String> queryParams = new LinkedHashMap<>(combination.getQueryParams());
+				Map<String, String> bodyParams = new LinkedHashMap<>(combination.getBodyParams());
+				
+				// 13-2. External API 인증 정보를 현재 조합에 적용한다.
+				applyAuthentication(externalApi, headers, queryParams);
+				
+				// 13-3. 조합 실행 정보를 기록한다.
+				log.info(
+						"External API 파라미터 조합 실행. externalApiId: {}, combinationNo: {}, combinationCount: {}, requestSequence: {}",
+						externalApiId,
+						combinationNo + 1,
+						combinations.size(),
+						requestSequence
+				);
+				
+				// 13-4. 페이징이 없으면 현재 조합을 한 번 호출한다.
+				if (!pagingEnabled) {
+					
+					if (requestSequence > MAX_TOTAL_REQUEST_COUNT) {
+						throw new IllegalStateException("External API 전체 최대 요청 횟수를 초과했습니다.");
+					}
+					
+					executeRequest(
+							externalApi,
+							executionId,
+							fireInstanceId,
+							requestSequence,
+							null,
+							headers,
+							queryParams,
+							bodyParams
+					);
+					
+					requestSequence++;
+					continue;
+				}
+				
+				// 13-5. 페이징이 있으면 현재 조합의 페이지를 순서대로 실행한다.
+				requestSequence = executePagePagination(
 						externalApi,
+						paging,
 						executionId,
 						fireInstanceId,
-						1,
-						null,
+						requestSequence,
 						headers,
 						queryParams,
 						bodyParams
 				);
-				
-				// External API 전체 실행을 성공 처리한다.
-				externalApiExecutionLogService.markSuccess(executionLog);
-				
-				return;
 			}
 			
-			// 15. 현재 지원하는 페이징 방식과 종료 조건을 확인한다.
-			if (!"PAGE".equals(paging.getPaginationType())) {
-				throw new IllegalStateException("지원하지 않는 페이징 방식입니다. paginationType: " + paging.getPaginationType());
-			}
-			
-			if (!"TOTAL_COUNT".equals(paging.getTerminationType())) {
-				throw new IllegalStateException("지원하지 않는 페이징 종료 방식입니다. terminationType: " + paging.getTerminationType());
-			}
-			
-			// 16. 페이지 방식 External API를 호출한다.
-			executePagePagination(
-					externalApi,
-					paging,
-					executionId,
-					fireInstanceId,
-					headers,
-					queryParams,
-					bodyParams
-			);
-			
-			// 17. External API 전체 실행을 성공 처리한다.
+			// 14. 모든 파라미터 조합이 성공하면 전체 실행을 성공 처리한다.
 			externalApiExecutionLogService.markSuccess(executionLog);
 			
 		} catch (Exception e) {
@@ -467,39 +450,47 @@ public class ExternalApiExecutionService {
 	}
 	
 	/**
-	 * PAGE 방식의 External API 페이징 호출을 처리한다.
+	 * External API의 현재 파라미터 조합에 페이징을 적용하여 실행한다.
 	 *
-	 * @param externalApi 호출할 External API 정보
-	 * @param paging External API 페이징 설정
+	 * @param externalApi External API 정보
+	 * @param paging 페이징 설정
 	 * @param executionId External API 실행 식별자
 	 * @param fireInstanceId Quartz 실행 인스턴스 식별자
-	 * @param headers 요청에 적용할 HTTP 헤더 정보
-	 * @param queryParams 요청 URL에 적용할 쿼리 파라미터 정보
-	 * @param bodyParams 요청 본문에 적용할 파라미터 정보
+	 * @param requestSequence 전체 실행의 시작 요청 순번
+	 * @param headers HTTP 요청 헤더
+	 * @param queryParams 쿼리 파라미터
+	 * @param bodyParams 본문 파라미터
+	 * @return 다음 요청에 사용할 요청 순번
 	 */
-	private void executePagePagination(
+	private int executePagePagination(
 			ExternalApiDto externalApi,
 			ExternalApiPagingDto paging,
 			String executionId,
 			String fireInstanceId,
+			int requestSequence,
 			Map<String, String> headers,
 			Map<String, String> queryParams,
 			Map<String, String> bodyParams) {
 		
-		// 1. 페이징 시작 정보를 설정한다.
+		// 1. 현재 조합의 페이징 시작 정보를 설정한다.
 		int currentPage = paging.getPageStart();
 		
-		// 2. 최대 요청 횟수까지 페이지별 API 호출을 반복한다.
-		for (int requestSequence = 1; requestSequence <= paging.getMaxRequestCount(); requestSequence++) {
+		// 2. 현재 조합에서 사용할 최대 요청 횟수까지 반복한다.
+		for (int pageRequestCount = 1; pageRequestCount <= paging.getMaxRequestCount(); pageRequestCount++) {
 			
-			// 3. 현재 페이지 호출용 파라미터 Map을 생성한다.
+			// 3. 전체 실행의 최대 요청 횟수를 확인한다.
+			if (requestSequence > MAX_TOTAL_REQUEST_COUNT) {
+				throw new IllegalStateException("External API 전체 최대 요청 횟수를 초과했습니다.");
+			}
+			
+			// 4. 현재 페이지 호출용 파라미터를 복사한다.
 			Map<String, String> pageQueryParams = new LinkedHashMap<>(queryParams);
 			Map<String, String> pageBodyParams = new LinkedHashMap<>(bodyParams);
 			
-			// 4. 페이지 번호와 페이지 크기 파라미터를 적용한다.
+			// 5. 현재 페이지 번호와 페이지 크기를 설정한다.
 			applyPagingParams(paging, currentPage, pageQueryParams, pageBodyParams);
 			
-			// 5. 현재 페이지의 External API를 호출한다.
+			// 6. 현재 페이지의 External API를 호출한다.
 			ResponseEntity<String> response = executeRequest(
 					externalApi,
 					executionId,
@@ -511,9 +502,10 @@ public class ExternalApiExecutionService {
 					pageBodyParams
 			);
 			
-			// 6. 응답에서 전체 데이터 건수를 조회한다.
+			// 7. 응답에서 전체 데이터 건수를 조회한다.
 			long totalCount = extractTotalCount(response.getBody(), paging.getTotalCountPath());
 			
+			// 8. 페이지 호출 정보를 기록한다.
 			log.info(
 					"External API 페이징 호출 완료. externalApiId: {}, requestSequence: {}, currentPage: {}, pageSize: {}, totalCount: {}",
 					externalApi.getExternalApiId(),
@@ -523,16 +515,19 @@ public class ExternalApiExecutionService {
 					totalCount
 			);
 			
-			// 7. 현재까지 요청 가능한 데이터 범위가 전체 건수 이상이면 종료한다.
-			if ((long) requestSequence * paging.getPageSize() >= totalCount) {
-				return;
+			// 9. 전체 요청 순번을 증가시킨다.
+			requestSequence++;
+			
+			// 10. 현재 조합의 마지막 페이지이면 다음 요청 순번을 반환한다.
+			if ((long) pageRequestCount * paging.getPageSize() >= totalCount) {
+				return requestSequence;
 			}
 			
-			// 8. 다음 페이지 번호를 설정한다.
+			// 11. 다음 페이지 번호를 설정한다.
 			currentPage++;
 		}
 		
-		// 9. 최대 요청 횟수 안에 페이징이 종료되지 않으면 예외를 발생시킨다.
+		// 12. 최대 요청 횟수 안에 페이징이 종료되지 않으면 예외를 발생시킨다.
 		throw new IllegalStateException(
 				"External API 페이징 최대 요청 횟수를 초과했습니다. "
 						+ "externalApiId: " + externalApi.getExternalApiId()

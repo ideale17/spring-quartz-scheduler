@@ -1,5 +1,7 @@
 package com.kji.scheduler.dto;
 
+import java.util.List;
+
 import lombok.Data;
 
 /**
@@ -17,6 +19,12 @@ public class ExternalApiParamDto {
     private String valueFormat;
     private String offsetUnit;
     private Integer offsetValue;
+    private String repeatType;
+	private String repeatUnit;
+	private Integer repeatStart;
+	private Integer repeatEnd;
+	private Integer repeatStep;
+	private List<ExternalApiParamRepeatValueDto> repeatValues;
     private String requiredYn;
     private Integer sortOrder;
     private String description;

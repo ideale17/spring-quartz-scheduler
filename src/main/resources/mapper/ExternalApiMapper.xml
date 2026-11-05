@@ -96,6 +96,11 @@
                VALUE_FORMAT,
                OFFSET_UNIT,
                OFFSET_VALUE,
+               REPEAT_TYPE,
+               REPEAT_UNIT,
+               REPEAT_START,
+               REPEAT_END,
+               REPEAT_STEP,
                REQUIRED_YN,
                SORT_ORDER,
                DESCRIPTION
@@ -149,7 +154,11 @@
 	</insert>
 	
 	<!-- External API 파라미터 저장 -->
-	<insert id="insertExternalApiParam" parameterType="com.kji.scheduler.dto.ExternalApiParamDto">
+	<insert id="insertExternalApiParam"
+        parameterType="com.kji.scheduler.dto.ExternalApiParamDto"
+        useGeneratedKeys="true"
+        keyProperty="paramId"
+        keyColumn="param_id">
 	    INSERT INTO SCHED_EXTERNAL_API_PARAM (
 	    	EXTERNAL_API_ID,
 	    	PARAM_LOCATION,
@@ -159,6 +168,11 @@
 	    	VALUE_FORMAT,
 	    	OFFSET_UNIT,
             OFFSET_VALUE,
+            REPEAT_TYPE,
+            REPEAT_UNIT,
+            REPEAT_START,
+            REPEAT_END,
+            REPEAT_STEP,
 	    	REQUIRED_YN,
 	    	SORT_ORDER,
 	    	DESCRIPTION
@@ -172,11 +186,42 @@
 	    	#{valueFormat, jdbcType=VARCHAR},
 	    	#{offsetUnit, jdbcType=VARCHAR},
 	    	#{offsetValue, jdbcType=INTEGER},
+	    	#{repeatType},
+            #{repeatUnit, jdbcType=VARCHAR},
+            #{repeatStart, jdbcType=INTEGER},
+            #{repeatEnd, jdbcType=INTEGER},
+            #{repeatStep},
 	    	#{requiredYn},
 	    	#{sortOrder},
 	    	#{description, jdbcType=VARCHAR}
 	    )
     </insert>
+	
+	<!-- External API 파라미터 반복 목록 조회 -->
+	<select id="findExternalApiParamRepeatValues" resultType="com.kji.scheduler.dto.ExternalApiParamRepeatValueDto">
+	    SELECT REPEAT_VALUE_ID,
+	           PARAM_ID,
+	           PARAM_VALUE,
+	           SORT_ORDER
+	      FROM SCHED_EXTERNAL_API_PARAM_REPEAT_VALUE
+	     WHERE PARAM_ID = #{paramId}
+	     ORDER BY SORT_ORDER,
+	              REPEAT_VALUE_ID
+	</select>
+	
+	<!-- External API 파라미터 반복 목록 저장 -->
+	<insert id="insertExternalApiParamRepeatValue" parameterType="com.kji.scheduler.dto.ExternalApiParamRepeatValueDto">
+	    INSERT INTO SCHED_EXTERNAL_API_PARAM_REPEAT_VALUE (
+	        PARAM_ID,
+	        PARAM_VALUE,
+	        SORT_ORDER
+	    )
+	    VALUES (
+	        #{paramId},
+	        #{paramValue},
+	        #{sortOrder}
+	    )
+	</insert>
 	
 	<!-- External API 기본 정보 수정 -->
 	<update id="updateExternalApi" parameterType="com.kji.scheduler.dto.ExternalApiDto">	
