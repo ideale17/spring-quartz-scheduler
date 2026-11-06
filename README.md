@@ -348,8 +348,6 @@ app.security.encryption-key=${SCHEDULER_ENCRYPTION_KEY}
 
 환경변수가 없거나 Base64 디코딩 결과가 32바이트가 아니면 애플리케이션이 정상적으로 시작되지 않습니다.
 
-> **주의:** 암호화 키는 소스 코드나 Git 저장소에 포함하지 마세요. 이미 암호화된 인증정보가 존재하는 경우 동일한 키를 유지해야 기존 데이터를 복호화할 수 있습니다.
-
 ### 5. Run Application
 
 Local Profile과 PostgreSQL Profile을 활성화하여 애플리케이션을 실행합니다.
