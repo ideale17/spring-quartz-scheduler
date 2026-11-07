@@ -24,19 +24,23 @@ import com.kji.scheduler.dto.ExternalApiRequestDto;
 import com.kji.scheduler.dto.ExternalApiSearchDto;
 import com.kji.scheduler.dto.JobInfoDto;
 import com.kji.scheduler.mapper.ExternalApiMapper;
+import com.kji.scheduler.mapper.TransformAutoConfigMapper;
 
 @Service
 public class ExternalApiService {
 	
 	private final ExternalApiMapper externalApiMapper;
+	private final TransformAutoConfigMapper transformAutoConfigMapper;
 	private final DynamicJobService dynamicJobService;
 	private final AesGcmEncryptionService encryptionService;
 	
 	public ExternalApiService(
 			ExternalApiMapper externalApiMapper,
+			TransformAutoConfigMapper transformAutoConfigMapper,
 			DynamicJobService dynamicJobService,
 			AesGcmEncryptionService encryptionService) {
 		this.externalApiMapper = externalApiMapper;
+		this.transformAutoConfigMapper = transformAutoConfigMapper;
 		this.dynamicJobService = dynamicJobService;
 		this.encryptionService = encryptionService;
 	}
@@ -508,16 +512,33 @@ public class ExternalApiService {
 		// 3. 사용 중인 Job이 존재하면 삭제를 차단한다.
 		if (!usingJobs.isEmpty()) {
 			JobInfoDto usingJob = usingJobs.get(0);
-			throw new IllegalStateException("External API를 사용하는 Job이 존재하여 삭제할 수 없습니다. jobName: " + usingJob.getJobName() + ", jobGroup: " + usingJob.getJobGroup());
+			throw new IllegalStateException(
+					"External API를 사용하는 Job이 존재하여 삭제할 수 없습니다. jobName: "
+							+ usingJob.getJobName() + ", jobGroup: " + usingJob.getJobGroup());
 		}
 		
-		// 4. External API 파라미터를 먼저 삭제한다.
+		// 4. 수집된 Raw Data가 존재하면 삭제를 차단한다.
+		if (externalApiMapper.existsRawDataByExternalApiId(externalApiId)) {
+		    throw new IllegalStateException(
+		            "수집된 데이터가 존재하여 External API를 삭제할 수 없습니다. 사용 여부를 '미사용'으로 변경해주세요.");
+		}
+		
+		// 5. 실행 이력이 존재하면 삭제를 차단한다.
+		if (externalApiMapper.existsExecutionHistoryByExternalApiId(externalApiId)) {
+			throw new IllegalStateException(
+					"실행 이력이 존재하여 External API를 삭제할 수 없습니다. 사용 여부를 '미사용'으로 변경해주세요.");
+		}
+		
+		// 6. External API에 연결된 자동 가공 규칙 설정을 삭제한다.
+		transformAutoConfigMapper.deleteTransformAutoConfigs(externalApiId);
+		
+		// 7. External API 파라미터를 삭제한다.
 		externalApiMapper.deleteExternalApiParams(externalApiId);
 		
-		// 5. External API 페이징 설정을 삭제한다.
+		// 8. External API 페이징 설정을 삭제한다.
 		externalApiMapper.deleteExternalApiPaging(externalApiId);
 		
-		// 6. External API 기본 정보를 삭제한다.
+		// 9. External API 기본 정보를 삭제한다.
 		int deleteCount = externalApiMapper.deleteExternalApi(externalApiId);
 		
 		if (deleteCount != 1) {

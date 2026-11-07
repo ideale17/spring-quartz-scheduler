@@ -364,4 +364,28 @@
 		 WHERE EXTERNAL_API_ID = #{externalApiId}
 	</delete>
 	
+	<!-- External API를 참조하는 Raw Data 존재 여부 확인 -->
+	<select id="existsRawDataByExternalApiId" resultType="boolean">
+	    SELECT CASE
+	             WHEN EXISTS (
+	                 SELECT 1
+	                   FROM SCHED_COLLECT_RAW_DATA
+	                  WHERE EXTERNAL_API_ID = #{externalApiId}
+	             ) THEN TRUE
+	             ELSE FALSE
+	           END
+	</select>
+	
+	<!-- External API 실행 이력 존재 여부 확인 -->
+	<select id="existsExecutionHistoryByExternalApiId" resultType="boolean">
+	    SELECT CASE
+	             WHEN EXISTS (
+	                 SELECT 1
+	                   FROM SCHED_EXTERNAL_API_EXEC_LOG
+	                  WHERE EXTERNAL_API_ID = #{externalApiId}
+	             ) THEN TRUE
+	             ELSE FALSE
+	           END
+	</select>
+	
 </mapper>

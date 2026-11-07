@@ -2,6 +2,7 @@ package com.kji.scheduler.controller;
 
 import java.util.List;
 
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -25,6 +26,9 @@ import com.kji.scheduler.service.ExternalApiExecutionLogService;
 import com.kji.scheduler.service.ExternalApiExecutionService;
 import com.kji.scheduler.service.ExternalApiService;
 
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
 @RestController
 @RequestMapping("/external-api")
 public class ExternalApiController {
@@ -304,8 +308,19 @@ public class ExternalApiController {
 		} catch (IllegalStateException e) {
 			return ResponseEntity.status(HttpStatus.CONFLICT).body(e.getMessage());
 			
+		} catch (DataIntegrityViolationException e) {
+		    // 사전 검사 이후 발생한 DB 참조 제약 조건 충돌도 안전하게 처리한다.
+		    log.error("External API 삭제 중 데이터 무결성 오류가 발생했다. externalApiId={}", externalApiId, e);
+		    
+		    return ResponseEntity.status(HttpStatus.CONFLICT)
+		            .body("연관된 데이터가 존재하여 External API를 삭제할 수 없습니다.");
+		    
 		} catch (Exception e) {
-			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("External API 삭제 실패: " + e.getMessage());
+		    // 내부 오류 상세는 서버 로그에만 기록한다.
+		    log.error("External API 삭제 중 오류가 발생했다. externalApiId={}", externalApiId, e);
+		    
+		    return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+		            .body("External API 삭제 중 오류가 발생했습니다.");
 		}
 	}
 	

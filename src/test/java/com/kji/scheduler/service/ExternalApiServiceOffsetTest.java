@@ -19,6 +19,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 import com.kji.scheduler.crypto.AesGcmEncryptionService;
 import com.kji.scheduler.dto.ExternalApiParamDto;
 import com.kji.scheduler.mapper.ExternalApiMapper;
+import com.kji.scheduler.mapper.TransformAutoConfigMapper;
 
 /**
  * External API 파라미터의 날짜·시간 오프셋 설정 검증을 테스트한다.
@@ -33,6 +34,7 @@ class ExternalApiServiceOffsetTest {
 		// 1. DB 및 Quartz 의존성을 Mock으로 생성한다.
 		externalApiService = new ExternalApiService(
 				mock(ExternalApiMapper.class),
+				mock(TransformAutoConfigMapper.class),
 				mock(DynamicJobService.class),
 				mock(AesGcmEncryptionService.class));
 	}

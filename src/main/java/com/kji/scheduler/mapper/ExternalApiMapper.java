@@ -154,4 +154,20 @@ public interface ExternalApiMapper {
 	 */
 	int insertExternalApiParamRepeatValue(ExternalApiParamRepeatValueDto repeatValue);
 	
+	/**
+	 * External API를 참조하는 Raw Data 존재 여부를 확인한다.
+	 *
+	 * @param externalApiId External API 식별자
+	 * @return Raw Data 존재 여부
+	 */
+	boolean existsRawDataByExternalApiId(@Param("externalApiId") Long externalApiId);
+	
+	/**
+	 * External API 실행 이력 존재 여부를 확인한다.
+	 *
+	 * @param externalApiId External API 식별자
+	 * @return 실행 이력 존재 여부
+	 */
+	boolean existsExecutionHistoryByExternalApiId(@Param("externalApiId") Long externalApiId);
+	
 }
