@@ -1,0 +1,33 @@
+# Git
+.git
+.gitignore
+.github
+
+# IDE
+.idea
+.settings
+.project
+.classpath
+.sts4-cache
+.vscode
+
+# Build
+.gradle
+build
+bin
+out
+
+# Local configuration
+.env
+.env.*
+!.env.example
+config/*secret*.properties
+**/application-*-secret.properties
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Documentation
+README.md
+HELP.md
