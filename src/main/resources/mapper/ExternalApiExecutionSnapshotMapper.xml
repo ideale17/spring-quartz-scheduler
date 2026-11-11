@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.kji.scheduler.mapper.ExternalApiExecutionSnapshotMapper">
+
+	<!-- 최초 실행 당시의 설정 스냅샷을 저장한다. -->
+	<insert id="insertSnapshot" parameterType="com.kji.scheduler.dto.ExternalApiExecutionSnapshotDto">
+		INSERT INTO SCHED_EXTERNAL_API_EXEC_SNAPSHOT (
+			EXECUTION_ID,
+			SNAPSHOT_VERSION,
+			EXECUTION_BASE_TIME,
+			SNAPSHOT_DATA,
+			CREATED_AT
+		)
+		VALUES (
+			#{executionId},
+			#{snapshotVersion},
+			#{executionBaseTime},
+			CAST(#{snapshotData} AS JSONB),
+			CURRENT_TIMESTAMP
+		)
+	</insert>
+	
+</mapper>

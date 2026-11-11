@@ -13,7 +13,9 @@ public class ExternalApiRequestLogDto {
 	private Long requestId;
 	private String executionId;
 	private Integer requestSequence;
+	private Integer combinationNo;
 	private Integer pageNo;
+	private Long originalRequestId;
 	private String requestMethod;
 	private String requestUrl;
 	private LocalDateTime createdAt;

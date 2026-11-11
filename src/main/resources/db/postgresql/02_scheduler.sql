@@ -1127,3 +1127,91 @@ ON SCHED_EXTERNAL_API_CALL_LOG (REQUEST_ID);
 
 CREATE INDEX IDX_COLLECT_RAW_DATA_REQUEST
 ON SCHED_COLLECT_RAW_DATA (REQUEST_ID);
+
+
+
+-- External API 재처리(RESUME/RESTART) 및 실행 설정 스냅샷
+
+-- 1. 실행 이력에 재처리 유형과 직접 원본 실행 식별자를 추가한다.
+ALTER TABLE sched_external_api_exec_log
+    ADD COLUMN reprocess_mode VARCHAR(20),
+    ADD COLUMN source_execution_id VARCHAR(36);
+
+ALTER TABLE sched_external_api_exec_log
+    ADD CONSTRAINT ck_external_api_exec_reprocess
+    CHECK (
+        (reprocess_mode IS NULL AND source_execution_id IS NULL)
+        OR
+        (reprocess_mode IN ('RESUME', 'RESTART')
+            AND source_execution_id IS NOT NULL
+            AND source_execution_id <> execution_id)
+    );
+
+ALTER TABLE sched_external_api_exec_log
+    ADD CONSTRAINT fk_external_api_exec_source
+    FOREIGN KEY (source_execution_id)
+    REFERENCES sched_external_api_exec_log (execution_id);
+
+CREATE INDEX idx_external_api_exec_source
+    ON sched_external_api_exec_log (source_execution_id);
+
+COMMENT ON COLUMN sched_external_api_exec_log.reprocess_mode
+    IS '재처리 방식(RESUME, RESTART). 일반 실행 시 NULL';
+COMMENT ON COLUMN sched_external_api_exec_log.source_execution_id
+    IS '직접 재처리한 이전 실행 식별자. 일반 실행 시 NULL';
+
+-- 2. 최초 실행의 설정을 변경 불가능한 논리적 스냅샷으로 보관한다.
+--    스냅샷 데이터의 불변성은 서비스 권한 및 UPDATE/DELETE 제한 정책으로 보장한다.
+CREATE TABLE sched_external_api_exec_snapshot (
+    execution_id VARCHAR(36) PRIMARY KEY,
+    snapshot_version INTEGER NOT NULL DEFAULT 1,
+    execution_base_time TIMESTAMP(6) NOT NULL,
+    snapshot_data JSONB NOT NULL,
+    created_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_external_api_snapshot_exec
+        FOREIGN KEY (execution_id)
+        REFERENCES sched_external_api_exec_log (execution_id),
+    CONSTRAINT ck_external_api_snapshot_version
+        CHECK (snapshot_version > 0),
+    CONSTRAINT ck_external_api_snapshot_data_object
+        CHECK (jsonb_typeof(snapshot_data) = 'object')
+);
+
+COMMENT ON TABLE sched_external_api_exec_snapshot
+    IS '최초 External API 실행 시점의 설정 스냅샷';
+COMMENT ON COLUMN sched_external_api_exec_snapshot.execution_id
+    IS '최초 실행 식별자. 재처리 실행은 이전 실행 관계를 통해 최초 스냅샷을 조회';
+COMMENT ON COLUMN sched_external_api_exec_snapshot.snapshot_version
+    IS '스냅샷 JSON 구조 버전';
+COMMENT ON COLUMN sched_external_api_exec_snapshot.execution_base_time
+    IS '동적 파라미터와 LIST/RANGE 계산에 사용한 최초 실행 기준 시각';
+COMMENT ON COLUMN sched_external_api_exec_snapshot.snapshot_data
+    IS '실행 당시 API/파라미터/반복/페이징/재시도 설정 JSON. 인증정보는 애플리케이션 암호화 후 저장';
+COMMENT ON COLUMN sched_external_api_exec_snapshot.created_at
+    IS '설정 스냅샷 생성 시각';
+
+-- 3. 논리적 요청에 조합 위치와 재처리 원본 요청 연결 정보를 추가한다.
+ALTER TABLE sched_external_api_request
+    ADD COLUMN combination_no INTEGER,
+    ADD COLUMN original_request_id BIGINT;
+
+ALTER TABLE sched_external_api_request
+    ADD CONSTRAINT ck_external_api_request_combination
+    CHECK (combination_no > 0);
+
+ALTER TABLE sched_external_api_request
+    ADD CONSTRAINT fk_external_api_request_original
+    FOREIGN KEY (original_request_id)
+    REFERENCES sched_external_api_request (request_id);
+
+CREATE INDEX idx_external_api_request_position
+    ON sched_external_api_request (execution_id, combination_no, page_no);
+
+CREATE INDEX idx_external_api_request_original
+    ON sched_external_api_request (original_request_id);
+
+COMMENT ON COLUMN sched_external_api_request.combination_no
+    IS '1부터 시작하는 파라미터 조합 순번. 과거 실행은 NULL';
+COMMENT ON COLUMN sched_external_api_request.original_request_id
+    IS '과거 실제 요청을 재호출한 경우 그 요청 ID. 미실행 요청의 신규 호출은 NULL';

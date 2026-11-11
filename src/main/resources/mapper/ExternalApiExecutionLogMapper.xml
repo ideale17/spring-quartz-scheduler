@@ -13,6 +13,8 @@
 			FIRE_INSTANCE_ID,
 			STARTED_AT,
 			STATUS,
+			REPROCESS_MODE,
+		    SOURCE_EXECUTION_ID,
 			CREATED_AT
 		) VALUES (
 			#{executionId},
@@ -20,6 +22,8 @@
 			#{fireInstanceId},
 			#{startedAt},
 			#{status},
+			#{reprocessMode, jdbcType=VARCHAR},
+			#{sourceExecutionId, jdbcType=VARCHAR},
 			CURRENT_TIMESTAMP
 		)
 	</insert>

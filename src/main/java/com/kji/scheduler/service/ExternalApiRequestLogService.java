@@ -40,7 +40,9 @@ public class ExternalApiRequestLogService {
 	 * @param externalApi External API 설정 정보
 	 * @param executionId External API 실행 식별자
 	 * @param requestSequence 논리적 HTTP 요청 순번
+	 * @param combinationNo 1부터 시작하는 파라미터 조합 순번. 과거 실행은 NULL
 	 * @param pageNo 실제 요청 페이지 번호
+	 * @param originalRequestId 재처리 대상 원본 요청 ID, 일반 실행 시 null
 	 * @param queryParams Query 파라미터
 	 * @param bodyParams Body 파라미터
 	 * @return 생성된 요청 식별자
@@ -50,7 +52,9 @@ public class ExternalApiRequestLogService {
 			ExternalApiDto externalApi,
 			String executionId,
 			int requestSequence,
+			int combinationNo,
 			Integer pageNo,
+			Long originalRequestId,
 			Map<String, String> queryParams,
 			Map<String, String> bodyParams) {
 		
@@ -58,7 +62,9 @@ public class ExternalApiRequestLogService {
 		ExternalApiRequestLogDto request = new ExternalApiRequestLogDto();
 		request.setExecutionId(executionId);
 		request.setRequestSequence(requestSequence);
+		request.setCombinationNo(combinationNo);
 		request.setPageNo(pageNo);
+		request.setOriginalRequestId(originalRequestId);
 		request.setRequestMethod(externalApi.getHttpMethod());
 		request.setRequestUrl(buildSafeRequestUrl(externalApi));
 		

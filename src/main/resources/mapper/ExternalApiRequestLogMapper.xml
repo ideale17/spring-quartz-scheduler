@@ -14,7 +14,9 @@
 		INSERT INTO SCHED_EXTERNAL_API_REQUEST (
 			EXECUTION_ID,
 			REQUEST_SEQUENCE,
+			COMBINATION_NO,
 			PAGE_NO,
+			ORIGINAL_REQUEST_ID,
 			REQUEST_METHOD,
 			REQUEST_URL,
 			CREATED_AT
@@ -22,7 +24,9 @@
 		VALUES (
 			#{executionId},
 			#{requestSequence},
+			#{combinationNo},
 			#{pageNo, jdbcType=INTEGER},
+			#{originalRequestId, jdbcType=BIGINT},
 			#{requestMethod},
 			#{requestUrl, jdbcType=VARCHAR},
 			CURRENT_TIMESTAMP

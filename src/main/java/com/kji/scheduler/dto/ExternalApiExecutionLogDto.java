@@ -18,6 +18,8 @@ public class ExternalApiExecutionLogDto {
 	private Long runMillis;
 	private String status;
 	private String errorMessage;
+	private String reprocessMode;
+	private String sourceExecutionId;
 	private LocalDateTime createdAt;
 	
 }

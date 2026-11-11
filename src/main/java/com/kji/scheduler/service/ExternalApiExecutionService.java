@@ -55,6 +55,7 @@ public class ExternalApiExecutionService {
 	private final ExternalApiExecutionLogService externalApiExecutionLogService;
 	private final ExternalApiRequestLogService externalApiRequestLogService;
 	private final CollectRawDataService collectRawDataService;
+	private final ExternalApiExecutionSnapshotService externalApiExecutionSnapshotService;
 	
 	private final ObjectMapper objectMapper;
 	
@@ -65,6 +66,7 @@ public class ExternalApiExecutionService {
 			ExternalApiExecutionLogService externalApiExecutionLogService,
 			ExternalApiRequestLogService externalApiRequestLogService,
 			CollectRawDataService collectRawDataService,
+			ExternalApiExecutionSnapshotService externalApiExecutionSnapshotService,
 			ObjectMapper objectMapper) {
 		this.externalApiService = externalApiService;
 		this.parameterCombinationService = parameterCombinationService;
@@ -73,6 +75,7 @@ public class ExternalApiExecutionService {
 		this.externalApiExecutionLogService = externalApiExecutionLogService;
 		this.externalApiRequestLogService = externalApiRequestLogService;
 		this.collectRawDataService = collectRawDataService;
+		this.externalApiExecutionSnapshotService = externalApiExecutionSnapshotService;
 		this.objectMapper = objectMapper;
 	}
 	
@@ -136,23 +139,35 @@ public class ExternalApiExecutionService {
 				}
 			}
 			
-			// 12. 전체 실행에서 사용할 요청 순번을 초기화한다.
+			// 12. 최초 실행 당시 설정을 스냅샷으로 저장한다.
+			externalApiExecutionSnapshotService.saveSnapshot(
+					executionId,
+					executionTime,
+					externalApi,
+					params,
+					paging
+			);
+			
+			// 13. 전체 실행에서 사용할 요청 순번을 초기화한다.
 			int requestSequence = 1;
 			
-			// 13. 생성된 파라미터 조합을 순서대로 실행한다.
+			// 14. 생성된 파라미터 조합을 순서대로 실행한다.
 			for (int combinationNo = 0; combinationNo < combinations.size(); combinationNo++) {
 				
-				// 13-1. 현재 조합의 요청 파라미터를 복사한다.
+				// 14-1. 현재 조합 순번을 생성한다.
+				int currentCombinationNo = combinationNo + 1;
+				
+				// 14-2. 현재 조합의 요청 파라미터를 복사한다.
 				ExternalApiParameterCombinationDto combination = combinations.get(combinationNo);
 				
 				Map<String, String> headers = new LinkedHashMap<>(combination.getHeaders());
 				Map<String, String> queryParams = new LinkedHashMap<>(combination.getQueryParams());
 				Map<String, String> bodyParams = new LinkedHashMap<>(combination.getBodyParams());
 				
-				// 13-2. External API 인증 정보를 현재 조합에 적용한다.
+				// 14-3. External API 인증 정보를 현재 조합에 적용한다.
 				applyAuthentication(externalApi, headers, queryParams);
 				
-				// 13-3. 조합 실행 정보를 기록한다.
+				// 14-4. 조합 실행 정보를 기록한다.
 				log.info(
 						"External API 파라미터 조합 실행. externalApiId: {}, combinationNo: {}, combinationCount: {}, requestSequence: {}",
 						externalApiId,
@@ -161,7 +176,7 @@ public class ExternalApiExecutionService {
 						requestSequence
 				);
 				
-				// 13-4. 페이징이 없으면 현재 조합을 한 번 호출한다.
+				// 14-5. 페이징이 없으면 현재 조합을 한 번 호출한다.
 				if (!pagingEnabled) {
 					
 					if (requestSequence > MAX_TOTAL_REQUEST_COUNT) {
@@ -173,6 +188,7 @@ public class ExternalApiExecutionService {
 							executionId,
 							fireInstanceId,
 							requestSequence,
+							currentCombinationNo,
 							null,
 							headers,
 							queryParams,
@@ -183,25 +199,26 @@ public class ExternalApiExecutionService {
 					continue;
 				}
 				
-				// 13-5. 페이징이 있으면 현재 조합의 페이지를 순서대로 실행한다.
+				// 14-6. 페이징이 있으면 현재 조합의 페이지를 순서대로 실행한다.
 				requestSequence = executePagePagination(
 						externalApi,
 						paging,
 						executionId,
 						fireInstanceId,
 						requestSequence,
+						currentCombinationNo,
 						headers,
 						queryParams,
 						bodyParams
 				);
 			}
 			
-			// 14. 모든 파라미터 조합이 성공하면 전체 실행을 성공 처리한다.
+			// 15. 모든 파라미터 조합이 성공하면 전체 실행을 성공 처리한다.
 			externalApiExecutionLogService.markSuccess(executionLog);
 			
 		} catch (Exception e) {
 			
-			// 18. 오류 유형에 따라 안전한 메시지를 저장한다.
+			// 16. 오류 유형에 따라 안전한 메시지를 저장한다.
 			String errorMessage;
 			
 			if (e instanceof RestClientResponseException httpException) {
@@ -227,6 +244,7 @@ public class ExternalApiExecutionService {
 	 * @param executionId External API 실행 식별자
 	 * @param fireInstanceId Quartz 실행 인스턴스 식별자
 	 * @param requestSequence 현재 요청 순번
+	 * @param combinationNo 파라미터 조합 순번
 	 * @param pageNo 실제 요청 페이지 번호, 페이징 미사용 시 null
 	 * @param headers 요청에 적용할 HTTP 헤더 정보
 	 * @param queryParams 요청 URL에 적용할 쿼리 파라미터 정보
@@ -238,6 +256,7 @@ public class ExternalApiExecutionService {
 			String executionId,
 			String fireInstanceId,
 			int requestSequence,
+			int combinationNo,
 			Integer pageNo,
 			Map<String, String> headers,
 			Map<String, String> queryParams,
@@ -248,7 +267,9 @@ public class ExternalApiExecutionService {
 				externalApi,
 				executionId,
 				requestSequence,
+				combinationNo,
 				pageNo,
+				null,
 				queryParams,
 				bodyParams
 		);
@@ -457,6 +478,7 @@ public class ExternalApiExecutionService {
 	 * @param executionId External API 실행 식별자
 	 * @param fireInstanceId Quartz 실행 인스턴스 식별자
 	 * @param requestSequence 전체 실행의 시작 요청 순번
+	 * @param combinationNo 파라미터 조합 순번
 	 * @param headers HTTP 요청 헤더
 	 * @param queryParams 쿼리 파라미터
 	 * @param bodyParams 본문 파라미터
@@ -468,6 +490,7 @@ public class ExternalApiExecutionService {
 			String executionId,
 			String fireInstanceId,
 			int requestSequence,
+			int combinationNo,
 			Map<String, String> headers,
 			Map<String, String> queryParams,
 			Map<String, String> bodyParams) {
@@ -496,6 +519,7 @@ public class ExternalApiExecutionService {
 					executionId,
 					fireInstanceId,
 					requestSequence,
+					combinationNo,
 					currentPage,
 					headers,
 					pageQueryParams,
