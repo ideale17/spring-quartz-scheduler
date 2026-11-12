@@ -125,4 +125,34 @@ public class ExternalApiExecutionLogService {
 		
 	}
 	
+	/**
+	 * RESTART 대상 실행 이력을 조회하고 재처리 가능 여부를 검증한다.
+	 *
+	 * @param executionId 재처리할 실행 식별자
+	 * @return 재처리 대상 실행 이력
+	 * @throws IllegalArgumentException 실행 식별자가 올바르지 않은 경우
+	 * @throws IllegalStateException 재처리할 수 없는 실행인 경우
+	 */
+	public ExternalApiExecutionLogDto getRestartTarget(String executionId) {
+		
+		// 1. 실행 식별자를 검증한다.
+		if (executionId == null || executionId.isBlank()) {
+			throw new IllegalArgumentException("재처리할 External API 실행 식별자가 없습니다.");
+		}
+		
+		// 2. 재처리 대상 실행 이력을 조회한다.
+		ExternalApiExecutionLogDto executionLog = mapper.findExecutionById(executionId);
+		
+		if (executionLog == null) {
+			throw new IllegalArgumentException("존재하지 않는 External API 실행 이력입니다. executionId: " + executionId);
+		}
+		
+		// 3. 실패한 실행만 재처리할 수 있도록 검증한다.
+		if (!"FAILED".equals(executionLog.getStatus())) {
+			throw new IllegalStateException("실패한 External API 실행만 재처리할 수 있습니다.");
+		}
+		
+		return executionLog;
+	}
+	
 }

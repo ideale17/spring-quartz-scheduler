@@ -23,4 +23,16 @@
 		)
 	</insert>
 	
+	<!-- 최초 실행 식별자로 설정 스냅샷을 조회한다. -->
+	<select id="findSnapshotByExecutionId" resultType="com.kji.scheduler.dto.ExternalApiExecutionSnapshotDto">
+		SELECT
+			EXECUTION_ID,
+			SNAPSHOT_VERSION,
+			EXECUTION_BASE_TIME,
+			CAST(SNAPSHOT_DATA AS VARCHAR) AS SNAPSHOT_DATA,
+			CREATED_AT
+		 FROM SCHED_EXTERNAL_API_EXEC_SNAPSHOT
+		WHERE EXECUTION_ID = #{executionId}
+	</select>
+	
 </mapper>

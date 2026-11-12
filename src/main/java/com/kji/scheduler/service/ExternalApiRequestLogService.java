@@ -221,4 +221,23 @@ public class ExternalApiRequestLogService {
 		}
 	}
 	
+	/**
+	 * 원본 실행의 파라미터 조합과 페이지에 해당하는 요청 ID를 조회한다.
+	 *
+	 * @param executionId 원본 실행 ID
+	 * @param combinationNo 파라미터 조합 순번
+	 * @param pageNo 페이지 번호
+	 * @return 원본 요청 ID, 존재하지 않으면 null
+	 */
+	public Long findOriginalRequestId(String executionId, int combinationNo, Integer pageNo) {
+		
+		// 1. 원본 실행이 없으면 신규 요청으로 처리한다.
+		if (executionId == null) {
+			return null;
+		}
+		
+		// 2. 동일한 조합과 페이지의 원본 요청을 조회한다.
+		return mapper.findOriginalRequestId(executionId, combinationNo, pageNo);
+	}
+	
 }

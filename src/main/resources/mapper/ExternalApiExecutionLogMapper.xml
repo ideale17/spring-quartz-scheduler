@@ -117,5 +117,23 @@
 			AND E.STARTED_AT <![CDATA[ < ]]> #{endDateExclusive}
 		</if>
 	</select>
-
+	
+	<!-- 실행 식별자로 External API 실행 이력을 조회한다. -->
+	<select id="findExecutionById" resultType="com.kji.scheduler.dto.ExternalApiExecutionLogDto">
+		SELECT
+			EXECUTION_ID,
+			EXTERNAL_API_ID,
+			FIRE_INSTANCE_ID,
+			STARTED_AT,
+			FINISHED_AT,
+			RUN_MILLIS,
+			STATUS,
+			ERROR_MESSAGE,
+			REPROCESS_MODE,
+			SOURCE_EXECUTION_ID,
+			CREATED_AT
+		 FROM SCHED_EXTERNAL_API_EXEC_LOG
+		WHERE EXECUTION_ID = #{executionId}
+	</select>
+	
 </mapper>

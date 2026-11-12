@@ -3,6 +3,7 @@ package com.kji.scheduler.mapper;
 import java.util.List;
 
 import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
 
 import com.kji.scheduler.dto.ExternalApiCallHistorySearchDto;
 import com.kji.scheduler.dto.ExternalApiCallHistorySummaryDto;
@@ -40,5 +41,13 @@ public interface ExternalApiExecutionLogMapper {
 	 * @return 검색 조건에 맞는 전체 실행 이력 건수
 	 */
 	long countExecutionHistory(ExternalApiCallHistorySearchDto searchDto);
+	
+	/**
+	 * 실행 식별자로 External API 실행 이력을 조회한다.
+	 *
+	 * @param executionId 실행 식별자
+	 * @return External API 실행 이력
+	 */
+	ExternalApiExecutionLogDto findExecutionById(@Param("executionId") String executionId);
 	
 }

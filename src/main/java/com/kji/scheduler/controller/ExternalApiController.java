@@ -450,4 +450,34 @@ public class ExternalApiController {
 		}
 	}
 	
+	/**
+	 * 실패한 External API 실행을 최초 설정으로 다시 실행한다.
+	 *
+	 * @param executionId 재처리 대상 실행 식별자
+	 * @return RESTART 처리 결과
+	 */
+	@PostMapping("/restart")
+	public ResponseEntity<?> restartExternalApi(@RequestParam(name = "executionId") String executionId) {
+		
+		try {
+			
+			// 1. 실패한 External API 실행을 처음부터 재처리한다.
+			externalApiExecutionService.restart(executionId);
+			
+			// 2. 재처리 성공 결과를 반환한다.
+			return ResponseEntity.ok("External API 재처리 성공");
+			
+		} catch (IllegalArgumentException e) {
+			return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+			
+		} catch (IllegalStateException e) {
+			return ResponseEntity.status(HttpStatus.CONFLICT).body(e.getMessage());
+			
+		} catch (Exception e) {
+			log.error("External API 재처리 중 오류가 발생했다. executionId={}", executionId, e);
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+					.body("External API 재처리 중 오류가 발생했습니다.");
+		}
+	}
+	
 }

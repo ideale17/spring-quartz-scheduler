@@ -39,4 +39,16 @@ public interface ExternalApiRequestLogMapper {
 	 */
 	List<ExternalApiRequestParamLogDto> findRequestParams(@Param("requestId") Long requestId);
 	
+	/**
+	 * 원본 실행의 동일한 파라미터 조합과 페이지 요청을 조회한다.
+	 *
+	 * @param executionId 원본 실행 ID
+	 * @param combinationNo 파라미터 조합 순번
+	 * @param pageNo 페이지 번호
+	 * @return 원본 요청 ID
+	 */
+	Long findOriginalRequestId(@Param("executionId") String executionId,
+			@Param("combinationNo") int combinationNo,
+			@Param("pageNo") Integer pageNo);
+	
 }

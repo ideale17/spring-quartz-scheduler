@@ -65,4 +65,22 @@
 	    ORDER BY REQUEST_PARAM_ID
 	</select>
 	
+	<!-- 원본 실행에서 동일한 조합과 페이지의 요청 ID를 조회한다. -->
+	<select id="findOriginalRequestId" resultType="java.lang.Long">
+		SELECT REQUEST_ID
+		  FROM SCHED_EXTERNAL_API_REQUEST
+		 WHERE EXECUTION_ID = #{executionId}
+		   AND COMBINATION_NO = #{combinationNo}
+		<choose>
+			<when test="pageNo != null">
+				AND PAGE_NO = #{pageNo}
+			</when>
+			<otherwise>
+				AND PAGE_NO IS NULL
+			</otherwise>
+		</choose>
+		ORDER BY REQUEST_ID
+		FETCH FIRST 1 ROW ONLY
+	</select>
+	
 </mapper>

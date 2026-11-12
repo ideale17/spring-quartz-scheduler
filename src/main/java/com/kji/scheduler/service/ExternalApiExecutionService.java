@@ -5,9 +5,11 @@ import java.net.ConnectException;
 import java.net.SocketTimeoutException;
 import java.net.URI;
 import java.time.LocalDateTime;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -35,9 +37,11 @@ import com.kji.scheduler.dto.CollectRawDataDto;
 import com.kji.scheduler.dto.ExternalApiCallLogDto;
 import com.kji.scheduler.dto.ExternalApiDto;
 import com.kji.scheduler.dto.ExternalApiExecutionLogDto;
+import com.kji.scheduler.dto.ExternalApiExecutionSnapshotDto;
 import com.kji.scheduler.dto.ExternalApiPagingDto;
 import com.kji.scheduler.dto.ExternalApiParamDto;
 import com.kji.scheduler.dto.ExternalApiParameterCombinationDto;
+import com.kji.scheduler.dto.ExternalApiRestartConfigDto;
 
 
 @Service
@@ -87,96 +91,173 @@ public class ExternalApiExecutionService {
 	 */
 	public void execute(Long externalApiId, String fireInstanceId) {
 		
-		// 1. External API 실행 기준 시간과 실행 식별자를 한 번만 생성한다.
+		// 1. 신규 실행 기준 시각을 생성한다.
 		LocalDateTime executionTime = LocalDateTime.now();
+		
+		// 2. 현재 등록된 API와 파라미터 설정을 조회한다.
+		ExternalApiDto externalApi = externalApiService.getExternalApi(externalApiId);
+		List<ExternalApiParamDto> params = externalApiService.getExternalApiParamList(externalApiId);
+		ExternalApiPagingDto paging = externalApiService.getExternalApiPaging(externalApiId);
+		
+		// 3. 일반 실행으로 처리한다.
+		executeConfigured(
+				externalApi,
+				params,
+				paging,
+				executionTime,
+				fireInstanceId,
+				null,
+				null
+		);
+	}
+	
+	/**
+	 * 실패한 External API 실행을 최초 스냅샷 기준으로 처음부터 재실행한다.
+	 *
+	 * @param sourceExecutionId 재처리 대상 실행 ID
+	 */
+	public void restart(String sourceExecutionId) {
+		
+		// 1. 재처리 대상 실행이 실패 상태인지 확인한다.
+		ExternalApiExecutionLogDto source = externalApiExecutionLogService.getRestartTarget(sourceExecutionId);
+		
+		// 2. 원본 스냅샷을 보유한 최초 실행까지 추적한다.
+		ExternalApiExecutionLogDto original = source;
+		Set<String> visited = new HashSet<>();
+		
+		while (true) {
+			
+			if (!visited.add(original.getExecutionId())) {
+				throw new IllegalStateException("External API 재처리 실행 이력에 순환 참조가 있습니다.");
+			}
+			
+			if (original.getSourceExecutionId() == null) {
+				break;
+			}
+			
+			original = externalApiExecutionLogService.getRestartTarget(original.getSourceExecutionId());
+		}
+		
+		// 3. 최초 실행의 설정 스냅샷을 조회한다.
+		ExternalApiExecutionSnapshotDto snapshot = externalApiExecutionSnapshotService.getSnapshot(original.getExecutionId());
+		
+		// 4. 현재 유효한 인증정보와 인증 파라미터를 조회한다.
+		ExternalApiDto currentApi = externalApiService.getExternalApi(source.getExternalApiId());
+		
+		List<ExternalApiParamDto> currentParams = externalApiService.getExternalApiParamList(source.getExternalApiId());
+		
+		// 5. 원본 스냅샷을 복원한다.
+		ExternalApiRestartConfigDto config =
+				externalApiExecutionSnapshotService.restoreRestartConfig(
+						snapshot,
+						currentApi,
+						currentParams
+				);
+		
+		// 6. 최초 실행의 설정으로 전체 수집을 다시 실행한다.
+		executeConfigured(
+				config.getExternalApi(),
+				config.getParams(),
+				config.getPaging(),
+				config.getExecutionBaseTime(),
+				null,
+				"RESTART",
+				sourceExecutionId
+		);
+	}
+	
+	/**
+	 * 전달받은 실행 설정으로 External API 수집을 수행한다.
+	 *
+	 * @param externalApi 실행할 API 설정
+	 * @param params 실행할 파라미터 설정
+	 * @param paging 페이징 설정
+	 * @param executionTime 파라미터 계산 기준 시각
+	 * @param fireInstanceId Quartz 실행 인스턴스 식별자
+	 * @param reprocessMode 재처리 방식, 일반 실행 시 null
+	 * @param sourceExecutionId 원본 실행 식별자, 일반 실행 시 null
+	 */
+	private void executeConfigured(
+			ExternalApiDto externalApi,
+			List<ExternalApiParamDto> params,
+			ExternalApiPagingDto paging,
+			LocalDateTime executionTime,
+			String fireInstanceId,
+			String reprocessMode,
+			String sourceExecutionId) {
+		
+		// 1. 실행 식별자를 생성한다.
 		String executionId = UUID.randomUUID().toString();
 		
-		// 2. External API 기본 정보를 조회한다.
-		ExternalApiDto externalApi = externalApiService.getExternalApi(externalApiId);
-		
-		// 4. External API URL을 검증한다.
+		// 2. API URL을 검증한다.
 		externalApiService.validateExternalApiUrl(externalApi.getApiUrl());
 		
-		// 5. External API 실행 이력을 생성한다.
+		// 3. 실행 이력을 생성한다.
 		ExternalApiExecutionLogDto executionLog = new ExternalApiExecutionLogDto();
 		executionLog.setExecutionId(executionId);
-		executionLog.setExternalApiId(externalApiId);
+		executionLog.setExternalApiId(externalApi.getExternalApiId());
 		executionLog.setFireInstanceId(fireInstanceId);
-
+		executionLog.setReprocessMode(reprocessMode);
+		executionLog.setSourceExecutionId(sourceExecutionId);
+		
 		externalApiExecutionLogService.insertStart(executionLog);
 		
 		try {
 			
-			// 6. External API 사용 가능 여부를 확인한다.
+			// 4. API 사용 여부와 인증정보를 확인한다.
 			if (!"Y".equals(externalApi.getEnabled())) {
-				throw new IllegalStateException("사용 중지된 External API입니다. externalApiId: " + externalApiId);
+				throw new IllegalStateException("사용 중지된 External API입니다.");
 			}
 			
-			// 7. External API 인증 설정을 검증한다.
 			validateAuthentication(externalApi);
 			
-			// 8. External API 파라미터 목록을 조회한다.
-			List<ExternalApiParamDto> params = externalApiService.getExternalApiParamList(externalApiId);
-			
-			// 9. External API 페이징 설정을 조회한다.
-			ExternalApiPagingDto paging = externalApiService.getExternalApiPaging(externalApiId);
-			
-			// 10. 실제 실행에 사용할 파라미터 조합을 생성한다.
+			// 5. 기존 파라미터 조합 생성 로직을 사용한다.
 			List<ExternalApiParameterCombinationDto> combinations =
 					parameterCombinationService.createCombinations(params, executionTime);
 			
-			// 11. 페이징 설정이 활성화된 경우 지원 방식을 검증한다.
+			// 6. 기존 페이징 설정 검증 로직을 수행한다.
 			boolean pagingEnabled = paging != null && "Y".equals(paging.getEnabled());
 			
 			if (pagingEnabled) {
-				
 				if (!"PAGE".equals(paging.getPaginationType())) {
-					throw new IllegalStateException("지원하지 않는 페이징 방식입니다. paginationType: " + paging.getPaginationType());
+					throw new IllegalStateException("지원하지 않는 페이징 방식입니다.");
 				}
 				
 				if (!"TOTAL_COUNT".equals(paging.getTerminationType())) {
-					throw new IllegalStateException("지원하지 않는 페이징 종료 방식입니다. terminationType: " + paging.getTerminationType());
+					throw new IllegalStateException("지원하지 않는 페이징 종료 방식입니다.");
 				}
 			}
 			
-			// 12. 최초 실행 당시 설정을 스냅샷으로 저장한다.
-			externalApiExecutionSnapshotService.saveSnapshot(
-					executionId,
-					executionTime,
-					externalApi,
-					params,
-					paging
-			);
+			// 7. 일반 실행에서만 스냅샷을 생성한다.
+			if (reprocessMode == null) {
+				externalApiExecutionSnapshotService.saveSnapshot(
+						executionId,
+						executionTime,
+						externalApi,
+						params,
+						paging
+				);
+			}
 			
-			// 13. 전체 실행에서 사용할 요청 순번을 초기화한다.
+			// 8. 전체 실행에서 사용할 요청 순번을 초기화한다.
 			int requestSequence = 1;
 			
-			// 14. 생성된 파라미터 조합을 순서대로 실행한다.
+			// 9. 생성된 파라미터 조합을 순서대로 실행한다.
 			for (int combinationNo = 0; combinationNo < combinations.size(); combinationNo++) {
 				
-				// 14-1. 현재 조합 순번을 생성한다.
+				// 9-1. 현재 조합 순번과 요청 파라미터를 생성한다.
 				int currentCombinationNo = combinationNo + 1;
 				
-				// 14-2. 현재 조합의 요청 파라미터를 복사한다.
 				ExternalApiParameterCombinationDto combination = combinations.get(combinationNo);
 				
 				Map<String, String> headers = new LinkedHashMap<>(combination.getHeaders());
 				Map<String, String> queryParams = new LinkedHashMap<>(combination.getQueryParams());
 				Map<String, String> bodyParams = new LinkedHashMap<>(combination.getBodyParams());
 				
-				// 14-3. External API 인증 정보를 현재 조합에 적용한다.
+				// 9-2. 현재 유효한 인증정보를 적용한다.
 				applyAuthentication(externalApi, headers, queryParams);
 				
-				// 14-4. 조합 실행 정보를 기록한다.
-				log.info(
-						"External API 파라미터 조합 실행. externalApiId: {}, combinationNo: {}, combinationCount: {}, requestSequence: {}",
-						externalApiId,
-						combinationNo + 1,
-						combinations.size(),
-						requestSequence
-				);
-				
-				// 14-5. 페이징이 없으면 현재 조합을 한 번 호출한다.
+				// 9-3. 페이징이 없으면 현재 조합을 한 번 호출한다.
 				if (!pagingEnabled) {
 					
 					if (requestSequence > MAX_TOTAL_REQUEST_COUNT) {
@@ -190,6 +271,7 @@ public class ExternalApiExecutionService {
 							requestSequence,
 							currentCombinationNo,
 							null,
+							sourceExecutionId,
 							headers,
 							queryParams,
 							bodyParams
@@ -199,7 +281,7 @@ public class ExternalApiExecutionService {
 					continue;
 				}
 				
-				// 14-6. 페이징이 있으면 현재 조합의 페이지를 순서대로 실행한다.
+				// 9-4. 페이징이 있으면 현재 조합을 페이지별로 실행한다.
 				requestSequence = executePagePagination(
 						externalApi,
 						paging,
@@ -207,18 +289,19 @@ public class ExternalApiExecutionService {
 						fireInstanceId,
 						requestSequence,
 						currentCombinationNo,
+						sourceExecutionId,
 						headers,
 						queryParams,
 						bodyParams
 				);
 			}
 			
-			// 15. 모든 파라미터 조합이 성공하면 전체 실행을 성공 처리한다.
+			// 9. 모든 요청이 성공하면 실행 이력을 완료한다.
 			externalApiExecutionLogService.markSuccess(executionLog);
 			
 		} catch (Exception e) {
 			
-			// 16. 오류 유형에 따라 안전한 메시지를 저장한다.
+			// 10. 기존 오류 메시지 생성 방식을 유지한다.
 			String errorMessage;
 			
 			if (e instanceof RestClientResponseException httpException) {
@@ -230,11 +313,8 @@ public class ExternalApiExecutionService {
 			}
 			
 			externalApiExecutionLogService.markFailed(executionLog, errorMessage);
-			
 			throw e;
-			
 		}
-		
 	}
 	
 	/**
@@ -246,6 +326,7 @@ public class ExternalApiExecutionService {
 	 * @param requestSequence 현재 요청 순번
 	 * @param combinationNo 파라미터 조합 순번
 	 * @param pageNo 실제 요청 페이지 번호, 페이징 미사용 시 null
+	 * @param sourceExecutionId 직접 재처리한 이전 실행 식별자. 일반 실행 시 NULL
 	 * @param headers 요청에 적용할 HTTP 헤더 정보
 	 * @param queryParams 요청 URL에 적용할 쿼리 파라미터 정보
 	 * @param bodyParams 요청 본문에 적용할 파라미터 정보
@@ -258,18 +339,26 @@ public class ExternalApiExecutionService {
 			int requestSequence,
 			int combinationNo,
 			Integer pageNo,
+			String sourceExecutionId,
 			Map<String, String> headers,
 			Map<String, String> queryParams,
 			Map<String, String> bodyParams) {
 		
-		// 1. 재시도 전에 실제 HTTP 요청 정보를 한 번만 저장한다.
+		// 1. 재처리인 경우 원본 요청 ID를 확인한다.
+		Long originalRequestId = externalApiRequestLogService.findOriginalRequestId(
+				sourceExecutionId,
+				combinationNo,
+				pageNo
+		);
+		
+		// 2. 현재 실행의 새로운 논리적 요청을 저장한다.
 		Long requestId = externalApiRequestLogService.saveRequest(
 				externalApi,
 				executionId,
 				requestSequence,
 				combinationNo,
 				pageNo,
-				null,
+				originalRequestId,
 				queryParams,
 				bodyParams
 		);
@@ -479,6 +568,7 @@ public class ExternalApiExecutionService {
 	 * @param fireInstanceId Quartz 실행 인스턴스 식별자
 	 * @param requestSequence 전체 실행의 시작 요청 순번
 	 * @param combinationNo 파라미터 조합 순번
+	 * @param sourceExecutionId 직접 재처리한 이전 실행 식별자. 일반 실행 시 NULL
 	 * @param headers HTTP 요청 헤더
 	 * @param queryParams 쿼리 파라미터
 	 * @param bodyParams 본문 파라미터
@@ -491,6 +581,7 @@ public class ExternalApiExecutionService {
 			String fireInstanceId,
 			int requestSequence,
 			int combinationNo,
+			String sourceExecutionId,
 			Map<String, String> headers,
 			Map<String, String> queryParams,
 			Map<String, String> bodyParams) {
@@ -521,6 +612,7 @@ public class ExternalApiExecutionService {
 					requestSequence,
 					combinationNo,
 					currentPage,
+					sourceExecutionId,
 					headers,
 					pageQueryParams,
 					pageBodyParams

@@ -6,19 +6,21 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.regex.Pattern;
+import java.util.Objects;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.kji.scheduler.dto.ExternalApiDto;
 import com.kji.scheduler.dto.ExternalApiExecutionSnapshotDto;
 import com.kji.scheduler.dto.ExternalApiPagingDto;
 import com.kji.scheduler.dto.ExternalApiParamDto;
 import com.kji.scheduler.dto.ExternalApiParamRepeatValueDto;
+import com.kji.scheduler.dto.ExternalApiRestartConfigDto;
 import com.kji.scheduler.mapper.ExternalApiExecutionSnapshotMapper;
 
 /**
@@ -28,12 +30,6 @@ import com.kji.scheduler.mapper.ExternalApiExecutionSnapshotMapper;
 public class ExternalApiExecutionSnapshotService {
 	
 	private static final int SNAPSHOT_VERSION = 1;
-	
-	private static final Pattern SENSITIVE_PARAM_NAME = Pattern.compile(
-			"(?i).*(api[_-]?key|service[_-]?key|access[_-]?key|"
-					+ "token|secret|password|passwd|authorization|"
-					+ "credential|signature).*"
-	);
 	
 	private final ExternalApiExecutionSnapshotMapper mapper;
 	private final ObjectMapper objectMapper;
@@ -74,7 +70,7 @@ public class ExternalApiExecutionSnapshotService {
 		// 2. 실행 당시 설정에서 저장 가능한 항목만 구성한다.
 		Map<String, Object> settings = new LinkedHashMap<>();
 		settings.put("api", buildApiSettings(externalApi));
-		settings.put("params", buildParamSettings(externalApi, params));
+		settings.put("params", buildParamSettings(params));
 		settings.put("paging", paging == null ? null : buildPagingSettings(paging));
 		
 		// 3. 실행 설정을 JSON 문자열로 변환한다.
@@ -127,15 +123,12 @@ public class ExternalApiExecutionSnapshotService {
 	}
 	
 	/**
-	 * 민감정보를 제외한 파라미터 설정 목록을 생성한다.
+	 * 최초 실행 당시 파라미터 설정 목록을 생성한다.
 	 *
-	 * @param externalApi API 인증 설정
 	 * @param params 파라미터 설정 목록
 	 * @return 스냅샷 파라미터 목록
 	 */
-	private List<Map<String, Object>> buildParamSettings(
-			ExternalApiDto externalApi,
-			List<ExternalApiParamDto> params) {
+	private List<Map<String, Object>> buildParamSettings(List<ExternalApiParamDto> params) {
 		
 		List<Map<String, Object>> result = new ArrayList<>();
 		
@@ -148,6 +141,7 @@ public class ExternalApiExecutionSnapshotService {
 			item.put("paramLocation", param.getParamLocation());
 			item.put("paramName", param.getParamName());
 			item.put("valueType", param.getValueType());
+			item.put("paramValue", param.getParamValue());
 			item.put("valueFormat", param.getValueFormat());
 			item.put("offsetUnit", param.getOffsetUnit());
 			item.put("offsetValue", param.getOffsetValue());
@@ -159,35 +153,24 @@ public class ExternalApiExecutionSnapshotService {
 			item.put("requiredYn", param.getRequiredYn());
 			item.put("sortOrder", param.getSortOrder());
 			
-			// 2. 비밀값으로 판단되면 원본 값 대신 현재 설정 참조를 기록한다.
-			if (isSensitive(externalApi, param.getParamName(), param.getParamValue())) {
-				item.put("paramValue", null);
-				item.put("valueSource", "CURRENT_CONFIG");
-			} else {
-				item.put("paramValue", param.getParamValue());
-			}
-			
-			// 3. LIST 반복 값에도 동일한 민감정보 정책을 적용한다.
+			// 2. LIST 반복 값도 실행 당시 설정 그대로 저장한다.
 			List<Map<String, Object>> repeatValues = new ArrayList<>();
 			
 			if (param.getRepeatValues() != null) {
+				
 				for (ExternalApiParamRepeatValueDto repeat : param.getRepeatValues()) {
 					
 					Map<String, Object> repeatItem = new LinkedHashMap<>();
+					
 					repeatItem.put("repeatValueId", repeat.getRepeatValueId());
 					repeatItem.put("sortOrder", repeat.getSortOrder());
-					
-					if (isSensitive(externalApi, param.getParamName(), repeat.getParamValue())) {
-						repeatItem.put("paramValue", null);
-						repeatItem.put("valueSource", "CURRENT_CONFIG");
-					} else {
-						repeatItem.put("paramValue", repeat.getParamValue());
-					}
+					repeatItem.put("paramValue", repeat.getParamValue());
 					
 					repeatValues.add(repeatItem);
 				}
 			}
 			
+			// 3. 반복 값과 파라미터 설정을 결과 목록에 추가한다.
 			item.put("repeatValues", repeatValues);
 			result.add(item);
 		}
@@ -221,44 +204,127 @@ public class ExternalApiExecutionSnapshotService {
 	}
 	
 	/**
-	 * 인증정보에 해당하는 파라미터인지 확인한다.
+	 * 최초 실행 당시 저장한 설정 스냅샷을 조회한다.
 	 *
-	 * @param externalApi API 인증 설정
-	 * @param paramName 파라미터 이름
-	 * @param paramValue 파라미터 값
-	 * @return 민감정보 여부
+	 * @param executionId 최초 실행 식별자
+	 * @return 실행 설정 스냅샷
+	 * @throws IllegalArgumentException 실행 식별자가 올바르지 않은 경우
+	 * @throws IllegalStateException 스냅샷이 없거나 올바르지 않은 경우
 	 */
-	private boolean isSensitive(
-			ExternalApiDto externalApi,
-			String paramName,
-			String paramValue) {
+	public ExternalApiExecutionSnapshotDto getSnapshot(String executionId) {
 		
-		// 1. 알려진 인증 파라미터 이름인지 확인한다.
-		if (paramName != null && SENSITIVE_PARAM_NAME.matcher(paramName).matches()) {
-			return true;
+		// 1. 실행 식별자를 검증한다.
+		if (executionId == null || executionId.isBlank()) {
+			throw new IllegalArgumentException("External API 실행 식별자가 없습니다.");
 		}
 		
-		// 2. 등록된 API Key 이름과 같은지 확인한다.
-		if ("API_KEY".equals(externalApi.getAuthType())
-				&& paramName != null
-				&& paramName.equalsIgnoreCase(externalApi.getAuthKey())) {
-			return true;
+		// 2. 최초 실행의 설정 스냅샷을 조회한다.
+		ExternalApiExecutionSnapshotDto snapshot = mapper.findSnapshotByExecutionId(executionId);
+		
+		if (snapshot == null) {
+			throw new IllegalStateException("External API 실행 설정 스냅샷이 존재하지 않습니다. executionId: " + executionId);
 		}
 		
-		// 3. 기존 인증 비밀값이 포함되어 있는지 확인한다.
-		return containsSecret(paramValue, externalApi.getAuthValue())
-				|| containsSecret(paramValue, externalApi.getAuthPassword());
+		// 3. 지원하는 스냅샷 버전인지 확인한다.
+		if (!Integer.valueOf(SNAPSHOT_VERSION).equals(snapshot.getSnapshotVersion())) {
+			throw new IllegalStateException("지원하지 않는 External API 설정 스냅샷 버전입니다.");
+		}
+		
+		// 4. 실행 기준 시각과 스냅샷 데이터가 존재하는지 확인한다.
+		if (snapshot.getExecutionBaseTime() == null
+				|| snapshot.getSnapshotData() == null
+				|| snapshot.getSnapshotData().isBlank()) {
+			throw new IllegalStateException("External API 실행 설정 스냅샷이 올바르지 않습니다.");
+		}
+		
+		return snapshot;
 	}
 	
+
 	/**
-	 * 문자열에 인증 비밀값이 포함되어 있는지 확인한다.
+	 * 최초 실행의 스냅샷을 복원하고 현재 인증정보를 적용한다.
 	 *
-	 * @param value 검사할 문자열
-	 * @param secret 인증 비밀값
-	 * @return 비밀값 포함 여부
+	 * @param snapshot 최초 실행 스냅샷
+	 * @param currentApi 현재 External API 설정
+	 * @param currentParams 현재 파라미터 설정 목록
+	 * @return RESTART 실행 설정
 	 */
-	private boolean containsSecret(String value, String secret) {
-		return value != null && secret != null && !secret.isBlank() && value.contains(secret);
+	public ExternalApiRestartConfigDto restoreRestartConfig(
+			ExternalApiExecutionSnapshotDto snapshot,
+			ExternalApiDto currentApi,
+			List<ExternalApiParamDto> currentParams) {
+		
+		// 1. 스냅샷 버전과 실행 기준 시각을 검증한다.
+		if (snapshot == null
+				|| !Integer.valueOf(SNAPSHOT_VERSION).equals(snapshot.getSnapshotVersion())
+				|| snapshot.getExecutionBaseTime() == null) {
+			throw new IllegalStateException("재처리할 External API 스냅샷 정보가 올바르지 않습니다.");
+		}
+		
+		try {
+			
+			// 2. 스냅샷 JSON을 읽는다.
+			JsonNode root = objectMapper.readTree(snapshot.getSnapshotData());
+			
+			if (root == null || !root.isObject() || !root.path("api").isObject() || !root.path("params").isArray()) {
+				throw new IllegalStateException("External API 스냅샷 JSON 구조가 올바르지 않습니다.");
+			}
+			
+			// 3. API 실행 당시 기본 설정을 복원한다.
+			ExternalApiDto externalApi = objectMapper.treeToValue(root.get("api"), ExternalApiDto.class);
+			
+			if (!Objects.equals(externalApi.getExternalApiId(), currentApi.getExternalApiId())) {
+				throw new IllegalStateException("원본 스냅샷과 현재 External API가 일치하지 않습니다.");
+			}
+			
+			// 4. 인증 방식과 전달 위치는 현재 설정을 사용한다.
+			externalApi.setAuthType(currentApi.getAuthType());
+			externalApi.setAuthLocation(currentApi.getAuthLocation());
+			externalApi.setAuthKey(currentApi.getAuthKey());
+
+			// 5. 인증에 필요한 실제 값도 현재 설정을 사용한다.
+			externalApi.setAuthValue(currentApi.getAuthValue());
+			externalApi.setAuthUsername(currentApi.getAuthUsername());
+			externalApi.setAuthPassword(currentApi.getAuthPassword());
+
+			// 6. API 사용 여부는 현재 설정을 따른다.
+			externalApi.setEnabled(currentApi.getEnabled());
+			
+			// 7. 스냅샷의 파라미터 설정을 복원한다.
+			List<ExternalApiParamDto> params = new ArrayList<>();
+			
+			for (JsonNode paramNode : root.get("params")) {
+				
+				// 8. 파라미터 JSON 구조를 검증한다.
+				if (!paramNode.isObject()) {
+					throw new IllegalStateException("스냅샷 파라미터 구조가 올바르지 않습니다.");
+				}
+				
+				// 9. 스냅샷 JSON을 파라미터 DTO로 변환한다.
+				ExternalApiParamDto param = objectMapper.treeToValue(paramNode, ExternalApiParamDto.class);
+				
+				params.add(param);
+			}
+			
+			// 10. 원본 페이징 설정을 복원한다.
+			ExternalApiPagingDto paging = null;
+			
+			if (root.hasNonNull("paging")) {
+				paging = objectMapper.treeToValue(root.get("paging"), ExternalApiPagingDto.class);
+			}
+			
+			// 11. RESTART 설정을 반환한다.
+			ExternalApiRestartConfigDto config = new ExternalApiRestartConfigDto();
+			config.setExternalApi(externalApi);
+			config.setParams(params);
+			config.setPaging(paging);
+			config.setExecutionBaseTime(snapshot.getExecutionBaseTime());
+			
+			return config;
+			
+		} catch (JsonProcessingException | IllegalArgumentException e) {
+			throw new IllegalStateException("External API 스냅샷 설정 복원에 실패했습니다.", e);
+		}
 	}
 	
 }
