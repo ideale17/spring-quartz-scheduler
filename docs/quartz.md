@@ -16,16 +16,14 @@ Dynamic Scheduler는 Quartz와 PostgreSQL JDBC JobStore를 사용하여 Job과 T
 
 ## 2. 주요 구성 요소
 
-| 클래스                    | 역할                     |
-| ---------------------- | ---------------------- |
-| `DynamicJobController` | Job 관리 REST API        |
-| `DynamicJobService`    | Job 및 Trigger 등록·수정·제어 |
-| `DynamicJobMapper`     | Job 정보 및 실행 이력 조회      |
-| `JobClassRegistry`     | 실행 가능한 Job 클래스 관리      |
-| `ExternalApiCallJob`   | 외부 API 수집 실행           |
-| `TransformWorkerJob`   | Raw Data 가공 작업 실행      |
-| `JobLogListener`       | Job 실행 시작·종료·실패 이력     |
-| `QuartzListenerConfig` | 전역 JobListener 등록      |
+- `DynamicJobController`: Job 관리 REST API
+- `DynamicJobService`: Job 및 Trigger 등록·수정·제어
+- `DynamicJobMapper`: Job 정보 및 실행 이력 조회
+- `JobClassRegistry`: 실행 가능한 Job 클래스 관리
+- `ExternalApiCallJob`: 외부 API 수집 실행
+- `TransformWorkerJob`: Raw Data 가공 작업 실행
+- `JobLogListener`: Job 실행 시작·종료·실패 이력
+- `QuartzListenerConfig`: 전역 JobListener 등록
 
 Quartz Job은 실행 진입점 역할을 담당하며 실제 업무 처리는 Service에 위임한다.
 
@@ -87,10 +85,8 @@ Trigger는 현재 일반 등록 흐름에서 `jobName + "Trigger"`와 `jobGroup`
 
 ### 스케줄 유형
 
-| 유형     | 설정              |
-| ------ | --------------- |
-| CRON   | Quartz Cron 표현식 |
-| SIMPLE | 초 단위 반복 간격      |
+- `CRON`: Quartz Cron 표현식
+- `SIMPLE`: 초 단위 반복 간격
 
 SIMPLE은 현재 무한 반복 방식인 `repeatForever()`를 사용한다.
 
@@ -187,11 +183,9 @@ Quartz의 동시 실행 제한과 DB 작업 선점은 서로 다른 책임을 �
 
 `QuartzListenerConfig`에서 전역 JobListener로 등록한다.
 
-| 이벤트                  | 처리                 |
-| -------------------- | ------------------ |
-| `jobToBeExecuted`    | 시작 이력 저장           |
-| `jobWasExecuted`     | 성공·실패 상태와 실행 시간 기록 |
-| `jobExecutionVetoed` | 실행 거부 상태 기록        |
+- `jobToBeExecuted`: 시작 이력 저장
+- `jobWasExecuted`: 성공·실패 상태와 실행 시간 기록
+- `jobExecutionVetoed`: 실행 거부 상태 기록
 
 Job 실행 이력은 `SCHED_EXEC_LOG` 테이블에 저장한다.
 
