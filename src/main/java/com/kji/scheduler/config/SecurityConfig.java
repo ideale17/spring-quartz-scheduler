@@ -80,7 +80,11 @@ public class SecurityConfig {
 					// 6. AI 분석 실행은 관리자만 허용한다.
 					.requestMatchers(HttpMethod.POST, "/ai-analysis/execute").hasRole("ADMIN")
 					
-					// 7. 나머지 API는 기존과 동일하게 인증된 사용자에게 허용한다.
+					// 7. 데이터 적재 모델 등록 및 수정은 관리자만 허용한다.
+					.requestMatchers(HttpMethod.POST, "/analysis-model/add").hasRole("ADMIN")
+					.requestMatchers(HttpMethod.PUT, "/analysis-model/update").hasRole("ADMIN")
+					
+					// 8. 나머지 API는 기존과 동일하게 인증된 사용자에게 허용한다.
 					.anyRequest().authenticated()
 					)
 			.formLogin(f -> f.disable())   // SPA이므로 폼로그인 비활성화

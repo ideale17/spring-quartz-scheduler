@@ -1,0 +1,210 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.kji.scheduler.mapper.AnalysisModelMapper">
+
+	<!-- 데이터 적재 모델 목록 조회 -->
+	<select id="findAnalysisModelList" resultType="com.kji.scheduler.dto.AnalysisModelDto">
+		SELECT ANALYSIS_MODEL_ID,
+			   MODEL_NAME,
+			   DESCRIPTION,
+			   TARGET_SCHEMA,
+			   TARGET_TABLE,
+			   ENABLED,
+			   CURRENT_VERSION,
+			   CREATED_AT,
+			   UPDATED_AT
+		  FROM SCHED_ANALYSIS_MODEL
+		 WHERE 1 = 1
+		<if test="searchDto.modelName != null and searchDto.modelName != ''">
+		   AND MODEL_NAME LIKE '%' || #{searchDto.modelName} || '%'
+		</if>
+		<if test="searchDto.enabled != null and searchDto.enabled != ''">
+		   AND ENABLED = #{searchDto.enabled}
+		</if>
+		 ORDER BY ANALYSIS_MODEL_ID DESC
+	</select>
+
+	<!-- 분석 대상 테이블의 전체 컬럼명 조회 -->
+	<select id="findTargetColumnNames" resultType="string">
+		SELECT COLUMN_NAME
+		  FROM INFORMATION_SCHEMA.COLUMNS
+		 WHERE TABLE_SCHEMA = #{targetSchema}
+		   AND TABLE_NAME = #{targetTable}
+		 ORDER BY ORDINAL_POSITION
+	</select>
+
+	<!-- 매핑해야 하는 필수 컬럼 조회 -->
+	<select id="findRequiredTargetColumnNames" resultType="string">
+		SELECT COLUMN_NAME
+		  FROM INFORMATION_SCHEMA.COLUMNS
+		 WHERE TABLE_SCHEMA = #{targetSchema}
+		   AND TABLE_NAME = #{targetTable}
+		   AND IS_NULLABLE = 'NO'
+		   AND COLUMN_DEFAULT IS NULL
+		   AND IS_IDENTITY = 'NO'
+		   AND IS_GENERATED = 'NEVER'
+		 ORDER BY ORDINAL_POSITION
+	</select>
+	
+	
+	<!-- 데이터 적재 모델 기본 정보 단건 조회 -->
+	<select id="findAnalysisModel" resultType="com.kji.scheduler.dto.AnalysisModelDto">
+		SELECT ANALYSIS_MODEL_ID,
+			   MODEL_NAME,
+			   DESCRIPTION,
+			   TARGET_SCHEMA,
+			   TARGET_TABLE,
+			   ENABLED,
+			   CURRENT_VERSION,
+			   CREATED_AT,
+			   UPDATED_AT
+		  FROM SCHED_ANALYSIS_MODEL
+		 WHERE ANALYSIS_MODEL_ID = #{analysisModelId}
+	</select>
+	
+	<!-- 데이터 적재 모델 현재 버전 조회 -->
+	<select id="findCurrentAnalysisModelVersion" resultType="com.kji.scheduler.dto.AnalysisModelVersionDto">
+		SELECT V.ANALYSIS_MODEL_VERSION_ID,
+			   V.ANALYSIS_MODEL_ID,
+			   V.VERSION_NO,
+			   V.TRANSFORM_RULE_VERSION_ID,
+			   V.CREATED_AT
+		  FROM SCHED_ANALYSIS_MODEL_VERSION V
+		 INNER JOIN SCHED_ANALYSIS_MODEL M
+		    ON V.ANALYSIS_MODEL_ID = M.ANALYSIS_MODEL_ID
+		   AND V.VERSION_NO = M.CURRENT_VERSION
+		 WHERE M.ANALYSIS_MODEL_ID = #{analysisModelId}
+	</select>
+	
+	<!-- 데이터 적재 모델 전체 버전 이력 조회 -->
+	<select id="findAnalysisModelVersionList" resultType="com.kji.scheduler.dto.AnalysisModelVersionDto">
+		SELECT ANALYSIS_MODEL_VERSION_ID,
+			   ANALYSIS_MODEL_ID,
+			   VERSION_NO,
+			   TRANSFORM_RULE_VERSION_ID,
+			   CREATED_AT
+		  FROM SCHED_ANALYSIS_MODEL_VERSION
+		 WHERE ANALYSIS_MODEL_ID = #{analysisModelId}
+		 ORDER BY VERSION_NO DESC
+	</select>
+	
+	<!-- 데이터 적재 모델 버전 단건 조회 -->
+	<select id="findAnalysisModelVersion" resultType="com.kji.scheduler.dto.AnalysisModelVersionDto">
+		SELECT ANALYSIS_MODEL_VERSION_ID,
+			   ANALYSIS_MODEL_ID,
+			   VERSION_NO,
+			   TRANSFORM_RULE_VERSION_ID,
+			   CREATED_AT
+		  FROM SCHED_ANALYSIS_MODEL_VERSION
+		 WHERE ANALYSIS_MODEL_VERSION_ID = #{analysisModelVersionId}
+	</select>
+	
+	<!-- 데이터 적재 모델 버전별 필드 매핑 조회 -->
+	<select id="findAnalysisModelFieldList" resultType="com.kji.scheduler.dto.AnalysisModelFieldRowDto">
+		SELECT ANALYSIS_FIELD_ID,
+			   ANALYSIS_MODEL_VERSION_ID,
+			   TARGET_COLUMN,
+			   CAST(SOURCE_FIELDS AS TEXT) AS SOURCE_FIELDS_JSON,
+			   CONVERT_TYPE,
+			   CONVERT_FORMAT,
+			   REQUIRED_YN,
+			   SORT_ORDER
+		  FROM SCHED_ANALYSIS_MODEL_FIELD
+		 WHERE ANALYSIS_MODEL_VERSION_ID = #{analysisModelVersionId}
+		 ORDER BY SORT_ORDER, ANALYSIS_FIELD_ID
+	</select>
+	
+	<!-- 데이터 적재 모델 기본 정보 저장 -->
+	<insert id="insertAnalysisModel"
+			parameterType="com.kji.scheduler.dto.AnalysisModelDto"
+			useGeneratedKeys="true"
+			keyProperty="analysisModelId"
+			keyColumn="analysis_model_id">
+		INSERT INTO SCHED_ANALYSIS_MODEL (
+			MODEL_NAME,
+			DESCRIPTION,
+			TARGET_SCHEMA,
+			TARGET_TABLE,
+			ENABLED,
+			CURRENT_VERSION,
+			CREATED_AT,
+			UPDATED_AT
+		)
+		VALUES (
+			#{modelName},
+			#{description, jdbcType=VARCHAR},
+			#{targetSchema},
+			#{targetTable},
+			#{enabled},
+			#{currentVersion},
+			CURRENT_TIMESTAMP,
+			CURRENT_TIMESTAMP
+		)
+	</insert>
+
+	<!-- 데이터 적재 모델 최초 버전 저장 -->
+	<insert id="insertAnalysisModelVersion"
+			parameterType="com.kji.scheduler.dto.AnalysisModelVersionDto"
+			useGeneratedKeys="true"
+			keyProperty="analysisModelVersionId"
+			keyColumn="analysis_model_version_id">
+		INSERT INTO SCHED_ANALYSIS_MODEL_VERSION (
+			ANALYSIS_MODEL_ID,
+			VERSION_NO,
+			TRANSFORM_RULE_VERSION_ID,
+			CREATED_AT
+		)
+		VALUES (
+			#{analysisModelId},
+			#{versionNo},
+			#{transformRuleVersionId},
+			CURRENT_TIMESTAMP
+		)
+	</insert>
+
+	<!-- 데이터 적재 모델 필드 매핑 저장 -->
+	<insert id="insertAnalysisModelField">
+		INSERT INTO SCHED_ANALYSIS_MODEL_FIELD (
+			ANALYSIS_MODEL_VERSION_ID,
+			TARGET_COLUMN,
+			SOURCE_FIELDS,
+			CONVERT_TYPE,
+			CONVERT_FORMAT,
+			REQUIRED_YN,
+			SORT_ORDER
+		)
+		VALUES (
+			#{field.analysisModelVersionId},
+			#{field.targetColumn},
+			CAST(#{sourceFieldsJson} AS JSONB),
+			#{field.convertType},
+			#{field.convertFormat, jdbcType=VARCHAR},
+			#{field.requiredYn},
+			#{field.sortOrder}
+		)
+	</insert>
+	
+	<!-- 데이터 적재 모델 기본 정보 수정 -->
+	<update id="updateAnalysisModel" parameterType="com.kji.scheduler.dto.AnalysisModelDto">
+		UPDATE SCHED_ANALYSIS_MODEL
+		   SET MODEL_NAME = #{modelName},
+			   DESCRIPTION = #{description, jdbcType=VARCHAR},
+			   ENABLED = #{enabled},
+			   UPDATED_AT = CURRENT_TIMESTAMP
+		 WHERE ANALYSIS_MODEL_ID = #{analysisModelId}
+		   AND CURRENT_VERSION = #{currentVersion}
+	</update>
+	
+	<!-- 데이터 적재 모델의 현재 버전 변경 -->
+	<update id="updateAnalysisModelCurrentVersion">
+		UPDATE SCHED_ANALYSIS_MODEL
+		   SET CURRENT_VERSION = #{nextVersion},
+			   UPDATED_AT = CURRENT_TIMESTAMP
+		 WHERE ANALYSIS_MODEL_ID = #{analysisModelId}
+		   AND CURRENT_VERSION = #{expectedVersion}
+	</update>
+	
+</mapper>
