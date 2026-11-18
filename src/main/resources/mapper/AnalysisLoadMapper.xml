@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.kji.scheduler.mapper.AnalysisLoadMapper">
+
+    <!-- 가공 완료 결과를 데이터 적재 대기 작업으로 등록 -->
+    <insert id="insertAnalysisLoadSource">
+        INSERT INTO SCHED_ANALYSIS_LOAD_SOURCE (
+            ANALYSIS_MODEL_VERSION_ID,
+            RAW_DATA_ID,
+            TRANSFORM_RESULT_ID,
+            STATUS,
+            ATTEMPT_COUNT,
+            LOADED_COUNT,
+            CREATED_AT,
+            UPDATED_AT
+        )
+        SELECT #{analysisModelVersionId},
+               T.RAW_DATA_ID,
+               R.TRANSFORM_RESULT_ID,
+               'PENDING',
+               0,
+               0,
+               CURRENT_TIMESTAMP,
+               CURRENT_TIMESTAMP
+          FROM SCHED_TRANSFORM_RESULT R
+         INNER JOIN SCHED_TRANSFORM_TASK T
+            ON R.TRANSFORM_TASK_ID = T.TRANSFORM_TASK_ID
+         WHERE R.TRANSFORM_RESULT_ID = #{transformResultId}
+           AND T.TRANSFORM_RULE_VERSION_ID = #{transformRuleVersionId}
+           AND T.STATUS = 'SUCCESS'
+    </insert>
+    
+    <!-- 적재 모델에 연결된 가공 규칙 버전 번호 조회 -->
+    <select id="findTransformRuleVersionNo" resultType="java.lang.Integer">
+        SELECT VERSION_NO
+          FROM SCHED_TRANSFORM_RULE_VERSION
+         WHERE TRANSFORM_RULE_VERSION_ID = #{transformRuleVersionId}
+    </select>
+    
+    <!-- 적재 모델과 연결된 가공 결과 및 적재 상태 조회 -->
+    <select id="findAnalysisLoadList" resultType="com.kji.scheduler.dto.AnalysisLoadListDto">
+        SELECT R.TRANSFORM_RESULT_ID,
+               R.TRANSFORM_TASK_ID,
+               T.RAW_DATA_ID,
+               D.EXTERNAL_API_ID,
+               A.API_NAME,
+               V.TRANSFORM_RULE_ID,
+               U.RULE_NAME,
+               V.VERSION_NO,
+               V.DATA_FORMAT,
+               R.CREATED_AT,
+               L.STATUS AS ANALYSIS_LOAD_STATUS
+          FROM SCHED_TRANSFORM_RESULT R
+         INNER JOIN SCHED_TRANSFORM_TASK T
+            ON R.TRANSFORM_TASK_ID = T.TRANSFORM_TASK_ID
+         INNER JOIN SCHED_COLLECT_RAW_DATA D
+            ON T.RAW_DATA_ID = D.RAW_DATA_ID
+         INNER JOIN SCHED_EXTERNAL_API A
+            ON D.EXTERNAL_API_ID = A.EXTERNAL_API_ID
+         INNER JOIN SCHED_TRANSFORM_RULE_VERSION V
+            ON T.TRANSFORM_RULE_VERSION_ID = V.TRANSFORM_RULE_VERSION_ID
+         INNER JOIN SCHED_TRANSFORM_RULE U
+            ON V.TRANSFORM_RULE_ID = U.TRANSFORM_RULE_ID
+         <!-- 동일 모델 버전과 Raw Data의 기존 적재 작업 -->
+          LEFT JOIN SCHED_ANALYSIS_LOAD_SOURCE L
+            ON L.ANALYSIS_MODEL_VERSION_ID = #{analysisModelVersionId}
+           AND L.TRANSFORM_RESULT_ID = R.TRANSFORM_RESULT_ID
+         WHERE V.TRANSFORM_RULE_ID = #{transformRuleId}
+           AND T.STATUS = 'SUCCESS'
+        <if test="startAt != null">
+           AND R.CREATED_AT <![CDATA[ >= ]]> #{startAt}
+        </if>
+        <if test="endAt != null">
+           AND R.CREATED_AT <![CDATA[ < ]]> #{endAt}
+        </if>
+         ORDER BY R.TRANSFORM_RESULT_ID DESC
+         OFFSET #{searchDto.offset} ROWS
+         FETCH NEXT #{searchDto.size} ROWS ONLY
+    </select>
+    
+    <!-- 적재 모델과 연결된 가공 결과 전체 건수 조회 -->
+    <select id="countAnalysisLoadList" resultType="long">
+        SELECT COUNT(*)
+          FROM SCHED_TRANSFORM_RESULT R
+         INNER JOIN SCHED_TRANSFORM_TASK T
+            ON R.TRANSFORM_TASK_ID = T.TRANSFORM_TASK_ID
+         INNER JOIN SCHED_TRANSFORM_RULE_VERSION V
+            ON T.TRANSFORM_RULE_VERSION_ID = V.TRANSFORM_RULE_VERSION_ID
+         WHERE V.TRANSFORM_RULE_ID = #{transformRuleId}
+           AND T.STATUS = 'SUCCESS'
+        <if test="startAt != null">
+           AND R.CREATED_AT <![CDATA[ >= ]]> #{startAt}
+        </if>
+        <if test="endAt != null">
+           AND R.CREATED_AT <![CDATA[ < ]]> #{endAt}
+        </if>
+    </select>
+    
+</mapper>
