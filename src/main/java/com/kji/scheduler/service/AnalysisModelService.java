@@ -19,6 +19,7 @@ import com.kji.scheduler.dto.AnalysisModelFieldRowDto;
 import com.kji.scheduler.dto.AnalysisModelRequestDto;
 import com.kji.scheduler.dto.AnalysisModelSearchDto;
 import com.kji.scheduler.dto.AnalysisModelVersionDto;
+import com.kji.scheduler.dto.AnalysisTargetColumnDto;
 import com.kji.scheduler.dto.TransformRuleFieldDto;
 import com.kji.scheduler.dto.TransformRuleVersionDto;
 import com.kji.scheduler.mapper.AnalysisModelMapper;
@@ -244,6 +245,42 @@ public class AnalysisModelService {
 		
 		// 4. 변환된 필드 매핑 목록을 반환한다.
 		return fields;
+	}
+	
+	/**
+	 * 데이터 적재 대상 업무 테이블의 컬럼 목록을 조회한다.
+	 *
+	 * @param targetSchema 조회할 스키마
+	 * @param targetTable 조회할 테이블
+	 * @return 업무 테이블 컬럼 정보
+	 */
+	@Transactional(readOnly = true)
+	public List<AnalysisTargetColumnDto> getTargetColumnList(String targetSchema, String targetTable) {
+		
+		// 1. 조회 조건을 정리한다.
+		targetSchema = normalize(targetSchema);
+		targetTable = normalize(targetTable);
+		
+		if (targetSchema == null || targetTable == null) {
+			throw new IllegalArgumentException("대상 스키마와 테이블을 입력해주세요.");
+		}
+		
+		targetSchema = targetSchema.toLowerCase(Locale.ROOT);
+		targetTable = targetTable.toLowerCase(Locale.ROOT);
+		
+		// 2. 기존 등록 로직과 동일한 허용 테이블 정책을 적용한다.
+		if (!ALLOWED_TARGET_TABLES.contains(targetSchema + "." + targetTable)) {
+			throw new IllegalArgumentException("허용되지 않은 적재 대상 테이블입니다.");
+		}
+		
+		// 3. 실제 DB 컬럼 정보를 조회한다.
+		List<AnalysisTargetColumnDto> columns = mapper.findTargetColumnList(targetSchema, targetTable);
+		
+		if (columns.isEmpty()) {
+			throw new IllegalArgumentException("대상 테이블의 컬럼 정보를 찾을 수 없습니다.");
+		}
+		
+		return columns;
 	}
 	
 	/**

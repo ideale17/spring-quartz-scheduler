@@ -109,6 +109,30 @@ public class AnalysisModelController {
 	}
 	
 	/**
+	 * 데이터 적재 대상 테이블의 컬럼 목록을 조회한다.
+	 *
+	 * @param targetSchema 대상 스키마
+	 * @param targetTable 대상 테이블
+	 * @return 업무 테이블 컬럼 메타데이터
+	 */
+	@GetMapping("/target-columns")
+	public ResponseEntity<?> getTargetColumnList(
+			@RequestParam(name = "targetSchema") String targetSchema,
+			@RequestParam(name = "targetTable") String targetTable) {
+		
+		try {
+			// 1. 대상 테이블의 컬럼 정보를 조회한다.
+			return ResponseEntity.ok(analysisModelService.getTargetColumnList(targetSchema, targetTable));
+			
+		} catch (IllegalArgumentException e) {
+			return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+			
+		} catch (Exception e) {
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("업무 테이블 컬럼 조회에 실패했습니다.");
+		}
+	}
+	
+	/**
 	 * 데이터 적재 모델 등록 요청을 처리한다.
 	 *
 	 * @param request 모델 기본 정보, 버전, 필드 매핑

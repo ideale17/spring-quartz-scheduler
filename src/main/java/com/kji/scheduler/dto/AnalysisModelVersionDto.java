@@ -14,6 +14,7 @@ public class AnalysisModelVersionDto {
 	private Long analysisModelVersionId;
 	private Long analysisModelId;
 	private Integer versionNo;
+	private Long transformRuleId;
 	private Long transformRuleVersionId;
 	private LocalDateTime createdAt;
 	

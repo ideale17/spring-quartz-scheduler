@@ -49,6 +49,45 @@
 		 ORDER BY ORDINAL_POSITION
 	</select>
 	
+	<!-- 대상 업무 테이블의 컬럼명, 타입, 필수 여부 및 설명 조회 -->
+	<select id="findTargetColumnList" resultType="com.kji.scheduler.dto.AnalysisTargetColumnDto">
+		SELECT C.COLUMN_NAME,
+			   C.DATA_TYPE,
+			   C.ORDINAL_POSITION,
+			   PG_CATALOG.COL_DESCRIPTION(T.OID, A.ATTNUM) AS DESCRIPTION,
+			   C.IS_NULLABLE AS NULLABLE,
+			   CASE
+				   WHEN C.IS_NULLABLE = 'NO'
+				    AND C.COLUMN_DEFAULT IS NULL
+				    AND C.IS_IDENTITY = 'NO'
+				    AND C.IS_GENERATED = 'NEVER'
+				   THEN TRUE
+				   ELSE FALSE
+			   END AS REQUIRED,
+			   CASE
+				   WHEN C.COLUMN_NAME IN (
+					   'sale_trade_id',
+					   'analysis_load_source_id',
+					   'source_item_no',
+					   'created_at'
+				   )
+				   THEN TRUE
+				   ELSE FALSE
+			   END AS SYSTEM_MANAGED
+		  FROM INFORMATION_SCHEMA.COLUMNS C
+		 INNER JOIN PG_CATALOG.PG_NAMESPACE N
+		    ON N.NSPNAME = C.TABLE_SCHEMA
+		 INNER JOIN PG_CATALOG.PG_CLASS T
+		    ON T.RELNAMESPACE = N.OID
+		   AND T.RELNAME = C.TABLE_NAME
+		 INNER JOIN PG_CATALOG.PG_ATTRIBUTE A
+		    ON A.ATTRELID = T.OID
+		   AND A.ATTNAME = C.COLUMN_NAME
+		 WHERE C.TABLE_SCHEMA = #{targetSchema}
+		   AND C.TABLE_NAME = #{targetTable}
+		   AND T.RELKIND IN ('r', 'p')
+		 ORDER BY C.ORDINAL_POSITION
+	</select>
 	
 	<!-- 데이터 적재 모델 기본 정보 단건 조회 -->
 	<select id="findAnalysisModel" resultType="com.kji.scheduler.dto.AnalysisModelDto">
@@ -67,39 +106,48 @@
 	
 	<!-- 데이터 적재 모델 현재 버전 조회 -->
 	<select id="findCurrentAnalysisModelVersion" resultType="com.kji.scheduler.dto.AnalysisModelVersionDto">
-		SELECT V.ANALYSIS_MODEL_VERSION_ID,
-			   V.ANALYSIS_MODEL_ID,
-			   V.VERSION_NO,
-			   V.TRANSFORM_RULE_VERSION_ID,
-			   V.CREATED_AT
-		  FROM SCHED_ANALYSIS_MODEL_VERSION V
-		 INNER JOIN SCHED_ANALYSIS_MODEL M
-		    ON V.ANALYSIS_MODEL_ID = M.ANALYSIS_MODEL_ID
-		   AND V.VERSION_NO = M.CURRENT_VERSION
-		 WHERE M.ANALYSIS_MODEL_ID = #{analysisModelId}
+	    SELECT V.ANALYSIS_MODEL_VERSION_ID,
+	           V.ANALYSIS_MODEL_ID,
+	           V.VERSION_NO,
+	           R.TRANSFORM_RULE_ID,
+	           V.TRANSFORM_RULE_VERSION_ID,
+	           V.CREATED_AT
+	      FROM SCHED_ANALYSIS_MODEL_VERSION V
+	     INNER JOIN SCHED_ANALYSIS_MODEL M
+	        ON V.ANALYSIS_MODEL_ID = M.ANALYSIS_MODEL_ID
+	       AND V.VERSION_NO = M.CURRENT_VERSION
+	     INNER JOIN SCHED_TRANSFORM_RULE_VERSION R
+	        ON V.TRANSFORM_RULE_VERSION_ID = R.TRANSFORM_RULE_VERSION_ID
+	     WHERE M.ANALYSIS_MODEL_ID = #{analysisModelId}
 	</select>
 	
 	<!-- 데이터 적재 모델 전체 버전 이력 조회 -->
 	<select id="findAnalysisModelVersionList" resultType="com.kji.scheduler.dto.AnalysisModelVersionDto">
-		SELECT ANALYSIS_MODEL_VERSION_ID,
-			   ANALYSIS_MODEL_ID,
-			   VERSION_NO,
-			   TRANSFORM_RULE_VERSION_ID,
-			   CREATED_AT
-		  FROM SCHED_ANALYSIS_MODEL_VERSION
-		 WHERE ANALYSIS_MODEL_ID = #{analysisModelId}
-		 ORDER BY VERSION_NO DESC
+	    SELECT V.ANALYSIS_MODEL_VERSION_ID,
+	           V.ANALYSIS_MODEL_ID,
+	           V.VERSION_NO,
+	           R.TRANSFORM_RULE_ID,
+	           V.TRANSFORM_RULE_VERSION_ID,
+	           V.CREATED_AT
+	      FROM SCHED_ANALYSIS_MODEL_VERSION V
+	     INNER JOIN SCHED_TRANSFORM_RULE_VERSION R
+	        ON V.TRANSFORM_RULE_VERSION_ID = R.TRANSFORM_RULE_VERSION_ID
+	     WHERE V.ANALYSIS_MODEL_ID = #{analysisModelId}
+	     ORDER BY V.VERSION_NO DESC
 	</select>
 	
 	<!-- 데이터 적재 모델 버전 단건 조회 -->
 	<select id="findAnalysisModelVersion" resultType="com.kji.scheduler.dto.AnalysisModelVersionDto">
-		SELECT ANALYSIS_MODEL_VERSION_ID,
-			   ANALYSIS_MODEL_ID,
-			   VERSION_NO,
-			   TRANSFORM_RULE_VERSION_ID,
-			   CREATED_AT
-		  FROM SCHED_ANALYSIS_MODEL_VERSION
-		 WHERE ANALYSIS_MODEL_VERSION_ID = #{analysisModelVersionId}
+	    SELECT V.ANALYSIS_MODEL_VERSION_ID,
+	           V.ANALYSIS_MODEL_ID,
+	           V.VERSION_NO,
+	           R.TRANSFORM_RULE_ID,
+	           V.TRANSFORM_RULE_VERSION_ID,
+	           V.CREATED_AT
+	      FROM SCHED_ANALYSIS_MODEL_VERSION V
+	     INNER JOIN SCHED_TRANSFORM_RULE_VERSION R
+	        ON V.TRANSFORM_RULE_VERSION_ID = R.TRANSFORM_RULE_VERSION_ID
+	     WHERE V.ANALYSIS_MODEL_VERSION_ID = #{analysisModelVersionId}
 	</select>
 	
 	<!-- 데이터 적재 모델 버전별 필드 매핑 조회 -->

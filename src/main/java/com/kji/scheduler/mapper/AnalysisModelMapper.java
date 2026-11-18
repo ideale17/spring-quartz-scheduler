@@ -11,6 +11,7 @@ import com.kji.scheduler.dto.AnalysisModelFieldDto;
 import com.kji.scheduler.dto.AnalysisModelFieldRowDto;
 import com.kji.scheduler.dto.AnalysisModelSearchDto;
 import com.kji.scheduler.dto.AnalysisModelVersionDto;
+import com.kji.scheduler.dto.AnalysisTargetColumnDto;
 
 @Mapper
 public interface AnalysisModelMapper {
@@ -34,6 +35,16 @@ public interface AnalysisModelMapper {
 			@Param("targetSchema") String targetSchema,
 			@Param("targetTable") String targetTable);
 	
+	/**
+	 * 대상 업무 테이블의 컬럼 메타데이터를 조회한다.
+	 *
+	 * @param targetSchema 대상 스키마
+	 * @param targetTable 대상 테이블
+	 * @return 컬럼 정보 목록
+	 */
+	List<AnalysisTargetColumnDto> findTargetColumnList(
+			@Param("targetSchema") String targetSchema,
+			@Param("targetTable") String targetTable);
 
 	/**
 	 * 분석 모델 기본 정보를 식별자로 조회한다.
