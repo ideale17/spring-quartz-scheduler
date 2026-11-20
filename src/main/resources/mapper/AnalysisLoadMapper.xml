@@ -99,4 +99,97 @@
         </if>
     </select>
     
+    <!-- PENDING 적재 작업을 최대 지정 건수만큼 원자적으로 선점 -->
+    <select id="claimPendingLoads"
+            resultType="com.kji.scheduler.dto.AnalysisLoadSourceDto"
+            affectData="true"
+            flushCache="true">
+        UPDATE SCHED_ANALYSIS_LOAD_SOURCE
+           SET STATUS = 'RUNNING',
+               ATTEMPT_COUNT = ATTEMPT_COUNT + 1,
+               STARTED_AT = CURRENT_TIMESTAMP,
+               FINISHED_AT = NULL,
+               ERROR_MESSAGE = NULL,
+               UPDATED_AT = CURRENT_TIMESTAMP
+         WHERE ANALYSIS_LOAD_SOURCE_ID IN (
+               SELECT ANALYSIS_LOAD_SOURCE_ID
+                 FROM SCHED_ANALYSIS_LOAD_SOURCE
+                WHERE STATUS = 'PENDING'
+                ORDER BY CREATED_AT, ANALYSIS_LOAD_SOURCE_ID
+                LIMIT #{batchSize}
+                FOR UPDATE SKIP LOCKED
+         )
+        RETURNING ANALYSIS_LOAD_SOURCE_ID,
+                  ANALYSIS_MODEL_VERSION_ID,
+                  TRANSFORM_RESULT_ID,
+                  STATUS
+    </select>
+    
+    <!-- 적재 작업과 연결된 모델 및 가공 결과 조회 -->
+    <select id="findAnalysisLoadSource" resultType="com.kji.scheduler.dto.AnalysisLoadSourceDto">
+        SELECT L.ANALYSIS_LOAD_SOURCE_ID,
+               V.ANALYSIS_MODEL_ID,
+               L.ANALYSIS_MODEL_VERSION_ID,
+               L.TRANSFORM_RESULT_ID,
+               L.STATUS,
+               M.TARGET_SCHEMA,
+               M.TARGET_TABLE,
+               CAST(R.RESULT_DATA AS TEXT) AS RESULT_DATA
+          FROM SCHED_ANALYSIS_LOAD_SOURCE L
+         INNER JOIN SCHED_ANALYSIS_MODEL_VERSION V
+            ON L.ANALYSIS_MODEL_VERSION_ID = V.ANALYSIS_MODEL_VERSION_ID
+         INNER JOIN SCHED_ANALYSIS_MODEL M
+            ON V.ANALYSIS_MODEL_ID = M.ANALYSIS_MODEL_ID
+         INNER JOIN SCHED_TRANSFORM_RESULT R
+            ON L.TRANSFORM_RESULT_ID = R.TRANSFORM_RESULT_ID
+         INNER JOIN SCHED_TRANSFORM_TASK T
+            ON R.TRANSFORM_TASK_ID = T.TRANSFORM_TASK_ID
+           AND T.TRANSFORM_RULE_VERSION_ID = V.TRANSFORM_RULE_VERSION_ID
+           AND T.RAW_DATA_ID = L.RAW_DATA_ID
+           AND T.STATUS = 'SUCCESS'
+         WHERE L.ANALYSIS_LOAD_SOURCE_ID = #{analysisLoadSourceId}
+    </select>
+    
+    <!-- 검증된 매핑 컬럼과 변환된 값으로 분석 데이터 저장 -->
+    <insert id="insertRealEstateSaleTrade">
+        INSERT INTO PUBLIC.REAL_ESTATE_SALE_TRADE (
+            ANALYSIS_LOAD_SOURCE_ID,
+            SOURCE_ITEM_NO,
+            <foreach collection="values" item="field" separator=",">
+                ${field.column}
+            </foreach>
+        )
+        VALUES (
+            #{analysisLoadSourceId},
+            #{sourceItemNo},
+            <foreach collection="values" item="field" separator=",">
+                #{field.value}
+            </foreach>
+        )
+    </insert>
+    
+    <!-- 적재 작업 성공 및 실제 적재 건수 기록 -->
+    <update id="markLoadSuccess">
+        UPDATE SCHED_ANALYSIS_LOAD_SOURCE
+           SET STATUS = 'SUCCESS',
+               LOADED_COUNT = #{loadedCount},
+               FINISHED_AT = CURRENT_TIMESTAMP,
+               ERROR_MESSAGE = NULL,
+               UPDATED_AT = CURRENT_TIMESTAMP
+         WHERE ANALYSIS_LOAD_SOURCE_ID = #{analysisLoadSourceId}
+           AND STATUS = 'RUNNING'
+    </update>
+    
+    <!-- 적재 작업 실패 상태 및 오류 메시지 기록 -->
+    <update id="markLoadFailed">
+        UPDATE SCHED_ANALYSIS_LOAD_SOURCE
+           SET STATUS = 'FAILED',
+               LOADED_COUNT = 0,
+               ERROR_MESSAGE = #{errorMessage, jdbcType=VARCHAR},
+               FINISHED_AT = CURRENT_TIMESTAMP,
+               UPDATED_AT = CURRENT_TIMESTAMP
+         WHERE ANALYSIS_LOAD_SOURCE_ID = #{analysisLoadSourceId}
+           AND STATUS = 'RUNNING'
+    </update>
+    
 </mapper>

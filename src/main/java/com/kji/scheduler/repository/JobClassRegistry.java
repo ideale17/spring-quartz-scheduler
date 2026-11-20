@@ -7,6 +7,7 @@ import java.util.Set;
 import org.quartz.Job;
 import org.springframework.stereotype.Component;
 
+import com.kji.scheduler.job.AnalysisLoadWorkerJob;
 import com.kji.scheduler.job.ExternalApiCallJob;
 import com.kji.scheduler.job.TransformWorkerJob;
 
@@ -17,10 +18,20 @@ public class JobClassRegistry {
 	// Job 이름 → 클래스 매핑
     private final Map<String, Class<? extends Job>> jobClassMap = new HashMap<>();
 
+    /**
+     * 안전하게 등록할 Job만 수동 등록 (화이트리스트 역할)
+     */
     public JobClassRegistry() {
-        // 안전하게 등록할 Job만 수동 등록 (화이트리스트 역할)
+    	// 외부 API 호출 Worker Job 등록
         jobClassMap.put("com.kji.scheduler.job.ExternalApiCallJob", ExternalApiCallJob.class);
+        
+        // 데이터 가공 Worker Job 등록
         jobClassMap.put("com.kji.scheduler.job.TransformWorkerJob", TransformWorkerJob.class);
+        
+        // 데이터 적재 Worker Job 등록
+        jobClassMap.put("com.kji.scheduler.job.AnalysisLoadWorkerJob", AnalysisLoadWorkerJob.class);
+        
+        
         // 필요 시 더 추가
     }
 
