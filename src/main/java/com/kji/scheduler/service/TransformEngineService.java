@@ -4,7 +4,9 @@ package com.kji.scheduler.service;
 import java.io.StringReader;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.time.DateTimeException;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
@@ -148,20 +150,45 @@ public class TransformEngineService {
 		
 		// 2. 추출 필드별로 경로 조회 및 타입 변환을 수행한다.
 		for (TransformRuleFieldDto field : fields) {
-			if (field == null || field.getSourcePath() == null
+			if (field == null || field.getSourcePaths() == null || field.getSourcePaths().isEmpty()
 					|| field.getTargetName() == null || field.getTargetName().isBlank()) {
 				throw new IllegalArgumentException("가공 규칙 추출 필드 정보가 올바르지 않습니다.");
 			}
 			
 			try {
-				JsonNode value = getSourceValue(item, field.getSourcePath().trim());
-				JsonNode converted = convertFieldValue(value, field);
+				// 3. 가공 유형과 원본 경로 목록을 확인한다.
+				List<String> sourcePaths = field.getSourcePaths();
+				String transformType = field.getTransformType() == null ? "DIRECT" : field.getTransformType();
 				
+				JsonNode converted;
+				
+				if ("DIRECT".equals(transformType)) {
+					// 4. 단일 원본 필드를 조회하여 기존 타입 변환을 수행한다.
+					if (sourcePaths.size() != 1) {
+						throw new IllegalArgumentException("DIRECT 원본 경로는 1개여야 합니다.");
+					}
+					
+					JsonNode value = getSourceValue(item, sourcePaths.get(0));
+					converted = convertFieldValue(value, field);
+					
+				} else {
+					// 5. 여러 원본 필드 값을 조회하여 결합한다.
+					List<JsonNode> values = new ArrayList<>();
+					
+					for (String sourcePath : sourcePaths) {
+						values.add(getSourceValue(item, sourcePath));
+					}
+					
+					converted = combineFieldValues(values, field);
+				}
+				
+				// 6. 출력 필드명으로 가공 결과를 저장한다.
 				result.set(field.getTargetName().trim(), converted);
 				
 			} catch (IllegalArgumentException e) {
 				throw new IllegalArgumentException(index + "번째 데이터: " + e.getMessage(), e);
 			}
+			
 		}
 		
 		return result;
@@ -389,6 +416,42 @@ public class TransformEngineService {
 	}
 	
 	/**
+	 * 지정한 경로에 해당하는 XML 요소의 값을 조회한다.
+	 *
+	 * @param item 가공 대상 XML 요소
+	 * @param sourcePath 원본 필드 경로
+	 * @return 추출한 JSON 값, 없으면 NullNode
+	 */
+	private JsonNode getXmlSourceValue(Element item, String sourcePath) {
+		
+		// 1. 원본 경로를 검증한다.
+		if (sourcePath == null || sourcePath.isBlank()) {
+			throw new IllegalArgumentException("XML 원본 경로가 올바르지 않습니다.");
+		}
+		
+		// 2. 원본 경로에 해당하는 XML 요소를 조회한다.
+		List<Element> elements = findXmlElements(item, item.getTagName() + "." + sourcePath.trim());
+		
+		if (elements.isEmpty()) {
+			return NullNode.getInstance();
+		}
+		
+		// 3. 단일 값을 추출해야 하므로 중복 요소를 검증한다.
+		if (elements.size() > 1) {
+			throw new IllegalArgumentException("추출 경로에 여러 XML 요소가 존재합니다: " + sourcePath);
+		}
+		
+		// 4. XML 요소의 문자열 값을 반환한다.
+		String text = elements.get(0).getTextContent().trim();
+		
+		if (text.isEmpty()) {
+			return NullNode.getInstance();
+		}
+		
+		return objectMapper.getNodeFactory().textNode(text);
+	}
+	
+	/**
 	 * XML 요소 한 건의 추출 필드를 가공한다.
 	 *
 	 * @param item 가공 대상 XML 요소
@@ -400,31 +463,41 @@ public class TransformEngineService {
 		
 		ObjectNode result = objectMapper.createObjectNode();
 		
-		// 1. 추출 필드별로 XML 요소를 조회한다.
+		// 1. 추출 필드별로 XML 요소를 조회하고 가공한다.
 		for (TransformRuleFieldDto field : fields) {
-			if (field == null || field.getSourcePath() == null
+			if (field == null || field.getSourcePaths() == null || field.getSourcePaths().isEmpty()
 					|| field.getTargetName() == null || field.getTargetName().isBlank()) {
 				throw new IllegalArgumentException("가공 규칙 추출 필드 정보가 올바르지 않습니다.");
 			}
 			
 			try {
-				List<Element> elements = findXmlElements(item, item.getTagName() + "." + field.getSourcePath().trim());
-				JsonNode value = NullNode.getInstance();
+				// 2. 가공 유형과 원본 경로 목록을 확인한다.
+				List<String> sourcePaths = field.getSourcePaths();
+				String transformType = field.getTransformType() == null ? "DIRECT" : field.getTransformType();
 				
-				// 2. 추출 값을 기존 데이터 타입 변환 로직에 전달한다.
-				if (!elements.isEmpty()) {
-					if (elements.size() > 1) {
-						throw new IllegalArgumentException("추출 경로에 여러 XML 요소가 존재합니다: " + field.getSourcePath());
+				JsonNode converted;
+				
+				if ("DIRECT".equals(transformType)) {
+					// 3. 단일 XML 요소 값을 조회하여 기존 타입 변환을 수행한다.
+					if (sourcePaths.size() != 1) {
+						throw new IllegalArgumentException("DIRECT 원본 경로는 1개여야 합니다.");
 					}
 					
-					String text = elements.get(0).getTextContent().trim();
+					JsonNode value = getXmlSourceValue(item, sourcePaths.get(0));
+					converted = convertFieldValue(value, field);
 					
-					if (!text.isEmpty()) {
-						value = objectMapper.getNodeFactory().textNode(text);
+				} else {
+					// 4. 여러 XML 요소 값을 조회하여 결합한다.
+					List<JsonNode> values = new ArrayList<>();
+					
+					for (String sourcePath : sourcePaths) {
+						values.add(getXmlSourceValue(item, sourcePath));
 					}
+					
+					converted = combineFieldValues(values, field);
 				}
 				
-				JsonNode converted = convertFieldValue(value, field);
+				// 5. 출력 필드명으로 가공 결과를 저장한다.
 				result.set(field.getTargetName().trim(), converted);
 				
 			} catch (IllegalArgumentException e) {
@@ -433,6 +506,74 @@ public class TransformEngineService {
 		}
 		
 		return result;
+	}
+	
+	/**
+	 * 여러 원본 필드를 설정된 가공 유형에 따라 하나의 값으로 결합한다.
+	 *
+	 * @param values 원본 경로 순서대로 조회한 값 목록
+	 * @param field 가공 규칙 필드 설정
+	 * @return 결합된 JSON 값
+	 */
+	private JsonNode combineFieldValues(List<JsonNode> values, TransformRuleFieldDto field) {
+		
+		// 1. 필수 원본값의 누락 여부를 확인한다.
+		for (JsonNode value : values) {
+			if (value == null || value.isNull() || value.isMissingNode() || (value.isTextual() && value.asText().isBlank())) {
+				
+				if ("Y".equals(field.getRequiredYn())) {
+					throw new IllegalArgumentException("결합할 필수 필드 값이 없습니다: " + field.getTargetName());
+				}
+				
+				return NullNode.getInstance();
+			}
+			
+			if (!value.isValueNode() || value.isBoolean()) {
+				throw new IllegalArgumentException("결합할 수 없는 원본 값입니다: " + field.getTargetName());
+			}
+		}
+		
+		// 2. 가공 유형에 따라 결합 값을 생성한다.
+		switch (field.getTransformType()) {
+			case "CONCAT":
+				
+				if (values.size() < 2 || field.getSeparator() == null) {
+					throw new IllegalArgumentException("문자열 결합 설정이 올바르지 않습니다.");
+				}
+				
+				List<String> strings = new ArrayList<>();
+				
+				for (JsonNode value : values) {
+					strings.add(value.asText());
+				}
+				
+				return objectMapper.getNodeFactory().textNode(String.join(field.getSeparator(), strings));
+				
+			case "DATE_COMBINE":
+				
+				if (values.size() != 3) {
+					throw new IllegalArgumentException("날짜 결합에는 연, 월, 일 값 3개가 필요합니다.");
+				}
+				
+				try {
+					// 3. 연, 월, 일 값을 실제 날짜로 검증한다.
+					int year = Integer.parseInt(values.get(0).asText().trim());
+					int month = Integer.parseInt(values.get(1).asText().trim());
+					int day = Integer.parseInt(values.get(2).asText().trim());
+					
+					LocalDate date = LocalDate.of(year, month, day);
+					
+					// 4. 검증된 날짜를 ISO 날짜 문자열로 반환한다.
+					return objectMapper.getNodeFactory().textNode(date.toString());
+					
+				} catch (NumberFormatException | DateTimeException e) {
+					throw new IllegalArgumentException("날짜 결합에 실패했습니다: " + field.getTargetName(), e);
+				}
+				
+			default:
+				throw new IllegalArgumentException("지원하지 않는 결합 유형입니다: " + field.getTransformType());
+		}
+		
 	}
 	
 }

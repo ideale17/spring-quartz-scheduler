@@ -1,5 +1,7 @@
 package com.kji.scheduler.dto;
 
+import java.util.List;
+
 import lombok.Data;
 
 /**
@@ -10,7 +12,9 @@ public class TransformRuleFieldDto {
 	
 	private Long transformFieldId;
 	private Long transformRuleVersionId;
-	private String sourcePath;
+	private List<String> sourcePaths;
+	private String transformType;
+	private String separator;
 	private String targetName;
 	private String dataType;
 	private String valueFormat;

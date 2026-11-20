@@ -4,6 +4,22 @@
 	"https://mybatis.org/dtd/mybatis-3-mapper.dtd">
 
 <mapper namespace="com.kji.scheduler.mapper.TransformRuleMapper">
+	
+	<!-- 가공 규칙 필드의 JSONB 원본 경로 목록 매핑 -->
+	<resultMap id="transformRuleFieldResultMap" type="com.kji.scheduler.dto.TransformRuleFieldDto">
+		<id property="transformFieldId" column="TRANSFORM_FIELD_ID"/>
+		<result property="transformRuleVersionId" column="TRANSFORM_RULE_VERSION_ID"/>
+		<result property="sourcePaths"
+				column="SOURCE_PATHS"
+				typeHandler="com.kji.scheduler.typehandler.StringListJsonbTypeHandler"/>
+		<result property="transformType" column="TRANSFORM_TYPE"/>
+		<result property="separator" column="SEPARATOR"/>
+		<result property="targetName" column="TARGET_NAME"/>
+		<result property="dataType" column="DATA_TYPE"/>
+		<result property="valueFormat" column="VALUE_FORMAT"/>
+		<result property="requiredYn" column="REQUIRED_YN"/>
+		<result property="sortOrder" column="SORT_ORDER"/>
+	</resultMap>
 
 	<!-- 가공 규칙 목록 조회 -->
 	<select id="findTransformRuleList" resultType="com.kji.scheduler.dto.TransformRuleDto">
@@ -79,10 +95,12 @@
 	</select>
 
 	<!-- 가공 규칙 버전별 추출 필드 조회 -->
-	<select id="findTransformRuleFieldList" resultType="com.kji.scheduler.dto.TransformRuleFieldDto">
+	<select id="findTransformRuleFieldList" resultMap="transformRuleFieldResultMap">
 		SELECT TRANSFORM_FIELD_ID,
                TRANSFORM_RULE_VERSION_ID,
-               SOURCE_PATH,
+               SOURCE_PATHS,
+			   TRANSFORM_TYPE,
+			   SEPARATOR,
                TARGET_NAME,
                DATA_TYPE,
                VALUE_FORMAT,
@@ -147,7 +165,9 @@
 			keyColumn="transform_field_id">
 		INSERT INTO SCHED_TRANSFORM_RULE_FIELD (
 			TRANSFORM_RULE_VERSION_ID,
-			SOURCE_PATH,
+			SOURCE_PATHS,
+			TRANSFORM_TYPE,
+			SEPARATOR,
 			TARGET_NAME,
 			DATA_TYPE,
 			VALUE_FORMAT,
@@ -156,7 +176,9 @@
 		)
 		VALUES (
 			#{transformRuleVersionId},
-			#{sourcePath},
+			#{sourcePaths, jdbcType=OTHER, typeHandler=com.kji.scheduler.typehandler.StringListJsonbTypeHandler},
+			#{transformType},
+			#{separator, jdbcType=VARCHAR},
 			#{targetName},
 			#{dataType},
 			#{valueFormat, jdbcType=VARCHAR},

@@ -337,19 +337,68 @@ public class TransformRuleService {
 				throw new IllegalArgumentException("추출 필드 정보가 올바르지 않습니다.");
 			}
 			
-			field.setSourcePath(normalize(field.getSourcePath()));
+			// 5. 원본 경로 목록과 출력 필드명을 검증한다.
+			List<String> sourcePaths = field.getSourcePaths();
 			field.setTargetName(normalize(field.getTargetName()));
 			
-			if (field.getSourcePath() == null || field.getTargetName() == null) {
+			if (sourcePaths == null || sourcePaths.isEmpty() || field.getTargetName() == null) {
 				throw new IllegalArgumentException("원본 경로와 출력 필드명은 필수입니다.");
 			}
 			
-			if (field.getSourcePath().length() > 1000 || field.getTargetName().length() > 100) {
-				throw new IllegalArgumentException("추출 필드 경로 또는 출력 필드명 길이가 제한을 초과했습니다.");
+			List<String> normalizedPaths = sourcePaths.stream()
+					.map(this::normalize)
+					.toList();
+			
+			if (normalizedPaths.stream().anyMatch(path -> path == null || path.length() > 1000)) {
+				throw new IllegalArgumentException("원본 경로가 비어 있거나 길이가 제한을 초과했습니다.");
+			}
+			
+			field.setSourcePaths(normalizedPaths);
+			
+			if (field.getTargetName().length() > 100) {
+				throw new IllegalArgumentException("출력 필드명은 100자 이하여야 합니다.");
 			}
 			
 			if (!targetNames.add(field.getTargetName())) {
 				throw new IllegalArgumentException("중복된 출력 필드명입니다. targetName: " + field.getTargetName());
+			}
+			
+			// 6. 가공 유형별 입력 경로 개수를 검증한다.
+			String transformType = normalize(field.getTransformType());
+
+			if (transformType == null) {
+				transformType = "DIRECT";
+			}
+			
+			field.setTransformType(transformType);
+			
+			switch (transformType) {
+				case "DIRECT":
+					if (normalizedPaths.size() != 1) {
+						throw new IllegalArgumentException("DIRECT는 원본 경로 1개가 필요합니다.");
+					}
+					field.setSeparator(null);
+					break;
+					
+				case "CONCAT":
+					if (normalizedPaths.size() < 2 || !"STRING".equals(field.getDataType())) {
+						throw new IllegalArgumentException("CONCAT은 문자열 경로 2개 이상이 필요합니다.");
+					}
+					
+					if (field.getSeparator() == null || field.getSeparator().length() > 20) {
+						throw new IllegalArgumentException("CONCAT 구분자는 20자 이하여야 합니다.");
+					}
+					break;
+					
+				case "DATE_COMBINE":
+					if (normalizedPaths.size() != 3 || !"STRING".equals(field.getDataType())) {
+						throw new IllegalArgumentException("DATE_COMBINE은 연, 월, 일 경로 3개가 필요합니다.");
+					}
+					field.setSeparator(null);
+					break;
+					
+				default:
+					throw new IllegalArgumentException("지원하지 않는 가공 유형입니다: " + transformType);
 			}
 			
 			if (!Set.of("STRING", "INTEGER", "DECIMAL", "BOOLEAN", "DATETIME").contains(field.getDataType())) {
@@ -406,7 +455,9 @@ public class TransformRuleService {
 			TransformRuleFieldDto saved = savedFields.get(i);
 			TransformRuleFieldDto changed = fields.get(i);
 
-			if (!Objects.equals(saved.getSourcePath(), changed.getSourcePath())
+			if (!Objects.equals(saved.getSourcePaths(), changed.getSourcePaths())
+					|| !Objects.equals(saved.getTransformType(), changed.getTransformType())
+					|| !Objects.equals(saved.getSeparator(), changed.getSeparator())
 					|| !Objects.equals(saved.getTargetName(), changed.getTargetName())
 					|| !Objects.equals(saved.getDataType(), changed.getDataType())
 					|| !Objects.equals(normalize(saved.getValueFormat()), changed.getValueFormat())
