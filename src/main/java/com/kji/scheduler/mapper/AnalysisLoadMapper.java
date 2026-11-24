@@ -8,11 +8,46 @@ import org.apache.ibatis.annotations.Param;
 
 import com.kji.scheduler.dto.AnalysisLoadColumnValueDto;
 import com.kji.scheduler.dto.AnalysisLoadListDto;
+import com.kji.scheduler.dto.AnalysisLoadResultSearchDto;
 import com.kji.scheduler.dto.AnalysisLoadSearchDto;
 import com.kji.scheduler.dto.AnalysisLoadSourceDto;
 
 @Mapper
 public interface AnalysisLoadMapper {
+	
+	/**
+	 * 적재 대상 테이블의 기본키 컬럼 목록을 조회한다.
+	 *
+	 * @param schema 대상 스키마
+	 * @param table 대상 테이블
+	 * @return 기본키 컬럼 목록
+	 */
+	List<String> findResultPrimaryKeyColumns(
+			@Param("schema") String schema,
+			@Param("table") String table);
+	
+	/**
+	 * 적재 대상 테이블에 저장된 전체 데이터 건수를 조회한다.
+	 *
+	 * @param target 검증된 대상 테이블 식별자
+	 * @return 전체 데이터 건수
+	 */
+	long countAnalysisLoadResults(@Param("target") String target);
+	
+	/**
+	 * 검색조건에 해당하는 적재 결과 목록을 조회한다.
+	 *
+	 * @param searchDto 검색조건 및 페이징 정보
+	 * @param target 검증된 대상 테이블 식별자
+	 * @param projection 조회 대상 컬럼
+	 * @param sort 기본키 기준 정렬 조건
+	 * @return JSON 형태의 적재 결과 목록
+	 */
+	List<String> findAnalysisLoadResults(
+			@Param("searchDto") AnalysisLoadResultSearchDto searchDto,
+			@Param("target") String target,
+			@Param("projection") String projection,
+			@Param("sort") String sort);
 	
 	/**
 	 * 가공 완료 결과를 기반으로 적재 대기 작업을 등록한다.

@@ -5,6 +5,44 @@
 
 <mapper namespace="com.kji.scheduler.mapper.AnalysisLoadMapper">
 
+    <!-- 적재 대상 테이블의 기본키 컬럼 조회 -->
+    <select id="findResultPrimaryKeyColumns" resultType="string">
+        SELECT A.ATTNAME
+          FROM PG_CATALOG.PG_INDEX I
+         INNER JOIN PG_CATALOG.PG_CLASS T
+            ON I.INDRELID = T.OID
+         INNER JOIN PG_CATALOG.PG_NAMESPACE N
+            ON T.RELNAMESPACE = N.OID
+         CROSS JOIN LATERAL UNNEST(I.INDKEY)
+             WITH ORDINALITY AS K(ATTNUM, KEY_ORDER)
+         INNER JOIN PG_CATALOG.PG_ATTRIBUTE A
+            ON A.ATTRELID = T.OID
+           AND A.ATTNUM = K.ATTNUM
+         WHERE N.NSPNAME = #{schema}
+           AND T.RELNAME = #{table}
+           AND I.INDISPRIMARY
+           AND K.KEY_ORDER &lt;= I.INDNKEYATTS
+         ORDER BY K.KEY_ORDER
+    </select>
+    
+    <!-- 검증된 적재 대상 테이블의 전체 데이터 건수 조회 -->
+    <select id="countAnalysisLoadResults" resultType="long">
+        SELECT COUNT(*)
+          FROM ${target}
+    </select>
+    
+    <!-- 검증된 대상 테이블 및 컬럼의 적재 결과 목록 조회 -->
+    <select id="findAnalysisLoadResults" resultType="string">
+        SELECT CAST(PG_CATALOG.ROW_TO_JSON(R) AS TEXT)
+          FROM (
+                SELECT ${projection}
+                  FROM ${target}
+          ) R
+         ORDER BY ${sort}
+         OFFSET #{searchDto.offset} ROWS
+         FETCH NEXT #{searchDto.size} ROWS ONLY
+    </select>
+    
     <!-- 가공 완료 결과를 데이터 적재 대기 작업으로 등록 -->
     <insert id="insertAnalysisLoadSource">
         INSERT INTO SCHED_ANALYSIS_LOAD_SOURCE (

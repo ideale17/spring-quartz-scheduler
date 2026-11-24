@@ -10,7 +10,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.kji.scheduler.dto.AnalysisLoadRequestDto;
+import com.kji.scheduler.dto.AnalysisLoadResultSearchDto;
 import com.kji.scheduler.dto.AnalysisLoadSearchDto;
+import com.kji.scheduler.service.AnalysisLoadResultService;
 import com.kji.scheduler.service.AnalysisLoadService;
 
 @RestController
@@ -18,9 +20,31 @@ import com.kji.scheduler.service.AnalysisLoadService;
 public class AnalysisLoadController {
 	
 	private final AnalysisLoadService analysisLoadService;
+	private final AnalysisLoadResultService analysisLoadResultService;
 	
-	public AnalysisLoadController(AnalysisLoadService analysisLoadService) {
+	public AnalysisLoadController(
+			AnalysisLoadService analysisLoadService,
+			AnalysisLoadResultService analysisLoadResultService) {
 		this.analysisLoadService = analysisLoadService;
+		this.analysisLoadResultService = analysisLoadResultService;
+	}
+	
+	/**
+	 * 선택한 적재 모델의 대상 테이블에 저장된 데이터를 조회한다.
+	 */
+	@GetMapping("/results")
+	public ResponseEntity<?> getAnalysisLoadResults(AnalysisLoadResultSearchDto searchDto) {
+		
+		try {
+			// 1. 적재 결과 목록을 조회한다.
+			return ResponseEntity.ok(analysisLoadResultService.getAnalysisLoadResults(searchDto));
+			
+		} catch (IllegalArgumentException e) {
+			return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+			
+		} catch (Exception e) {
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("적재 데이터 조회에 실패했습니다.");
+		}
 	}
 	
 	/**

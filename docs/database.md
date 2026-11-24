@@ -132,6 +132,15 @@ Quartz 데이터 변경은 기존 Scheduler API를 통해 수행한다.
 
 구체적인 Java 및 SQL 작성 스타일은 `docs/coding-conventions.md`를 따른다.
 
+### 적재 데이터 조회
+
+- 모델 선택에는 기존 `GET /analysis-model/list`를 사용한다.
+- `GET /analysis-load/results?analysisModelId=1&page=1&size=50`은 인증된 사용자가 호출할 수 있다. `page`는 1부터 시작하고 `size`는 1~100까지 허용한다. 생략 시 각각 1과 50을 사용한다.
+- 응답은 적재 모델(`model`), 대상 테이블의 컬럼 정보(`columns`), 해당 페이지의 실제 적재 행(`content`), 전체 행 수(`totalCount`), `page`, `size`를 제공한다. 행 객체의 키는 DB 컬럼명이며 SQL NULL은 JSON null로 반환한다.
+- 모델에 등록된 허용 테이블의 모든 행을 대상으로 한다. 모델 사용 여부와 현재 매핑 버전에 상관없이 이미 저장된 데이터를 검토할 수 있다.
+- 전체 건수와 페이지는 하나의 읽기 전용 `REPEATABLE READ` 트랜잭션에서 조회한다. 기본키 전체를 내림차순으로 정렬하며, 읽을 수 있는 기본키가 있어야 한다. 비어 있는 테이블이나 마지막 페이지를 넘긴 요청의 `content`는 빈 배열이다.
+- SQL 식별자는 서버가 허용 테이블과 DB 메타데이터를 확인해 인용 처리한 값만 사용한다.
+
 ## 6. 트랜잭션 관리
 
 Spring의 `@Transactional`을 사용하여 업무 단위의 트랜잭션을 관리한다.
