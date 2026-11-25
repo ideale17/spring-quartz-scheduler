@@ -1,5 +1,7 @@
 package com.kji.scheduler.service;
 
+import static com.kji.scheduler.service.ExternalApiParameterCombinationService.MAX_REPEAT_VALUE_COUNT;
+
 import java.net.InetAddress;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -216,7 +218,10 @@ public class ExternalApiService {
 		// 6. 인증 설정을 검증하고 기본값을 설정한다.
 		validateAuth(externalApi);
 		
-		// 7. 인증 방식에 따라 인증 정보를 암호화한다.
+		// 7. 파라미터별 반복 설정과 전체 조합 수를 검증한다.
+		validateExternalApiParams(request.getParams());
+
+		// 8. 인증 방식에 따라 인증 정보를 암호화한다.
 		switch (externalApi.getAuthType()) {
 			case "API_KEY", "BEARER" ->
 				externalApi.setAuthValue(encryptionService.encrypt(externalApi.getAuthValue()));
@@ -225,32 +230,32 @@ public class ExternalApiService {
 				externalApi.setAuthPassword(encryptionService.encrypt(externalApi.getAuthPassword()));
 		}
 		
-		// 8. External API 기본 정보를 등록한다.
+		// 9. External API 기본 정보를 등록한다.
 		int insertCount = externalApiMapper.insertExternalApi(externalApi);
 
 		if (insertCount != 1) {
 			throw new IllegalStateException("External API 등록에 실패했습니다.");
 		}
 		
-		// 9. 생성된 External API 식별자를 확인한다.
+		// 10. 생성된 External API 식별자를 확인한다.
 		Long externalApiId = externalApi.getExternalApiId();
 		
 		if (externalApiId == null) {
 			throw new IllegalStateException("External API 식별자 생성에 실패했습니다.");
 		}
 		
-		// 10. 페이징 설정이 있으면 등록한다.
+		// 11. 페이징 설정이 있으면 등록한다.
 		ExternalApiPagingDto paging = request.getPaging();
 		
 		if (paging != null) {
 			
-			// 10-1. External API 식별자를 설정한다.
+			// 11-1. External API 식별자를 설정한다.
 			paging.setExternalApiId(externalApiId);
 			
-			// 10-2. 페이징 설정을 검증하고 기본값을 설정한다.
+			// 11-2. 페이징 설정을 검증하고 기본값을 설정한다.
 			validatePaging(paging);
 			
-			// 10-3. 페이징 설정을 등록한다.
+			// 11-3. 페이징 설정을 등록한다.
 			int pagingInsertCount = externalApiMapper.insertExternalApiPaging(paging);
 			
 			if (pagingInsertCount != 1) {
@@ -259,18 +264,18 @@ public class ExternalApiService {
 			
 		}
 		
-		// 11. External API 파라미터와 반복 목록을 등록한다.
+		// 12. External API 파라미터와 반복 목록을 등록한다.
 		if (request.getParams() != null) {
 			
 			for (ExternalApiParamDto param : request.getParams()) {
 				
-				// 11-1. 파라미터와 반복 목록 값을 함께 저장한다.
+				// 12-1. 파라미터와 반복 목록 값을 함께 저장한다.
 				saveExternalApiParam(externalApiId, param);
 			}
 			
 		}
 		
-		// 12. 생성된 External API 식별자를 반환한다.
+		// 13. 생성된 External API 식별자를 반환한다.
 		return externalApiId;
 	}
 	
@@ -428,21 +433,36 @@ public class ExternalApiService {
 		// 1. 수정 대상 External API 존재 여부를 확인한다.
 		getExternalApi(externalApiId);
 		
-		// 2. 기존 External API 파라미터를 모두 삭제한다.
+		// 2. 기존 파라미터를 지우기 전에 새 반복 설정과 전체 조합 수를 검증한다.
+		validateExternalApiParams(params);
+
+		// 3. 기존 External API 파라미터를 모두 삭제한다.
 		// 연결된 반복 목록 값은 외래키 설정에 따라 함께 삭제된다.
 		externalApiMapper.deleteExternalApiParams(externalApiId);
 		
-		// 3. 수정할 파라미터가 없으면 삭제 상태로 종료한다.
+		// 4. 수정할 파라미터가 없으면 삭제 상태로 종료한다.
 		if (params == null || params.isEmpty()) {
 			return;
 		}
 		
-		// 4. 전달받은 파라미터와 반복 목록을 다시 등록한다.
+		// 5. 전달받은 파라미터와 반복 목록을 다시 등록한다.
 		for (ExternalApiParamDto param : params) {
 			saveExternalApiParam(externalApiId, param);
 		}
 	}
 	
+	// 저장 전에 기존 파라미터 검증과 전체 조합 수 검증을 수행한다.
+	private void validateExternalApiParams(List<ExternalApiParamDto> params) {
+		if (params == null) return;
+
+		long combinationCount = 1;
+		for (ExternalApiParamDto param : params) {
+			validateExternalApiParamOffset(param);
+			combinationCount *= validateExternalApiParamRepeat(param);
+			ExternalApiParameterCombinationService.validateCombinationCount(combinationCount);
+		}
+	}
+
 	/**
 	 * External API 파라미터와 반복 목록 값을 저장한다.
 	 *
@@ -463,25 +483,19 @@ public class ExternalApiService {
 			param.setSortOrder(0);
 		}
 		
-		// 3. 기존 날짜·시간 오프셋 설정을 검증한다.
-		validateExternalApiParamOffset(param);
-		
-		// 4. 반복 설정을 검증하고 기본값을 설정한다.
-		validateExternalApiParamRepeat(param);
-		
-		// 5. External API 파라미터를 저장한다.
+		// 3. External API 파라미터를 저장한다.
 		int insertCount = externalApiMapper.insertExternalApiParam(param);
 		
 		if (insertCount != 1 || param.getParamId() == null) {
 			throw new IllegalStateException("External API 파라미터 저장에 실패했습니다. paramName: " + param.getParamName());
 		}
 		
-		// 6. LIST 방식이 아니면 반복 목록 저장을 종료한다.
+		// 4. LIST 방식이 아니면 반복 목록 저장을 종료한다.
 		if (!"LIST".equals(param.getRepeatType())) {
 			return;
 		}
 		
-		// 7. 반복 목록 값을 저장한다.
+		// 5. 반복 목록 값을 저장한다.
 		for (ExternalApiParamRepeatValueDto repeatValue : param.getRepeatValues()) {
 			
 			repeatValue.setParamId(param.getParamId());
@@ -1035,9 +1049,10 @@ public class ExternalApiService {
 	 * External API 파라미터의 반복 설정을 검증한다.
 	 *
 	 * @param param 검증할 파라미터
+	 * @return 파라미터가 생성하는 값의 수
 	 * @throws IllegalArgumentException 반복 설정이 올바르지 않은 경우
 	 */
-	private void validateExternalApiParamRepeat(ExternalApiParamDto param) {
+	private long validateExternalApiParamRepeat(ExternalApiParamDto param) {
 		
 		// 1. 반복 방식이 없으면 기존 단일 값 방식으로 설정한다.
 		String repeatType = param.getRepeatType();
@@ -1053,7 +1068,7 @@ public class ExternalApiService {
 		}
 		
 		// 3. 반복 방식별 설정을 검증한다.
-		switch (repeatType) {
+		return switch (repeatType) {
 		
 			case "NONE" -> {
 				param.setRepeatUnit(null);
@@ -1061,6 +1076,7 @@ public class ExternalApiService {
 				param.setRepeatEnd(null);
 				param.setRepeatStep(1);
 				param.setRepeatValues(new ArrayList<>());
+				yield 1;
 			}
 			
 			case "LIST" -> {
@@ -1078,8 +1094,8 @@ public class ExternalApiService {
 					throw new IllegalArgumentException("반복 목록에 값을 하나 이상 등록해주세요.");
 				}
 				
-				if (param.getRepeatValues().size() > 100) {
-					throw new IllegalArgumentException("반복 목록은 최대 100개까지 등록할 수 있습니다.");
+				if (param.getRepeatValues().size() > MAX_REPEAT_VALUE_COUNT) {
+					throw new IllegalArgumentException("반복 목록은 최대 " + MAX_REPEAT_VALUE_COUNT + "개까지 등록할 수 있습니다.");
 				}
 				
 				Set<String> values = new HashSet<>();
@@ -1111,6 +1127,7 @@ public class ExternalApiService {
 				param.setRepeatStart(null);
 				param.setRepeatEnd(null);
 				param.setRepeatStep(1);
+				yield param.getRepeatValues().size();
 			}
 			
 			case "RANGE" -> {
@@ -1149,15 +1166,16 @@ public class ExternalApiService {
 				long count = ((long) param.getRepeatEnd() - param.getRepeatStart())
 						/ param.getRepeatStep() + 1;
 				
-				if (count > 100) {
-					throw new IllegalArgumentException("기간 반복은 최대 100개까지 생성할 수 있습니다.");
+				if (count > MAX_REPEAT_VALUE_COUNT) {
+					throw new IllegalArgumentException("기간 반복은 최대 " + MAX_REPEAT_VALUE_COUNT + "개까지 생성할 수 있습니다.");
 				}
 				
 				param.setRepeatValues(new ArrayList<>());
+				yield count;
 			}
 			
 			default -> throw new IllegalArgumentException("지원하지 않는 반복 방식입니다. repeatType: " + repeatType);
-		}
+		};
 	}
 	
 }

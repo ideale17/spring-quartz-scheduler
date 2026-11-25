@@ -118,35 +118,46 @@ class ExternalApiParameterCombinationServiceTest {
 	}
 	
 	@Test
+	void combinationsUpToLimitTest() {
+		ExternalApiParamDto month = createRangeParam("DEAL_YMD", -11, 0);
+
+		assertEquals(288, combinationService.createCombinations(
+				List.of(createListParam("LAWD_CD", createRegions(24)), month), executionTime).size());
+		assertEquals(300, combinationService.createCombinations(
+				List.of(createListParam("LAWD_CD", createRegions(25)), month), executionTime).size());
+	}
+
+	@Test
 	void maxCombinationCountTest() {
-		
-		// 1. 지역코드 11개를 생성한다.
-		String[] regions = new String[11];
-		
+		ExternalApiParamDto region = createListParam("LAWD_CD", createRegions(43));
+		ExternalApiParamDto month = createRangeParam("DEAL_YMD", -6, 0);
+
+		IllegalArgumentException exception = assertThrows(
+				IllegalArgumentException.class,
+				() -> combinationService.createCombinations(List.of(region, month), executionTime));
+
+		assertEquals("External API 반복 조합은 최대 300개까지 생성할 수 있습니다.", exception.getMessage());
+	}
+
+	@Test
+	void repeatValueLimitTest() {
+		ExternalApiParamDto list = createListParam("LAWD_CD", createRegions(101));
+		ExternalApiParamDto range = createRangeParam("DEAL_YMD", -100, 0);
+
+		assertThrows(IllegalArgumentException.class,
+				() -> combinationService.createCombinations(List.of(list), executionTime));
+		assertThrows(IllegalArgumentException.class,
+				() -> combinationService.createCombinations(List.of(range), executionTime));
+	}
+
+	private String[] createRegions(int count) {
+		String[] regions = new String[count];
 		for (int i = 0; i < regions.length; i++) {
 			regions[i] = "REGION_" + i;
 		}
-		
-		ExternalApiParamDto region = createListParam("LAWD_CD", regions);
-		
-		// 2. 거래월 10개를 생성한다.
-		ExternalApiParamDto month = createRangeParam("DEAL_YMD", -9, 0);
-		
-		// 3. 총 110개 조합을 요청한다.
-		IllegalArgumentException exception = assertThrows(
-				IllegalArgumentException.class,
-				() -> combinationService.createCombinations(
-						List.of(region, month), executionTime
-				)
-		);
-		
-		// 4. 최대 조합 수 제한 메시지를 확인한다.
-		assertEquals(
-				"External API 반복 조합은 최대 100개까지 생성할 수 있습니다.",
-				exception.getMessage()
-		);
+		return regions;
 	}
-	
+
 	@Test
 	void invalidRepeatConfigurationTest() {
 		

@@ -49,7 +49,7 @@ public class ExternalApiExecutionService {
 	
 	private static final Logger log = LoggerFactory.getLogger(ExternalApiExecutionService.class);
 	
-	private static final int MAX_TOTAL_REQUEST_COUNT = 1000;
+	private static final int MAX_TOTAL_REQUEST_COUNT = 1500;
 	
 	private final RestTemplate restTemplate;
 	

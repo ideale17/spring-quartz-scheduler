@@ -21,7 +21,8 @@ import com.kji.scheduler.dto.ExternalApiParameterCombinationDto;
 @Service
 public class ExternalApiParameterCombinationService {
 	
-	private static final int MAX_COMBINATION_COUNT = 100;
+	private static final int MAX_COMBINATION_COUNT = 300;
+	static final int MAX_REPEAT_VALUE_COUNT = 100;
 	
 	private final DynamicParameterResolver dynamicParameterResolver;
 	
@@ -75,10 +76,7 @@ public class ExternalApiParameterCombinationService {
 			List<String> values = resolveValues(param, executionTime);
 			
 			// 4-1. 전체 조합 수가 제한을 초과하는지 확인한다.
-			if ((long) combinations.size() * values.size() > MAX_COMBINATION_COUNT) {
-				throw new IllegalArgumentException("External API 반복 조합은 최대 "
-						+ MAX_COMBINATION_COUNT + "개까지 생성할 수 있습니다.");
-			}
+			validateCombinationCount((long) combinations.size() * values.size());
 			
 			// 4-2. 기존 조합마다 현재 파라미터 값을 하나씩 추가한다.
 			List<ExternalApiParameterCombinationDto> nextCombinations = new ArrayList<>();
@@ -164,8 +162,8 @@ public class ExternalApiParameterCombinationService {
 			throw new IllegalArgumentException("반복 목록 값이 없습니다. paramName: " + param.getParamName());
 		}
 		
-		if (repeatValues.size() > MAX_COMBINATION_COUNT) {
-			throw new IllegalArgumentException("반복 목록은 최대 100개까지 사용할 수 있습니다.");
+		if (repeatValues.size() > MAX_REPEAT_VALUE_COUNT) {
+			throw new IllegalArgumentException("반복 목록은 최대 " + MAX_REPEAT_VALUE_COUNT + "개까지 사용할 수 있습니다.");
 		}
 		
 		// 3. 등록된 순서대로 실제 값을 추출한다.
@@ -224,8 +222,8 @@ public class ExternalApiParameterCombinationService {
 		
 		long count = ((long) end - start) / step + 1;
 		
-		if (count > MAX_COMBINATION_COUNT) {
-			throw new IllegalArgumentException("날짜 반복은 최대 100개까지 생성할 수 있습니다.");
+		if (count > MAX_REPEAT_VALUE_COUNT) {
+			throw new IllegalArgumentException("날짜 반복은 최대 " + MAX_REPEAT_VALUE_COUNT + "개까지 생성할 수 있습니다.");
 		}
 		
 		// 3. 기존 오프셋을 먼저 적용하여 반복 기준 시간을 계산한다.
@@ -329,4 +327,11 @@ public class ExternalApiParameterCombinationService {
 		target.put(name, value);
 	}
 	
+
+	// 저장과 실행에서 동일한 전체 조합 상한을 적용한다.
+	static void validateCombinationCount(long count) {
+		if (count > MAX_COMBINATION_COUNT) {
+			throw new IllegalArgumentException("External API 반복 조합은 최대 " + MAX_COMBINATION_COUNT + "개까지 생성할 수 있습니다.");
+		}
+	}
 }
