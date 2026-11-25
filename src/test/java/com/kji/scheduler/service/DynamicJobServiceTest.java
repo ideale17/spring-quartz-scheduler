@@ -1,22 +1,40 @@
 package com.kji.scheduler.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import java.util.Collections;
+import java.util.Date;
 import java.util.List;
+import java.util.Map;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
+import org.quartz.JobBuilder;
+import org.quartz.JobDetail;
 import org.quartz.JobKey;
 import org.quartz.Scheduler;
+import org.quartz.Trigger;
+import org.quartz.TriggerBuilder;
+import org.quartz.TriggerKey;
 
+import com.kji.scheduler.dto.CreateJobRequest;
 import com.kji.scheduler.dto.JobTargetDto;
 import com.kji.scheduler.dto.JobBatchRequest;
 import com.kji.scheduler.dto.JobBatchResponse;
+import com.kji.scheduler.dto.ScheduleType;
+import com.kji.scheduler.dto.UpdateJobRequest;
+import com.kji.scheduler.job.TransformWorkerJob;
 import com.kji.scheduler.mapper.DynamicJobMapper;
 import com.kji.scheduler.repository.JobClassRegistry;
 
@@ -40,6 +58,63 @@ class DynamicJobServiceTest {
 				jobClassRegistry,
 				dynamicJobMapper
 		);
+	}
+
+	@Test
+	void rejectsInvalidTransformBatchSizeBeforeScheduling() {
+		CreateJobRequest request = new CreateJobRequest();
+		request.setJobClassName(TransformWorkerJob.class.getName());
+		request.setJobName("transform");
+		request.setScheduleType(ScheduleType.SIMPLE);
+		request.setScheduleExpr("60");
+		request.setParams(Map.of("BATCH_SIZE", "101"));
+		doReturn(TransformWorkerJob.class).when(jobClassRegistry).getJobClass(request.getJobClassName());
+
+		assertThrows(IllegalArgumentException.class, () -> dynamicJobService.addJob(request));
+
+		verifyNoInteractions(scheduler);
+	}
+
+	@Test
+	void rejectsInvalidTransformBatchSizeBeforeChangingJobOrTrigger() throws Exception {
+		UpdateJobRequest request = prepareTransformScheduleUpdate(Map.of("BATCH_SIZE", "0"));
+
+		assertThrows(IllegalArgumentException.class, () -> dynamicJobService.updateSchedule(request));
+
+		verify(scheduler, never()).addJob(any(JobDetail.class), anyBoolean(), anyBoolean());
+		verify(scheduler, never()).rescheduleJob(any(TriggerKey.class), any(Trigger.class));
+	}
+
+	@Test
+	void removesBatchSizeWhenSavingAnEmptyParameterMap() throws Exception {
+		UpdateJobRequest request = prepareTransformScheduleUpdate(Map.of());
+		TriggerKey triggerKey = TriggerKey.triggerKey("transformTrigger", "default");
+		when(scheduler.rescheduleJob(eq(triggerKey), any(Trigger.class))).thenReturn(new Date());
+
+		dynamicJobService.updateSchedule(request);
+
+		ArgumentCaptor<JobDetail> savedJob = ArgumentCaptor.forClass(JobDetail.class);
+		verify(scheduler).addJob(savedJob.capture(), eq(true), eq(true));
+		assertFalse(savedJob.getValue().getJobDataMap().containsKey("BATCH_SIZE"));
+		assertEquals(50, TransformWorkerJob.resolveBatchSize(savedJob.getValue().getJobDataMap()));
+	}
+
+	private UpdateJobRequest prepareTransformScheduleUpdate(Map<String, Object> params) throws Exception {
+		UpdateJobRequest request = new UpdateJobRequest();
+		request.setJobName("transform");
+		request.setScheduleType(ScheduleType.SIMPLE);
+		request.setScheduleExpr("60");
+		request.setParams(params);
+
+		JobKey jobKey = JobKey.jobKey("transform", "default");
+		TriggerKey triggerKey = TriggerKey.triggerKey("transformTrigger", "default");
+		when(scheduler.checkExists(jobKey)).thenReturn(true);
+		when(scheduler.getTrigger(triggerKey))
+				.thenReturn(TriggerBuilder.newTrigger().withIdentity(triggerKey).forJob(jobKey).build());
+		when(scheduler.getJobDetail(jobKey))
+				.thenReturn(JobBuilder.newJob(TransformWorkerJob.class)
+						.withIdentity(jobKey).usingJobData("BATCH_SIZE", "80").build());
+		return request;
 	}
 	
 	@Test

@@ -160,7 +160,7 @@ PostgreSQL 프로필에서는 `PostgreSQLDelegate`를 사용한다.
 3. 처리 건수를 로그에 기록한다.
 4. Worker 전체 실행 오류는 `JobExecutionException`으로 전달한다.
 
-현재 배치 크기는 50건이다.
+Job 실행 파라미터에 `BATCH_SIZE`를 설정하면 실행 한 번의 최대 선점 건수를 지정할 수 있다. 키를 생략하면 기본값 50건을 사용한다. 등록·수정·실행 시 1~100 사이 정수인지 확인하며, 잘못된 값은 거절한다.
 
 개별 가공 작업의 트랜잭션과 실패 처리는 Transform Service에서 담당한다.
 

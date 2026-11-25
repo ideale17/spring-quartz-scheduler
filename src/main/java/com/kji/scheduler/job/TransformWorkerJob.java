@@ -2,6 +2,7 @@
 package com.kji.scheduler.job;
 
 import org.quartz.DisallowConcurrentExecution;
+import org.quartz.JobDataMap;
 import org.quartz.JobExecutionContext;
 import org.quartz.JobExecutionException;
 import org.slf4j.Logger;
@@ -17,7 +18,9 @@ import com.kji.scheduler.service.TransformWorkerService;
 public class TransformWorkerJob extends QuartzJobBean {
 	
 	private static final Logger log = LoggerFactory.getLogger(TransformWorkerJob.class);
-	private static final int BATCH_SIZE = 50;
+	private static final String BATCH_SIZE_PARAM = "BATCH_SIZE";
+	private static final int DEFAULT_BATCH_SIZE = 50;
+	private static final String INVALID_BATCH_SIZE_MESSAGE = "BATCH_SIZE는 1~100 사이의 정수여야 합니다.";
 	
 	private final TransformWorkerService transformWorkerService;
 	
@@ -34,17 +37,47 @@ public class TransformWorkerJob extends QuartzJobBean {
 	@Override
 	protected void executeInternal(JobExecutionContext context) throws JobExecutionException {
 		
+		// 1. 실행 파라미터를 검증한 후 배치 크기를 확정한다.
+		int batchSize;
+		
 		try {
-			// 1. 대기 중인 가공 작업을 최대 50건 선점하여 처리한다.
-			int processedCount = transformWorkerService.processBatch(BATCH_SIZE);
+			batchSize = resolveBatchSize(context.getMergedJobDataMap());
+		} catch (IllegalArgumentException e) {
+			throw new JobExecutionException(e.getMessage(), e);
+		}
+		
+		try {
+			// 2. 대기 중인 가공 작업을 지정한 건수만큼 선점하여 처리한다.
+			int claimedCount = transformWorkerService.processBatch(batchSize);
 			
-			// 2. 이번 Quartz 실행에서 선점한 작업 건수를 기록한다.
-			log.info("Raw Data 가공 Worker 실행 완료. fireInstanceId: {}, 선점 건수: {}", context.getFireInstanceId(), processedCount);
+			// 3. 설정한 배치 크기와 실제 선점 건수를 기록한다.
+			log.info("Raw Data 가공 Worker 실행 완료. fireInstanceId: {}, 배치 크기: {}, 선점 건수: {}",
+					context.getFireInstanceId(), batchSize, claimedCount);
 			
 		} catch (Exception e) {
-			// 3. Worker 실행 자체가 실패한 경우 Quartz에 예외를 전달한다.
+			// 4. Worker 실행 오류를 Quartz에 전달한다.
 			throw new JobExecutionException("Raw Data 가공 Worker 실행 중 오류가 발생했습니다.", e);
 		}
+	}
+	
+	// Job 저장과 실행에 동일한 배치 크기 규칙을 적용한다.
+	public static int resolveBatchSize(JobDataMap dataMap) {
+		
+		if (!dataMap.containsKey(BATCH_SIZE_PARAM)) return DEFAULT_BATCH_SIZE;
+		
+		int batchSize;
+		
+		try {
+			batchSize = Integer.parseInt(String.valueOf(dataMap.get(BATCH_SIZE_PARAM)).trim());
+		} catch (NumberFormatException e) {
+			throw new IllegalArgumentException(INVALID_BATCH_SIZE_MESSAGE);
+		}
+		
+		if (batchSize < 1 || batchSize > 100) {
+			throw new IllegalArgumentException(INVALID_BATCH_SIZE_MESSAGE);
+		}
+		
+		return batchSize;
 	}
 	
 }

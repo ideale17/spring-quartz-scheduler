@@ -33,6 +33,7 @@ import com.kji.scheduler.dto.JobBatchResponse;
 import com.kji.scheduler.dto.ScheduleType;
 import com.kji.scheduler.dto.UpdateJobRequest;
 import com.kji.scheduler.job.ExternalApiCallJob;
+import com.kji.scheduler.job.TransformWorkerJob;
 import com.kji.scheduler.mapper.DynamicJobMapper;
 import com.kji.scheduler.repository.JobClassRegistry;
 
@@ -57,7 +58,7 @@ public class DynamicJobService {
 	 */
 	public void addJob(CreateJobRequest request) throws SchedulerException {
 		
-		JobDataMap dataMap = new JobDataMap(request.getParams());
+		JobDataMap dataMap = request.getParams() == null ? new JobDataMap() : new JobDataMap(request.getParams());
 		
 		String jobClassName = request.getJobClassName();
 		String jobName = request.getJobName();
@@ -67,9 +68,13 @@ public class DynamicJobService {
 		
 		MisfirePolicy misfirePolicy = request.getMisfirePolicy();
 		
-		// 1. Job 클래스 조회(미등록 시 예외)
+		// 1. Job 클래스를 조회하고 유형별 실행 파라미터를 검증한다.
         Class<? extends Job> jobClass = jobClassRegistry.getJobClass(jobClassName);
-		
+
+        if (jobClass == TransformWorkerJob.class) {
+            TransformWorkerJob.resolveBatchSize(dataMap);
+        }
+
         // 2. JobDetail 생성
         JobDetail jobDetail = JobBuilder.newJob(jobClass)
                 .withIdentity(jobName, jobGroup)
@@ -374,6 +379,10 @@ public class DynamicJobService {
 	        }
 	        
 	        JobDataMap dataMap = new JobDataMap(request.getParams());
+
+	        if (jobDetail.getJobClass() == TransformWorkerJob.class) {
+	            TransformWorkerJob.resolveBatchSize(dataMap);
+	        }
 	        
 	        JobDetail updatedJobDetail = jobDetail.getJobBuilder()
 	        		.setJobData(dataMap)
@@ -450,10 +459,10 @@ public class DynamicJobService {
 	 * @throws SchedulerException Job 상세 정보 조회 중 Quartz 오류가 발생한 경우
 	 */
     public JobInfoDto getScheduledJob(String jobName, String jobGroup) throws SchedulerException {
-
+    	
         // 1. DB에서 Job 기본 정보를 조회한다.
         JobInfoDto jobInfo = dynamicJobMapper.findJob(jobName, jobGroup);
-
+        
         // 2. 조회 결과가 없으면 예외를 발생시킨다.
         if (jobInfo == null) {
             throw new IllegalArgumentException("조회할 Job이 존재하지 않습니다: " + jobName + "/" + jobGroup);

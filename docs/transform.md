@@ -123,7 +123,7 @@ JSON/XML 데이터 가공
 
 `TransformWorkerJob`은 `TransformWorkerService.processBatch()`를 호출한다.
 
-현재 한 번의 Worker 실행에서 최대 50건을 선점하여 순차적으로 처리한다.
+Job 실행 파라미터 `BATCH_SIZE`로 한 번의 Worker 실행에서 선점할 최대 건수를 1~100 사이로 지정한다. 파라미터를 설정하지 않은 Job의 기본값은 50건이며, 선점한 작업은 순차적으로 처리한다.
 
 ### 동시 실행 제어
 
