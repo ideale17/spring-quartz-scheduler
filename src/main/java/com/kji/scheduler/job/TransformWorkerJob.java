@@ -5,19 +5,19 @@ import org.quartz.DisallowConcurrentExecution;
 import org.quartz.JobDataMap;
 import org.quartz.JobExecutionContext;
 import org.quartz.JobExecutionException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.quartz.QuartzJobBean;
 
 import com.kji.scheduler.service.TransformWorkerService;
 
+import lombok.extern.slf4j.Slf4j;
+
 /**
  * Quartz 실행 주기마다 대기 중인 Raw Data 가공 작업을 일괄 처리한다.
  */
+@Slf4j
 @DisallowConcurrentExecution
 public class TransformWorkerJob extends QuartzJobBean {
 	
-	private static final Logger log = LoggerFactory.getLogger(TransformWorkerJob.class);
 	private static final String BATCH_SIZE_PARAM = "BATCH_SIZE";
 	private static final int DEFAULT_BATCH_SIZE = 50;
 	private static final String INVALID_BATCH_SIZE_MESSAGE = "BATCH_SIZE는 1~100 사이의 정수여야 합니다.";
