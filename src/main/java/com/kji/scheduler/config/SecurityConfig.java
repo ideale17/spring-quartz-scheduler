@@ -35,6 +35,19 @@ import com.kji.scheduler.security.SpaCsrfTokenRequestHandler;
 @Configuration
 @EnableMethodSecurity
 public class SecurityConfig {
+
+	private static final String[] GUEST_READ_ENDPOINTS = {
+			"/auth/me", "/dashboard/info", "/jobs/list", "/jobs/history", "/scheduler/info",
+			"/external-api/list", "/external-api/detail", "/external-api/paging", "/external-api/params",
+			"/external-api/call-history", "/external-api/call-history/detail", "/external-api/call-history/attempt-detail",
+			"/transform-auto-config/list", "/raw-data/list", "/raw-data/detail",
+			"/transform-rule/list", "/transform-rule/detail", "/transform-rule/versions",
+			"/transform-rule/version/detail", "/transform-task/history",
+			"/transform-result/list", "/transform-result/detail",
+			"/analysis-model/list", "/analysis-model/detail", "/analysis-model/versions",
+			"/analysis-model/version/detail", "/analysis-load/list", "/analysis-load/results",
+			"/ai-analysis/dataset", "/ai-analysis/preview"
+	};
 	
 	@Bean
 	SecurityFilterChain securityFilterChain(HttpSecurity http, AuthenticationManager authenticationManager, ObjectMapper objectMapper,
@@ -94,7 +107,7 @@ public class SecurityConfig {
 					.requestMatchers(HttpMethod.PUT, "/analysis-model/update").hasRole("ADMIN")
 					
 					// 8. 게스트에게 명시한 조회 API만 허용한다.
-					.requestMatchers(HttpMethod.GET, "/auth/me", "/dashboard/info", "/jobs/list", "/jobs/history").authenticated()
+					.requestMatchers(HttpMethod.GET, GUEST_READ_ENDPOINTS).authenticated()
 					.anyRequest().access(AuthorizationManagers.allOf(
 							AuthenticatedAuthorizationManager.authenticated(),
 							AuthorizationManagers.not(AuthorityAuthorizationManager.hasAuthority(GuestLoginService.GUEST_AUTHORITY))))

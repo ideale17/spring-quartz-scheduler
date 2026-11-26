@@ -135,7 +135,17 @@ Spring Security의 역할 기반 접근 제어를 사용한다.
 - `GET /auth/me`: 현재 사용자 정보 조회
 - 그 외 명시적인 공개 또는 관리자 전용 규칙에 해당하지 않는 API는 기존 관리자와 일반 사용자에게 허용한다.
 
-게스트는 보호 API 중 `GET /auth/me`, `GET /dashboard/info`, `GET /jobs/list`, `GET /jobs/history`에만 접근할 수 있다. 대시보드와 Job 조회는 기존 데이터와 응답 형식을 사용한다. 게스트 로그인을 활성화하는 환경에서는 이 응답에 들어가는 Job 데이터와 실행 오류 메시지까지 공개 가능한지 확인한다.
+게스트는 아래에 지정한 `GET` 보호 API를 사용할 수 있다. 조회에는 기존 데이터와 응답 형식을 사용한다.
+
+| 화면 | 허용 경로 |
+| --- | --- |
+| 인증 및 스케줄러 | `/auth/me`, `/dashboard/info`, `/jobs/list`, `/jobs/history`, `/scheduler/info` |
+| 데이터 수집 | `/external-api/list`, `/external-api/detail`, `/external-api/paging`, `/external-api/params`, `/external-api/call-history`, `/external-api/call-history/detail`, `/external-api/call-history/attempt-detail`, `/transform-auto-config/list`, `/raw-data/list`, `/raw-data/detail` |
+| 데이터 가공 | `/transform-rule/list`, `/transform-rule/detail`, `/transform-rule/versions`, `/transform-rule/version/detail`, `/transform-task/history`, `/transform-result/list`, `/transform-result/detail` |
+| 데이터 적재 | `/analysis-model/list`, `/analysis-model/detail`, `/analysis-model/versions`, `/analysis-model/version/detail`, `/analysis-load/list`, `/analysis-load/results` |
+| AI 데이터 분석 | `/ai-analysis/dataset`, `/ai-analysis/preview` |
+
+External API 상세는 기존과 같이 인증값과 비밀번호 대신 설정 여부를 반환한다. 파라미터 조회는 기존에 저장된 Header, Query, Body 설정값을 반환한다. 호출 시도 상세는 기존 마스킹 정책에 따라 저장된 요청 URL과 파라미터를 반환하며, Raw Data 상세에서는 저장된 원본 응답 본문을 조회할 수 있다. 등록·수정·삭제·실행 및 재실행 API의 기존 권한 정책을 유지한다.
 
 ### 권한 적용 기준
 
