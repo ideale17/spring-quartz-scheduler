@@ -49,6 +49,15 @@ Spring Security의 `AuthenticationManager`가 로그인 인증을 수행한다.
 
 기본 Spring Security 폼 로그인과 HTTP Basic 인증은 비활성화되어 있다.
 
+### 게스트 로그인
+
+`app.security.guest-login-enabled`의 기본값은 `false`다. `GET /auth/guest-login-enabled`는 `guestLoginEnabled`를 반환하고 SPA에서 사용할 CSRF 쿠키를 발급한다. 활성화된 환경에서는 `POST /auth/guest-login`에 유효한 CSRF 토큰을 보내면 서버가 `ROLE_GUEST` 인증을 HTTP 세션에 저장한다. 게스트 계정은 DB에 저장하지 않는다.
+
+- 성공과 기존 게스트의 재요청은 HTTP 200으로 응답한다.
+- 기능이 꺼져 있으면 유효한 CSRF 요청에 HTTP 404로 응답한다.
+- 기존 관리자 또는 일반 사용자 세션으로 요청하면 HTTP 409로 응답하고 인증 상태를 유지한다.
+- 게스트도 기존 `/auth/me`, 세션 만료 및 `/auth/logout` 흐름을 사용한다.
+
 ### 현재 사용자 조회
 
 `GET /auth/me`에서 현재 인증된 사용자 정보를 반환한다.
@@ -97,6 +106,7 @@ Spring Security의 역할 기반 접근 제어를 사용한다.
 
 - `ROLE_ADMIN`: 관리자
 - `ROLE_USER`: 일반 사용자
+- `ROLE_GUEST`: 포트폴리오 읽기 전용 세션
 
 `SecurityConfig`에서는 `hasRole("ADMIN")`을 사용하여 관리자 권한을 검사한다.
 
@@ -108,6 +118,8 @@ Spring Security의 역할 기반 접근 제어를 사용한다.
 - `/auth/logout`: 로그아웃 처리
 - `POST /auth/signup`: 회원가입 요청 (별도 회원가입 설정 검사)
 - `GET /auth/signup-enabled`: 회원가입 허용 여부 조회
+- `GET /auth/guest-login-enabled`: 게스트 로그인 허용 여부 조회
+- `POST /auth/guest-login`: 게스트 세션 발급 (별도 활성화 설정 및 CSRF 검증)
 
 **관리자 전용 API (ADMIN)**
 
@@ -121,7 +133,9 @@ Spring Security의 역할 기반 접근 제어를 사용한다.
 **인증된 사용자 API**
 
 - `GET /auth/me`: 현재 사용자 정보 조회
-- 그 외 명시적인 공개 또는 관리자 전용 규칙에 해당하지 않는 API는 인증된 사용자에게 허용한다.
+- 그 외 명시적인 공개 또는 관리자 전용 규칙에 해당하지 않는 API는 기존 관리자와 일반 사용자에게 허용한다.
+
+게스트는 보호 API 중 `GET /auth/me`, `GET /dashboard/info`, `GET /jobs/list`, `GET /jobs/history`에만 접근할 수 있다. 대시보드와 Job 조회는 기존 데이터와 응답 형식을 사용한다. 게스트 로그인을 활성화하는 환경에서는 이 응답에 들어가는 Job 데이터와 실행 오류 메시지까지 공개 가능한지 확인한다.
 
 ### 권한 적용 기준
 

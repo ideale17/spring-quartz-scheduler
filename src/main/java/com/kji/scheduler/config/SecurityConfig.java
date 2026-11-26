@@ -9,6 +9,9 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authorization.AuthenticatedAuthorizationManager;
+import org.springframework.security.authorization.AuthorityAuthorizationManager;
+import org.springframework.security.authorization.AuthorizationManagers;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -18,12 +21,14 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.kji.scheduler.security.GuestLoginService;
 import com.kji.scheduler.security.JsonLoginAuthenticationFilter;
 import com.kji.scheduler.security.SpaCsrfTokenRequestHandler;
 
@@ -32,9 +37,11 @@ import com.kji.scheduler.security.SpaCsrfTokenRequestHandler;
 public class SecurityConfig {
 	
 	@Bean
-	SecurityFilterChain securityFilterChain(HttpSecurity http, AuthenticationManager authenticationManager, ObjectMapper objectMapper) throws Exception {
+	SecurityFilterChain securityFilterChain(HttpSecurity http, AuthenticationManager authenticationManager, ObjectMapper objectMapper,
+			HttpSessionSecurityContextRepository securityContextRepository, CookieCsrfTokenRepository csrfTokenRepository) throws Exception {
 		
 		JsonLoginAuthenticationFilter loginFilter = new JsonLoginAuthenticationFilter(authenticationManager, objectMapper);
+		loginFilter.setSecurityContextRepository(securityContextRepository);
 		
 		loginFilter.setAuthenticationSuccessHandler((request, response, authentication) -> {
 			response.setStatus(HttpStatus.OK.value());
@@ -47,7 +54,7 @@ public class SecurityConfig {
 		http
 			.cors(c -> {}) // 아래 CorsConfigurationSource 사용
 			.csrf(csrf -> csrf
-					.csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
+					.csrfTokenRepository(csrfTokenRepository)
 					.csrfTokenRequestHandler(new SpaCsrfTokenRequestHandler())
 					.ignoringRequestMatchers("/auth/login", "/auth/logout", "/auth/signup")
 					)
@@ -59,6 +66,8 @@ public class SecurityConfig {
 							"/auth/logout",
 							"/auth/signup",
 							"/auth/signup-enabled").permitAll()
+					.requestMatchers(HttpMethod.GET, "/auth/guest-login-enabled").permitAll()
+					.requestMatchers(HttpMethod.POST, "/auth/guest-login").permitAll()
 					
 					// 2. Job 등록, 수정, 삭제 및 실행 API는 관리자만 접근을 허용한다.
 					.requestMatchers(HttpMethod.POST, "/jobs/**").hasRole("ADMIN")
@@ -84,8 +93,11 @@ public class SecurityConfig {
 					.requestMatchers(HttpMethod.POST, "/analysis-model/add").hasRole("ADMIN")
 					.requestMatchers(HttpMethod.PUT, "/analysis-model/update").hasRole("ADMIN")
 					
-					// 8. 나머지 API는 기존과 동일하게 인증된 사용자에게 허용한다.
-					.anyRequest().authenticated()
+					// 8. 게스트에게 명시한 조회 API만 허용한다.
+					.requestMatchers(HttpMethod.GET, "/auth/me", "/dashboard/info", "/jobs/list", "/jobs/history").authenticated()
+					.anyRequest().access(AuthorizationManagers.allOf(
+							AuthenticatedAuthorizationManager.authenticated(),
+							AuthorizationManagers.not(AuthorityAuthorizationManager.hasAuthority(GuestLoginService.GUEST_AUTHORITY))))
 					)
 			.formLogin(f -> f.disable())   // SPA이므로 폼로그인 비활성화
 			.httpBasic(b -> b.disable())  // 기본 인증 끔
@@ -104,6 +116,16 @@ public class SecurityConfig {
 		
 		return http.build();
 		
+	}
+	
+	@Bean
+	HttpSessionSecurityContextRepository securityContextRepository() {
+		return new HttpSessionSecurityContextRepository();
+	}
+	
+	@Bean
+	CookieCsrfTokenRepository csrfTokenRepository() {
+		return CookieCsrfTokenRepository.withHttpOnlyFalse();
 	}
 	
 	@Bean

@@ -78,7 +78,7 @@ class DynamicJobControllerTest {
 		
 		// 3. 일괄 즉시 실행 API를 호출하고 응답을 검증한다.
 		mockMvc.perform(
-				post("/jobs/runJobs")
+				post("/jobs/run-batch")
 						.contentType(MediaType.APPLICATION_JSON)
 						.content(objectMapper.writeValueAsString(request))
 		)
@@ -105,7 +105,7 @@ class DynamicJobControllerTest {
 		
 		// 3. API 호출 결과가 400인지 검증한다.
 		mockMvc.perform(
-				post("/jobs/runJobs")
+				post("/jobs/run-batch")
 						.contentType(MediaType.APPLICATION_JSON)
 						.content(objectMapper.writeValueAsString(request))
 		)
@@ -132,7 +132,7 @@ class DynamicJobControllerTest {
 		
 		// 3. API 호출 결과가 500인지 검증한다.
 		mockMvc.perform(
-				post("/jobs/runJobs")
+				post("/jobs/run-batch")
 						.contentType(MediaType.APPLICATION_JSON)
 						.content(objectMapper.writeValueAsString(request))
 		)
@@ -171,7 +171,7 @@ class DynamicJobControllerTest {
 		
 		// 3. 일괄 재시작 API를 호출하고 응답을 검증한다.
 		mockMvc.perform(
-				post("/jobs/resumeJobs")
+				post("/jobs/resume-batch")
 						.contentType(MediaType.APPLICATION_JSON)
 						.content(objectMapper.writeValueAsString(request))
 		)
@@ -198,7 +198,7 @@ class DynamicJobControllerTest {
 		
 		// 3. API 호출 결과가 400인지 검증한다.
 		mockMvc.perform(
-				post("/jobs/resumeJobs")
+				post("/jobs/resume-batch")
 						.contentType(MediaType.APPLICATION_JSON)
 						.content(objectMapper.writeValueAsString(request))
 		)
@@ -225,7 +225,7 @@ class DynamicJobControllerTest {
 		
 		// 3. API 호출 결과가 500인지 검증한다.
 		mockMvc.perform(
-				post("/jobs/resumeJobs")
+				post("/jobs/resume-batch")
 						.contentType(MediaType.APPLICATION_JSON)
 						.content(objectMapper.writeValueAsString(request))
 		)
@@ -264,7 +264,7 @@ class DynamicJobControllerTest {
 		
 		// 3. 일괄 중지 API를 호출하고 응답을 검증한다.
 		mockMvc.perform(
-				post("/jobs/pauseJobs")
+				post("/jobs/pause-batch")
 						.contentType(MediaType.APPLICATION_JSON)
 						.content(objectMapper.writeValueAsString(request))
 		)
@@ -291,7 +291,7 @@ class DynamicJobControllerTest {
 		
 		// 3. API 호출 결과가 400인지 검증한다.
 		mockMvc.perform(
-				post("/jobs/pauseJobs")
+				post("/jobs/pause-batch")
 						.contentType(MediaType.APPLICATION_JSON)
 						.content(objectMapper.writeValueAsString(request))
 		)
@@ -318,7 +318,7 @@ class DynamicJobControllerTest {
 		
 		// 3. API 호출 결과가 500인지 검증한다.
 		mockMvc.perform(
-				post("/jobs/pauseJobs")
+				post("/jobs/pause-batch")
 						.contentType(MediaType.APPLICATION_JSON)
 						.content(objectMapper.writeValueAsString(request))
 		)
