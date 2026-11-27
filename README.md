@@ -27,7 +27,7 @@ Quartz 기반으로 Job과 Trigger를 동적으로 관리합니다.
 - Job 및 Trigger 실행 상태 조회
 - Job 실행 이력 및 예외 정보 조회
 
-### External API Integration
+### External API Integration (Data Collection)
 
 외부 API 호출 설정을 데이터베이스에서 관리하고 Quartz Job과 연계하여 데이터를 수집합니다.
 
@@ -58,16 +58,30 @@ Quartz 기반으로 Job과 Trigger를 동적으로 관리합니다.
 - 가공 결과 저장 및 조회
 - PENDING / RUNNING / SUCCESS / FAILED 상태 추적
 
-### AI Data Analysis
+### Data Loading
 
-가공된 데이터를 대상으로 OpenAI API 기반 분석 기능을 제공합니다.
+가공된 JSONB 데이터를 적재 모델의 필드 매핑을 기반으로 PostgreSQL 업무 테이블에 저장합니다.
 
-- 외부 API, 가공 규칙, 버전 및 기간별 분석 대상 조회
-- 데이터셋 정보 및 가공 결과 미리보기
-- 자연어 기반 데이터 분석 요청
-- Tool Calling을 통한 데이터 조회 및 분석
-- 데이터 건수, 필드 정보 및 통계 조회
-- AI 분석 요청 및 결과 표시
+- 데이터 적재 모델 등록, 조회, 수정
+- 적재 모델 및 버전 관리
+- 가공 규칙 버전과 적재 모델 연계
+- 대상 스키마 및 테이블 컬럼 메타데이터 조회
+- 가공 결과 필드와 대상 테이블 컬럼 매핑
+- 가공 결과별 적재 대상 조회 및 작업 등록
+- Quartz Worker를 통한 데이터 적재 작업 처리
+- 작업별 트랜잭션 관리 및 실패 처리
+- PENDING / RUNNING / SUCCESS / FAILED 상태 추적
+- 적재 처리 건수 및 실행 결과 관리
+- 적재 모델별 실제 저장 데이터 조회 및 페이징 지원
+
+### AI Data Analysis (Experimental)
+
+OpenAI API와 Tool Calling을 활용한 데이터 분석 기능의 초기 프로토타입입니다.
+
+- 가공 데이터 기반 자연어 분석
+- Tool Calling을 통한 데이터 조회 및 기초 통계 분석
+
+현재 초기 구현 단계이며, 데이터 분석 구조 및 AI 연동 방식의 재설계 를 계획하고있습니다.
 
 ### Authentication & Authorization
 
@@ -97,89 +111,165 @@ Spring Security 기반 인증과 역할별 접근 제어를 제공합니다.
 
 Dynamic Scheduler는 Spring Boot 기반의 백엔드와 Vue 3 기반의 관리자 웹 UI로 구성됩니다.
 
-Quartz가 스케줄 실행을 관리하며, 외부 API를 통해 수집한 데이터는 PostgreSQL에 저장됩니다. 수집된 Raw Data는 규칙 기반 가공 작업을 거쳐 구조화된 데이터로 저장되며, AI 분석 기능에서 활용할 수 있습니다.
+Quartz를 사용하여 스케줄을 동적으로 관리하고, JDBC JobStore를 통해 Job 및 Trigger 정보를 PostgreSQL에 영속화합니다.
+
+데이터 처리는 수집(Collection), 가공(Transformation), 적재(Loading) 단계로 분리되어 있으며, 각 단계는 독립적인 Quartz Job과 Service를 통해 실행됩니다.
+
+외부 API에서 수집한 JSON/XML Raw Data는 버전 기반의 가공 규칙에 따라 구조화된 JSONB 데이터로 변환됩니다. 가공 결과는 적재 모델의 필드 매핑을 기반으로 PostgreSQL 업무 테이블에 저장됩니다.
+
+Spring Security를 통한 세션 인증 및 역할별 접근 제어를 지원하며, MyBatis를 통해 데이터 조회와 저장을 수행합니다.
+
+AI 데이터 분석 기능은 OpenAI API와 Tool Calling을 활용한 초기 프로토타입으로 구현되어 있습니다.
 
 ### System Architecture
 
 ```text
-                  [ Vue 3 Admin UI ]
-                           |
-                      HTTPS / REST
-                           |
-                           v
-                 [ Spring Boot API ]
-                           |
-             +-------------+-------------+
-             |             |             |
-             v             v             v
-      [ Spring       [ Dynamic      [ AI Analysis ]
-        Security ]     Job Service ]       |
-                           |               v
-                           v          [ OpenAI API ]
-                    [ Quartz Scheduler ]
-                           |
-                     [ JDBC JobStore ]
-                           |
-               +-----------+-----------+
-               |                       |
-               v                       v
-      [ ExternalApiCallJob ]   [ TransformWorkerJob ]
-               |                       |
-               v                       v
-      [ External API Service ] [ Transform Service ]
-               |                       |
-               v                       v
-         [ External APIs ]      [ Transform Results ]
-               |
-               v
-         [ Raw Data Storage ]
-               |
-               v
-       [ Transform Task Queue ]
+                       [ Vue 3 Admin UI ]
+                                |
+                           HTTPS / REST
+                                |
+                                v
+                       [ Spring Boot API ]
+                                |
+                       [ Spring Security ]
+                                |
+              +-----------------+-----------------+
+              |                 |                 |
+              v                 v                 v
+    [ DynamicJobService ] [ Data Management ] [ AI Analysis ]
+              |                 |             (Experimental)
+              |                 |                 |
+              v                 |                 v
+     [ Quartz Scheduler ]       |           [ OpenAI API ]
+              |                 |
+              +------------------------> [ JDBC JobStore ]
+              |                 |                 |
+              |                 |                 |
+              +-----------------+-----------------+
+              |                 |                 |
+              v                 v                 v
+     [ ExternalApiCallJob ] [ TransformWorkerJob ] [ AnalysisLoadWorkerJob ]
+              |                 |                 |
+              v                 v                 v
+     [ External API       [ Transform        [ Analysis Load
+       Execution Service ]   Worker Service ]   Worker Service ]
+              |                 |                 |
+              v                 v                 v
+     [ External APIs ]    [ Transform        [ Analysis Load
+              |             Execution ]        Execution ]
+              v                 |                 |
+     [ Raw Data ]               v                 v
+                         [ Transform Results ] [ Business Data ]
+                              (JSONB)              |
+              |                 |                  |
+              +-----------------+------------------+
+                                |
+                           [ MyBatis ]
+                                |
+                                v
+                         [ PostgreSQL ]
 
-                  [ PostgreSQL ]
-       - Scheduler / Job Metadata
-       - Quartz JobStore
-       - External API Configuration
-       - Execution / Request / Call Logs
-       - Raw Data
-       - Transform Rules / Tasks / Results
-       - User / Role Information
+     - Quartz JobStore / Scheduler Metadata
+     - Job Execution Logs
+     - External API Configuration / Execution Snapshots
+     - HTTP Request / Call Logs
+     - Raw Data (JSON / XML)
+     - Transform Rules / Versions / Fields
+     - Transform Tasks / Results (JSONB)
+     - Analysis Models / Versions / Field Mappings
+     - Analysis Load Sources / Status
+     - Business Tables
+     - User / Role Information
 ```
 
 ### Data Processing Flow
 
-데이터 수집과 가공은 별도의 실행 단계로 관리됩니다.
+데이터 수집(Collection), 가공(Transformation), 적재(Loading)는
+별도의 실행 단계로 관리됩니다.
+
+가공 및 적재 작업은 PostgreSQL 테이블에서 상태를 관리하며,
+각각의 Quartz Worker가 주기적으로 대기 중인 작업을 선점하여 처리합니다.
 
 ```text
-Quartz Job 실행
+[ Data Collection ]
+
+ExternalApiCallJob
        |
        v
-외부 API 호출
+외부 API 호출 (인증 / 페이징 / 재시도)
        |
        v
-HTTP 응답 및 Raw Data 저장
+HTTP 요청·응답 이력 및 Raw Data 저장 (JSON/XML)
        |
        v
-가공 작업 생성 (PENDING)
+가공 작업 등록 (수동 / 자동)
        |
        v
+가공 대기 상태 (PENDING)
+
+
+[ Data Transformation ]
+
 TransformWorkerJob
        |
        v
 가공 작업 선점 (RUNNING)
        |
        v
-가공 규칙 적용
-       |
-       +---- 성공 ----> SUCCESS / 결과 저장
-       |
-       +---- 실패 ----> FAILED
+가공 규칙 및 버전 적용
        |
        v
-AI 데이터 분석
+필드 추출 / 데이터 조합 / 타입 변환
+       |
+       +---- 실패 ----> Rollback / FAILED / 오류 기록
+       |
+       v
+가공 결과 저장 (JSONB) / SUCCESS
+       |
+       +----------------------> AI Data Analysis
+       |                        (Experimental)
+       v
+적재 모델 및 가공 결과 선택
+       |
+       v
+적재 작업 등록 (PENDING)
+
+
+[ Data Loading ]
+
+AnalysisLoadWorkerJob
+       |
+       v
+적재 작업 선점 (RUNNING)
+       |
+       v
+적재 모델 버전 및 필드 매핑 적용
+       |
+       v
+대상 컬럼 검증 / 데이터 타입 변환
+       |
+       v
+PostgreSQL 업무 테이블 적재
+       |
+       +---- 실패 ----> Rollback / FAILED / 오류 기록
+       |
+       v
+적재 건수 기록 / SUCCESS
+       |
+       v
+적재 데이터 조회
 ```
 
+가공 및 적재 작업의 실행 안정성과 데이터 정합성을 위해
+다음과 같은 처리 방식을 적용합니다.
+
+- PostgreSQL 기반 작업 상태 관리
+- FOR UPDATE SKIP LOCKED를 활용한 원자적 작업 선점
+- 작업 선점과 실제 실행의 트랜잭션 분리
+- 개별 작업 단위의 독립적인 트랜잭션 처리
+- 데이터 저장과 SUCCESS 상태 변경을 동일 트랜잭션에서 처리
+- 별도 트랜잭션을 통한 FAILED 상태 및 오류 기록
+- 개별 작업 실패 시에도 나머지 작업 계속 처리
 
 ### Core Components
 
@@ -187,18 +277,28 @@ AI 데이터 분석
 | --- | --- |
 | DynamicJobService | Quartz Job 및 Trigger 등록, 수정, 삭제와 상태 제어 |
 | JobClassRegistry | 실행 가능한 Quartz Job 클래스 관리 |
-| ExternalApiCallJob | Quartz 기반 외부 API 수집 실행 |
-| External API Service | 인증, 파라미터 처리, 페이징 및 재시도 |
-| Raw Data Storage | 외부 API 응답 원문 저장 |
-| TransformWorkerJob | 대기 중인 가공 작업 선점 및 실행 |
-| Transform Service | JSON/XML 필드 추출 및 데이터 변환 |
-| AI Analysis Service | Tool Calling 기반 데이터 조회 및 분석 |
-| Spring Security | 세션 인증 및 역할 기반 접근 제어 |
-| PostgreSQL | 스케줄, 수집, 가공 및 실행 이력 영속화 |
+| JobLogListener | Quartz Job 실행 시작, 종료 및 실패 이력 관리 |
+| ExternalApiCallJob | Quartz 기반 외부 API 데이터 수집 실행 |
+| ExternalApiExecutionService | 외부 API 인증, 파라미터 처리, 페이징 및 재시도 |
+| CollectRawDataService | 외부 API 응답 원문(JSON/XML) 저장 |
+| TransformWorkerJob | 대기 중인 데이터 가공 작업 실행 |
+| TransformWorkerService | 가공 작업 선점 및 개별 작업 처리 |
+| TransformTaskStateService | 가공 작업 선점 및 실패 상태 관리 |
+| TransformTaskExecutionService | 가공 규칙 적용, 필드 추출, 데이터 조합 및 결과 저장 |
+| AnalysisModelService | 데이터 적재 모델, 버전 및 필드 매핑 관리 |
+| AnalysisLoadService | 적재 대상 조회 및 적재 작업 등록 |
+| AnalysisLoadWorkerJob | 대기 중인 데이터 적재 작업 실행 |
+| AnalysisLoadWorkerService | 적재 작업 선점 및 개별 작업 처리 |
+| AnalysisLoadStateService | 적재 작업 선점 및 실패 상태 관리 |
+| AnalysisLoadExecutionService | 필드 매핑, 타입 변환 및 업무 테이블 적재 |
+| AnalysisLoadResultService | 적재 모델별 실제 저장 데이터 조회 |
+| AiAnalysisService | Tool Calling 기반 데이터 분석 초기 프로토타입 |
+| Spring Security | 세션 인증, CSRF 보호 및 역할 기반 접근 제어 |
+| Quartz JDBC JobStore | Job 및 Trigger 정보 영속화 |
+| MyBatis | SQL 실행 및 데이터 매핑 |
+| PostgreSQL | 스케줄, 수집, 가공, 적재 및 실행 이력 영속화 |
 
 ---
-
-
 
 ## Tech Stack
 
@@ -426,30 +526,56 @@ OpenAI API 사용에 따른 비용은 별도로 발생할 수 있습니다.
 
 ```text
 spring-quartz-scheduler/
-├── config/                         # 외부 설정 파일 예제
+├── .github/
+│   └── workflows/                 # GitHub Actions CI/CD 설정
+├── config/                        # 외부 설정 파일 예제
+├── docs/                          # 도메인별 설계 및 개발 문서
+│   ├── agents/                    # AI 에이전트 작업 및 이슈 관리 규칙
+│   ├── coding-conventions.md      # 코드 작성 규칙
+│   ├── database.md                # DB 및 트랜잭션 설계
+│   ├── external-api.md            # 외부 API 수집 설계
+│   ├── quartz.md                  # Quartz Scheduler 설계
+│   ├── security.md                # 인증 및 보안 설계
+│   └── transform.md               # 데이터 가공 설계
+├── gradle/
+│   └── wrapper/                   # Gradle Wrapper 설정
 ├── src/
 │   ├── main/
 │   │   ├── java/com/kji/scheduler/
-│   │   │   ├── config/             # Spring 및 Quartz 설정
-│   │   │   ├── controller/         # REST API 엔드포인트
-│   │   │   ├── crypto/             # 인증정보 암호화
-│   │   │   ├── dto/                # 데이터 전송 객체
-│   │   │   ├── entity/             # 데이터베이스 엔티티
-│   │   │   ├── job/                # Quartz Job 구현
-│   │   │   ├── listener/           # Quartz 실행 이벤트 처리
-│   │   │   ├── mapper/             # MyBatis Mapper 인터페이스
-│   │   │   ├── repository/         # 데이터 접근 Repository
-│   │   │   ├── security/           # 인증 및 보안 처리
-│   │   │   ├── service/            # 비즈니스 로직
+│   │   │   ├── config/            # Spring 및 Quartz 설정
+│   │   │   ├── controller/        # REST API 엔드포인트
+│   │   │   ├── crypto/            # 인증정보 암호화
+│   │   │   ├── dto/               # 데이터 전송 객체
+│   │   │   ├── entity/            # 데이터베이스 엔티티
+│   │   │   ├── job/               # Quartz 수집·가공·적재 Job
+│   │   │   ├── listener/          # Quartz 실행 이벤트 및 이력 처리
+│   │   │   ├── mapper/            # MyBatis Mapper 인터페이스
+│   │   │   ├── repository/        # 데이터 접근 및 Job 클래스 관리
+│   │   │   ├── security/          # 인증 및 권한 처리
+│   │   │   ├── service/           # 비즈니스 로직 및 트랜잭션 처리
+│   │   │   ├── typehandler/       # MyBatis 데이터 타입 매핑
 │   │   │   └── SchedulerApplication.java
 │   │   └── resources/
-│   │       ├── db/postgresql/      # PostgreSQL 초기화 SQL
-│   │       ├── mapper/             # MyBatis Mapper XML
+│   │       ├── db/postgresql/
+│   │       │   ├── migration/     # DB 스키마 마이그레이션 SQL
+│   │       │   ├── 01_quartz.sql
+│   │       │   ├── 02_scheduler.sql
+│   │       │   ├── 03_security.sql
+│   │       │   └── 04_init_data.sql
+│   │       ├── mapper/            # MyBatis Mapper XML
 │   │       └── application*.properties
-│   └── test/java/                  # 테스트 코드
-├── build.gradle                    # Gradle 빌드 설정
-├── gradlew                         # Gradle Wrapper (Linux/macOS)
-├── gradlew.bat                     # Gradle Wrapper (Windows)
+│   └── test/
+│       └── java/com/kji/scheduler/
+│           ├── controller/        # REST API 테스트
+│           ├── crypto/            # 암호화 테스트
+│           ├── job/               # Quartz Job 테스트
+│           └── service/           # 서비스 및 업무 로직 테스트
+├── AGENTS.md                      # AI 에이전트 및 프로젝트 개발 규칙
+├── Dockerfile                     # Docker 이미지 빌드 설정
+├── build.gradle                   # Gradle 빌드 및 의존성 설정
+├── settings.gradle                # Gradle 프로젝트 설정
+├── gradlew                        # Gradle Wrapper (Linux/macOS)
+├── gradlew.bat                    # Gradle Wrapper (Windows)
 └── README.md
 ```
 
