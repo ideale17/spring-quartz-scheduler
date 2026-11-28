@@ -123,6 +123,9 @@
                   AND LS.RAW_DATA_ID = T.RAW_DATA_ID
            )
         </if>
+        <if test="searchDto.loadStatus != null and searchDto.loadStatus != 'ALL' and searchDto.loadStatus != 'UNREGISTERED'">
+           AND L.STATUS = #{searchDto.loadStatus}
+        </if>
          ORDER BY R.TRANSFORM_RESULT_ID DESC
          OFFSET #{searchDto.offset} ROWS
          FETCH NEXT #{searchDto.size} ROWS ONLY
@@ -151,6 +154,15 @@
                  FROM SCHED_ANALYSIS_LOAD_SOURCE LS
                 WHERE LS.ANALYSIS_MODEL_VERSION_ID = #{analysisModelVersionId}
                   AND LS.RAW_DATA_ID = T.RAW_DATA_ID
+           )
+        </if>
+        <if test="searchDto.loadStatus != null and searchDto.loadStatus != 'ALL' and searchDto.loadStatus != 'UNREGISTERED'">
+           AND EXISTS (
+               SELECT 1
+                 FROM SCHED_ANALYSIS_LOAD_SOURCE LS
+                WHERE LS.ANALYSIS_MODEL_VERSION_ID = #{analysisModelVersionId}
+                  AND LS.TRANSFORM_RESULT_ID = R.TRANSFORM_RESULT_ID
+                  AND LS.STATUS = #{searchDto.loadStatus}
            )
         </if>
     </select>

@@ -19,6 +19,9 @@ import com.kji.scheduler.mapper.AnalysisModelMapper;
 
 @Service
 public class AnalysisLoadService {
+
+	private static final Set<String> LOAD_SEARCH_STATUSES =
+			Set.of("ALL", "UNREGISTERED", "PENDING", "RUNNING", "SUCCESS", "FAILED");
 	
 	private final AnalysisLoadMapper analysisLoadMapper;
 	private final AnalysisModelMapper analysisModelMapper;
@@ -59,8 +62,8 @@ public class AnalysisLoadService {
 		}
 
 		String loadStatus = searchDto.getLoadStatus();
-		if (loadStatus != null && !"ALL".equals(loadStatus) && !"UNREGISTERED".equals(loadStatus)) {
-			throw new IllegalArgumentException("적재 상태 조회 조건은 ALL 또는 UNREGISTERED여야 합니다.");
+		if (loadStatus != null && !LOAD_SEARCH_STATUSES.contains(loadStatus)) {
+			throw new IllegalArgumentException("지원하지 않는 적재 상태 조회 조건입니다.");
 		}
 		
 		// 2. 적재 모델 기본 정보를 조회한다.
