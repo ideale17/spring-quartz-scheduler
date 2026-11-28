@@ -72,6 +72,7 @@ public interface AnalysisLoadMapper {
 			@Param("searchDto") AnalysisLoadSearchDto searchDto,
 			@Param("transformRuleId") Long transformRuleId,
 			@Param("analysisModelVersionId") Long analysisModelVersionId,
+			@Param("transformRuleVersionId") Long transformRuleVersionId,
 			@Param("startAt") LocalDateTime startAt,
 			@Param("endAt") LocalDateTime endAt);
 	
@@ -81,6 +82,8 @@ public interface AnalysisLoadMapper {
 	long countAnalysisLoadList(
 			@Param("searchDto") AnalysisLoadSearchDto searchDto,
 			@Param("transformRuleId") Long transformRuleId,
+			@Param("analysisModelVersionId") Long analysisModelVersionId,
+			@Param("transformRuleVersionId") Long transformRuleVersionId,
 			@Param("startAt") LocalDateTime startAt,
 			@Param("endAt") LocalDateTime endAt);
 	

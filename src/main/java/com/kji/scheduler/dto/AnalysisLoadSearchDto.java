@@ -13,6 +13,7 @@ public class AnalysisLoadSearchDto {
 	private Long analysisModelId;
 	private LocalDate startDate;
 	private LocalDate endDate;
+	private String loadStatus;
 	private int page = 1;
 	private int size = 10;
 	

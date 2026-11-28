@@ -132,6 +132,13 @@ Quartz 데이터 변경은 기존 Scheduler API를 통해 수행한다.
 
 구체적인 Java 및 SQL 작성 스타일은 `docs/coding-conventions.md`를 따른다.
 
+### 적재 대상 조회
+
+- `GET /analysis-load/list`는 적재 모델별 가공 결과와 적재 상태를 조회한다. `loadStatus`를 생략하거나 `ALL`로 지정하면 기존 조회 조건을 사용한다.
+- `loadStatus=UNREGISTERED`는 현재 적재 모델 버전에 연결된 가공 규칙 버전과 일치하고, 같은 적재 모델 버전과 Raw Data로 등록된 작업이 없는 결과를 조회한다. 대기, 진행 중, 완료, 실패 작업이 모두 등록 이력에 해당한다.
+- 날짜와 적재 상태 조건은 페이지를 나누기 전에 적용하며, 목록과 `totalCount`에 같은 조건을 사용한다.
+- `ALL`, `UNREGISTERED` 이외의 상태 값을 전달하면 `400 Bad Request`를 반환한다.
+
 ### 적재 데이터 조회
 
 - 모델 선택에는 기존 `GET /analysis-model/list`를 사용한다.

@@ -33,7 +33,7 @@ public class AnalysisLoadService {
 	/**
 	 * 선택한 적재 모델의 정보와 가공 결과, 적재 상태를 함께 조회한다.
 	 *
-	 * @param searchDto 적재 모델 식별자, 기간 및 페이징 정보
+	 * @param searchDto 적재 모델 식별자, 기간, 적재 상태 및 페이징 정보
 	 * @return 적재 모델 정보와 적재 대상 목록
 	 */
 	@Transactional(readOnly = true)
@@ -56,6 +56,11 @@ public class AnalysisLoadService {
 		if (searchDto.getStartDate() != null && searchDto.getEndDate() != null
 				&& searchDto.getStartDate().isAfter(searchDto.getEndDate())) {
 			throw new IllegalArgumentException("시작일은 종료일보다 늦을 수 없습니다.");
+		}
+
+		String loadStatus = searchDto.getLoadStatus();
+		if (loadStatus != null && !"ALL".equals(loadStatus) && !"UNREGISTERED".equals(loadStatus)) {
+			throw new IllegalArgumentException("적재 상태 조회 조건은 ALL 또는 UNREGISTERED여야 합니다.");
 		}
 		
 		// 2. 적재 모델 기본 정보를 조회한다.
@@ -97,6 +102,7 @@ public class AnalysisLoadService {
 				searchDto,
 				version.getTransformRuleId(),
 				version.getAnalysisModelVersionId(),
+				version.getTransformRuleVersionId(),
 				startAt,
 				endAt);
 		
@@ -104,6 +110,8 @@ public class AnalysisLoadService {
 		long totalCount = analysisLoadMapper.countAnalysisLoadList(
 				searchDto,
 				version.getTransformRuleId(),
+				version.getAnalysisModelVersionId(),
+				version.getTransformRuleVersionId(),
 				startAt,
 				endAt);
 		

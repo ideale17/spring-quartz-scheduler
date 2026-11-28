@@ -102,7 +102,7 @@
             ON T.TRANSFORM_RULE_VERSION_ID = V.TRANSFORM_RULE_VERSION_ID
          INNER JOIN SCHED_TRANSFORM_RULE U
             ON V.TRANSFORM_RULE_ID = U.TRANSFORM_RULE_ID
-         <!-- 동일 모델 버전과 Raw Data의 기존 적재 작업 -->
+         <!-- 동일 모델 버전에서 이 가공 결과로 등록한 적재 작업 -->
           LEFT JOIN SCHED_ANALYSIS_LOAD_SOURCE L
             ON L.ANALYSIS_MODEL_VERSION_ID = #{analysisModelVersionId}
            AND L.TRANSFORM_RESULT_ID = R.TRANSFORM_RESULT_ID
@@ -113,6 +113,15 @@
         </if>
         <if test="endAt != null">
            AND R.CREATED_AT <![CDATA[ < ]]> #{endAt}
+        </if>
+        <if test="searchDto.loadStatus == 'UNREGISTERED'">
+           AND T.TRANSFORM_RULE_VERSION_ID = #{transformRuleVersionId}
+           AND NOT EXISTS (
+               SELECT 1
+                 FROM SCHED_ANALYSIS_LOAD_SOURCE LS
+                WHERE LS.ANALYSIS_MODEL_VERSION_ID = #{analysisModelVersionId}
+                  AND LS.RAW_DATA_ID = T.RAW_DATA_ID
+           )
         </if>
          ORDER BY R.TRANSFORM_RESULT_ID DESC
          OFFSET #{searchDto.offset} ROWS
@@ -134,6 +143,15 @@
         </if>
         <if test="endAt != null">
            AND R.CREATED_AT <![CDATA[ < ]]> #{endAt}
+        </if>
+        <if test="searchDto.loadStatus == 'UNREGISTERED'">
+           AND T.TRANSFORM_RULE_VERSION_ID = #{transformRuleVersionId}
+           AND NOT EXISTS (
+               SELECT 1
+                 FROM SCHED_ANALYSIS_LOAD_SOURCE LS
+                WHERE LS.ANALYSIS_MODEL_VERSION_ID = #{analysisModelVersionId}
+                  AND LS.RAW_DATA_ID = T.RAW_DATA_ID
+           )
         </if>
     </select>
     
